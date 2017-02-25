@@ -1,0 +1,8 @@
+[package]
+
+name = "puzzle"
+version = "0.0.1"
+authors = [ "Radek Polak <psonek2@seznam.cz>" ]
+
+[dependencies]
+image = "*"
