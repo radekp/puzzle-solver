@@ -6,8 +6,15 @@ use std::path::Path;
 
 use image::GenericImage;
 
+// Maximal wifth/height for pieces array
+const MAX_WIDTH: usize = 1000;
+const MAX_HEIGHT: usize = 500;
+
+// Maximum number of pieces
+const MAX_PIECES: usize = 10;
+
 // Move points from src to dst recursively with flood fill
-fn flood_fill(pieces: &mut[[[bool; 500];1000];10], p: usize, x: usize, y:usize) {
+fn flood_fill(pieces: &mut[[[bool; MAX_HEIGHT];MAX_WIDTH];MAX_PIECES], p: usize, x: usize, y:usize) {
 
     if !pieces[0][x][y] {
         return;
@@ -20,25 +27,25 @@ fn flood_fill(pieces: &mut[[[bool; 500];1000];10], p: usize, x: usize, y:usize) 
     if y > 0 {
         flood_fill(pieces, p, x, y-1);
     }
-    if x < 1000 {
+    if x < MAX_WIDTH {
         flood_fill(pieces, p, x+1, y);
     }
-    if y < 500 {
+    if y < MAX_HEIGHT {
         flood_fill(pieces, p, x, y+1);
     }
 }
 
 // Split pieces
-fn split_pieces(pieces: &mut[[[bool; 500];1000];10]) {
+fn split_pieces(pieces: &mut[[[bool; MAX_HEIGHT];MAX_WIDTH];MAX_PIECES]) {
     let mut p = 1;
-        for x in 0..1000 {
-            for y in 0..500 {
+        for x in 0..MAX_WIDTH {
+            for y in 0..MAX_HEIGHT {
                 if !pieces[0][x][y] {
                     continue
                 }
                 flood_fill(pieces, p, x, y);
                 p = p + 1;
-                if p >= 10 {
+                if p >= MAX_PIECES {
                     return;
                 }
             }
@@ -61,15 +68,15 @@ fn main() {
     // The dimensions method returns the images width and height
     println!("dimensions {:?}", dims);
 
-    let mut pieces: [[[bool; 500];1000];10] = [[[false; 500]; 1000];10];
+    let mut pieces: [[[bool; MAX_HEIGHT];MAX_WIDTH];MAX_PIECES] = [[[false; MAX_HEIGHT]; MAX_WIDTH];MAX_PIECES];
 
     // Image -> array
-	for x in 0..1000 {
-		for y in 0..500 {
-            if x >= dims.0 || y >= dims.1 {
+	for x in 0..MAX_WIDTH {
+		for y in 0..MAX_HEIGHT {
+            if x >= dims.0 as usize || y >= dims.1 as usize {
                 continue;
             }
-            let pix = im.get_pixel(x, y);
+            let pix = im.get_pixel(x as u32, y as u32);
             if pix[0] < 127 {
                 pieces[0][x as usize][y as usize] = true;
             }
@@ -81,15 +88,15 @@ fn main() {
 
     let black_pix = image::Rgba([0,0,0,0]);
     let grey_pix = image::Rgba([32,32,32,0]);
-    for x in 0..1000 {
-		for y in 0..500 {
-            if x >= dims.0 || y >= dims.1 {
+    for x in 0..MAX_WIDTH {
+		for y in 0..MAX_HEIGHT {
+            if x >= dims.0 as usize || y >= dims.1 as usize {
                 continue;
             }
             if pieces[2][x as usize][y as usize] {
-                im.put_pixel(x, y, grey_pix);           // paint with black/grey
+                im.put_pixel(x as u32, y as u32, grey_pix);           // paint with black/grey
             } else {
-                im.put_pixel(x, y, black_pix);
+                im.put_pixel(x as u32, y as u32, black_pix);
             }
 		}
 	}
