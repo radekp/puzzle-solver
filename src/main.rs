@@ -7,17 +7,26 @@ use std::path::Path;
 use image::GenericImage;
 
 // Maximal wifth/height for pieces array
-const MAX_WIDTH: usize = 1000;
-const MAX_HEIGHT: usize = 500;
+const MAX_WIDTH: usize = 512;
+const MAX_HEIGHT: usize = 213;
 
 // Maximum number of pieces
 const MAX_PIECES: usize = 12;
+
+struct PieceInfo {
+    min_x: usize,
+    min_y: usize,
+    max_x: usize,
+    max_y: usize,
+    pixels: [[bool; MAX_HEIGHT]; MAX_WIDTH],
+}
 
 // Move points from src to dst recursively with flood fill
 fn flood_fill(pieces: &mut [[[bool; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES],
               p: usize,
               x: usize,
-              y: usize)
+              y: usize,
+              pi: &mut PieceInfo)
               -> u32 {
 
     if !pieces[0][x][y] {
@@ -25,19 +34,34 @@ fn flood_fill(pieces: &mut [[[bool; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES],
     }
     pieces[0][x][y] = false;
     pieces[p][x][y] = true;
+    pi.pixels[x][y] = true;
+
+    // Update min & max points
+    if x > pi.max_x {
+        pi.max_x = x;
+    }
+    if y > pi.max_y {
+        pi.max_y = y;
+    }
+    if x < pi.min_x {
+        pi.min_x = x;
+    }
+    if y < pi.min_y {
+        pi.min_y = y;
+    }
 
     let mut res: u32 = 1;
     if x > 0 {
-        res = res + flood_fill(pieces, p, x - 1, y);
+        res = res + flood_fill(pieces, p, x - 1, y, pi);
     }
     if y > 0 {
-        res = res + flood_fill(pieces, p, x, y - 1);
+        res = res + flood_fill(pieces, p, x, y - 1, pi);
     }
     if x < MAX_WIDTH {
-        res = res + flood_fill(pieces, p, x + 1, y);
+        res = res + flood_fill(pieces, p, x + 1, y, pi);
     }
     if y < MAX_HEIGHT {
-        res = res + flood_fill(pieces, p, x, y + 1);
+        res = res + flood_fill(pieces, p, x, y + 1, pi);
     }
     return res;
 }
@@ -50,8 +74,11 @@ fn split_pieces(pieces: &mut [[[bool; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES]) {
             if !pieces[0][x][y] {
                 continue;
             }
-            let num_pix = flood_fill(pieces, p, x, y);
-            println!("piece {:?} numPix={:?}", p, num_pix);
+            let mut pi = PieceInfo{min_x: usize::max_value(), min_y: usize::max_value(), max_x: 0, max_y:0,
+                pixels:[[false; MAX_HEIGHT]; MAX_WIDTH]};
+
+            let num_pix = flood_fill(pieces, p, x, y, &mut pi);
+            println!("piece {:?} numPix={:?} min={:?},{:?} max={:?},{:?}", p, num_pix, pi.min_x, pi.min_y, pi.max_x, pi.max_y);
             if num_pix == 1 {
                 pieces[p][x][y] = false;
                 continue;
@@ -60,6 +87,15 @@ fn split_pieces(pieces: &mut [[[bool; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES]) {
             p = p + 1;
             if p >= MAX_PIECES {
                 return;
+            }
+        }
+    }
+}
+
+fn detect_edge(pieces: &mut [[[bool; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES]) {
+    for p in 1..MAX_PIECES {
+        for x in 0..MAX_WIDTH {
+            for y in 0..MAX_HEIGHT {
             }
         }
     }
@@ -104,7 +140,7 @@ fn main() {
     // Draw result bitmap
     let black_pix = image::Rgba([0, 0, 0, 0]);
     for p in 1..MAX_PIECES {
-        let grey_pix = image::Rgba([(32 + p * 10) as u8, 32, 32, 0]);
+        let grey_pix = image::Rgba([32, 32, 32, 0]);
         for x in 0..MAX_WIDTH {
             for y in 0..MAX_HEIGHT {
                 if x >= dims.0 as usize || y >= dims.1 as usize {
@@ -112,12 +148,29 @@ fn main() {
                 }
                 if pieces[p][x as usize][y as usize] {
                     im.put_pixel(x as u32, y as u32, grey_pix); // paint with black/grey
-                } else if p == 0 {
+                } else if p == 1 {
                     im.put_pixel(x as u32, y as u32, black_pix);
                 }
             }
         }
     }
+
+    // Detect edge
+    for p in 1..MAX_PIECES {
+        let white_pix = image::Rgba([0, 255, 0, 0]);
+        for y in 0..MAX_HEIGHT {
+            for x in 0..MAX_WIDTH {
+                if x >= dims.0 as usize || y >= dims.1 as usize {
+                    continue;
+                }
+                if pieces[p][x as usize][y as usize] {
+                    im.put_pixel(x as u32, y as u32, white_pix);
+                    break;
+                }
+            }
+        }
+    }
+
 
     // +----
     // |/ /
