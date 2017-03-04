@@ -14,7 +14,11 @@ const MAX_HEIGHT: usize = 500;
 const MAX_PIECES: usize = 12;
 
 // Move points from src to dst recursively with flood fill
-fn flood_fill(pieces: &mut[[[bool; MAX_HEIGHT];MAX_WIDTH];MAX_PIECES], p: usize, x: usize, y:usize) ->u32 {
+fn flood_fill(pieces: &mut [[[bool; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES],
+              p: usize,
+              x: usize,
+              y: usize)
+              -> u32 {
 
     if !pieces[0][x][y] {
         return 0;
@@ -24,46 +28,44 @@ fn flood_fill(pieces: &mut[[[bool; MAX_HEIGHT];MAX_WIDTH];MAX_PIECES], p: usize,
 
     let mut res: u32 = 1;
     if x > 0 {
-        res = res + flood_fill(pieces, p, x-1, y);
+        res = res + flood_fill(pieces, p, x - 1, y);
     }
     if y > 0 {
-        res = res + flood_fill(pieces, p, x, y-1);
+        res = res + flood_fill(pieces, p, x, y - 1);
     }
     if x < MAX_WIDTH {
-        res = res + flood_fill(pieces, p, x+1, y);
+        res = res + flood_fill(pieces, p, x + 1, y);
     }
     if y < MAX_HEIGHT {
-        res = res + flood_fill(pieces, p, x, y+1);
+        res = res + flood_fill(pieces, p, x, y + 1);
     }
     return res;
 }
 
 // Split pieces
-fn split_pieces(pieces: &mut[[[bool; MAX_HEIGHT];MAX_WIDTH];MAX_PIECES]) {
+fn split_pieces(pieces: &mut [[[bool; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES]) {
     let mut p = 1;
-        for x in 0..MAX_WIDTH {
-            for y in 0..MAX_HEIGHT {
-                if !pieces[0][x][y] {
-                    continue
-                }
-                let num_pix = flood_fill(pieces, p, x, y);
-                println!("piece {:?} numPix={:?}", p, num_pix);
-                if num_pix == 1 {
-                    pieces[p][x][y] = false;
-                    continue;
-                }
-
-                p = p + 1;
-                if p >= MAX_PIECES {
-                    return;
-                }
+    for x in 0..MAX_WIDTH {
+        for y in 0..MAX_HEIGHT {
+            if !pieces[0][x][y] {
+                continue;
             }
+            let num_pix = flood_fill(pieces, p, x, y);
+            println!("piece {:?} numPix={:?}", p, num_pix);
+            if num_pix == 1 {
+                pieces[p][x][y] = false;
+                continue;
+            }
+
+            p = p + 1;
+            if p >= MAX_PIECES {
+                return;
+            }
+        }
     }
 }
 
 fn main() {
-
-    println!("hello");
 
     let file = if env::args().count() == 2 {
         env::args().nth(1).unwrap()
@@ -75,16 +77,17 @@ fn main() {
     // ```open``` returns a dynamic image.
     let mut im = image::open(&Path::new(&file)).unwrap();
 
-	let dims = im.dimensions();
+    let dims = im.dimensions();
 
     // The dimensions method returns the images width and height
     println!("dimensions {:?}", dims);
 
-    let mut pieces: [[[bool; MAX_HEIGHT];MAX_WIDTH];MAX_PIECES] = [[[false; MAX_HEIGHT]; MAX_WIDTH];MAX_PIECES];
+    let mut pieces: [[[bool; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES] =
+        [[[false; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES];
 
     // Image -> array
-	for x in 0..MAX_WIDTH {
-		for y in 0..MAX_HEIGHT {
+    for x in 0..MAX_WIDTH {
+        for y in 0..MAX_HEIGHT {
             if x >= dims.0 as usize || y >= dims.1 as usize {
                 continue;
             }
@@ -92,29 +95,29 @@ fn main() {
             if pix[0] < 127 {
                 pieces[0][x as usize][y as usize] = true;
             }
-		}
-	}
+        }
+    }
 
     split_pieces(&mut pieces);
 
 
     // Draw result bitmap
-    let black_pix = image::Rgba([0,0,0,0]);
+    let black_pix = image::Rgba([0, 0, 0, 0]);
     for p in 1..MAX_PIECES {
-        let grey_pix = image::Rgba([(32 + p * 10) as u8, 32, 32,0]);
+        let grey_pix = image::Rgba([(32 + p * 10) as u8, 32, 32, 0]);
         for x in 0..MAX_WIDTH {
-    		for y in 0..MAX_HEIGHT {
+            for y in 0..MAX_HEIGHT {
                 if x >= dims.0 as usize || y >= dims.1 as usize {
                     continue;
                 }
                 if pieces[p][x as usize][y as usize] {
-                    im.put_pixel(x as u32, y as u32, grey_pix);           // paint with black/grey
+                    im.put_pixel(x as u32, y as u32, grey_pix); // paint with black/grey
                 } else if p == 0 {
                     im.put_pixel(x as u32, y as u32, black_pix);
                 }
-    		}
+            }
         }
-	}
+    }
 
     // +----
     // |/ /
