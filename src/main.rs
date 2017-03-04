@@ -11,28 +11,31 @@ const MAX_WIDTH: usize = 1000;
 const MAX_HEIGHT: usize = 500;
 
 // Maximum number of pieces
-const MAX_PIECES: usize = 10;
+const MAX_PIECES: usize = 12;
 
 // Move points from src to dst recursively with flood fill
-fn flood_fill(pieces: &mut[[[bool; MAX_HEIGHT];MAX_WIDTH];MAX_PIECES], p: usize, x: usize, y:usize) {
+fn flood_fill(pieces: &mut[[[bool; MAX_HEIGHT];MAX_WIDTH];MAX_PIECES], p: usize, x: usize, y:usize) ->u32 {
 
     if !pieces[0][x][y] {
-        return;
+        return 0;
     }
     pieces[0][x][y] = false;
     pieces[p][x][y] = true;
+
+    let mut res: u32 = 1;
     if x > 0 {
-        flood_fill(pieces, p, x-1, y);
+        res = res + flood_fill(pieces, p, x-1, y);
     }
     if y > 0 {
-        flood_fill(pieces, p, x, y-1);
+        res = res + flood_fill(pieces, p, x, y-1);
     }
     if x < MAX_WIDTH {
-        flood_fill(pieces, p, x+1, y);
+        res = res + flood_fill(pieces, p, x+1, y);
     }
     if y < MAX_HEIGHT {
-        flood_fill(pieces, p, x, y+1);
+        res = res + flood_fill(pieces, p, x, y+1);
     }
+    return res;
 }
 
 // Split pieces
@@ -43,7 +46,13 @@ fn split_pieces(pieces: &mut[[[bool; MAX_HEIGHT];MAX_WIDTH];MAX_PIECES]) {
                 if !pieces[0][x][y] {
                     continue
                 }
-                flood_fill(pieces, p, x, y);
+                let num_pix = flood_fill(pieces, p, x, y);
+                println!("piece {:?} numPix={:?}", p, num_pix);
+                if num_pix == 1 {
+                    pieces[p][x][y] = false;
+                    continue;
+                }
+
                 p = p + 1;
                 if p >= MAX_PIECES {
                     return;
@@ -53,6 +62,9 @@ fn split_pieces(pieces: &mut[[[bool; MAX_HEIGHT];MAX_WIDTH];MAX_PIECES]) {
 }
 
 fn main() {
+
+    println!("hello");
+
     let file = if env::args().count() == 2 {
         env::args().nth(1).unwrap()
     } else {
@@ -86,19 +98,22 @@ fn main() {
     split_pieces(&mut pieces);
 
 
+    // Draw result bitmap
     let black_pix = image::Rgba([0,0,0,0]);
-    let grey_pix = image::Rgba([32,32,32,0]);
-    for x in 0..MAX_WIDTH {
-		for y in 0..MAX_HEIGHT {
-            if x >= dims.0 as usize || y >= dims.1 as usize {
-                continue;
-            }
-            if pieces[2][x as usize][y as usize] {
-                im.put_pixel(x as u32, y as u32, grey_pix);           // paint with black/grey
-            } else {
-                im.put_pixel(x as u32, y as u32, black_pix);
-            }
-		}
+    for p in 1..MAX_PIECES {
+        let grey_pix = image::Rgba([(32 + p * 10) as u8, 32, 32,0]);
+        for x in 0..MAX_WIDTH {
+    		for y in 0..MAX_HEIGHT {
+                if x >= dims.0 as usize || y >= dims.1 as usize {
+                    continue;
+                }
+                if pieces[p][x as usize][y as usize] {
+                    im.put_pixel(x as u32, y as u32, grey_pix);           // paint with black/grey
+                } else if p == 0 {
+                    im.put_pixel(x as u32, y as u32, black_pix);
+                }
+    		}
+        }
 	}
 
     // +----
