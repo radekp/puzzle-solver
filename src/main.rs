@@ -23,13 +23,13 @@ struct PieceInfo {
 }
 
 impl PieceInfo {
-    fn mid_x(&self) -> usize {
+/*    fn mid_x(&self) -> usize {
         return (self.min_x + self.max_x) / 2;
     }
 
     fn mid_y(&self) -> usize {
         return (self.min_y + self.max_y) / 2;
-    }
+    }*/
 
     fn width(&self) -> usize {
         return self.max_x - self.min_x;
@@ -38,7 +38,6 @@ impl PieceInfo {
     fn height(&self) -> usize {
         return self.max_y - self.min_y;
     }
-
 }
 
 // Near point iterator
@@ -50,57 +49,57 @@ impl PieceInfo {
 //       7 6 5
 //
 // If a==0 it will start in cx,cy orherwise a is square side on start
-fn near_iter_begin(cx:i32, cy:i32, start_a: i32) -> (i32, i32, i32) {
-	return (cx - start_a, cy - start_a, start_a);
+fn near_iter_begin(cx: i32, cy: i32, start_a: i32) -> (i32, i32, i32) {
+    return (cx - start_a, cy - start_a, start_a);
 }
 
 // Return next point in spiral
-fn near_iter_next(cx:i32, cy:i32, prev_x:i32, prev_y:i32, prev_a:i32) -> (i32, i32, i32) {
+fn near_iter_next(cx: i32, cy: i32, prev_x: i32, prev_y: i32, prev_a: i32) -> (i32, i32, i32) {
 
     let mut x = prev_x;
     let mut y = prev_y;
     let mut a = prev_a;
 
-	if x == cx && y == cy {
-		return (cx - 1, cy - 1, a);
-	}
+    if x == cx && y == cy {
+        return (cx - 1, cy - 1, a);
+    }
 
-	if y == cy-a {
-		x += 1;
-		if x-cx <= a {
-			return (x, y, a);
-		}
-        x = cx+a;
-		y = cy-a+1;
-		return (x, y, a);
-	}
+    if y == cy - a {
+        x += 1;
+        if x - cx <= a {
+            return (x, y, a);
+        }
+        x = cx + a;
+        y = cy - a + 1;
+        return (x, y, a);
+    }
 
-	if x == cx+a {
-		y+=1;
-		if y-cy <= a {
-			return (x, y, a);
-		}
-        x = cx+a-1;
-		y = cy+a;
-		return (x, y, a);
-	}
+    if x == cx + a {
+        y += 1;
+        if y - cy <= a {
+            return (x, y, a);
+        }
+        x = cx + a - 1;
+        y = cy + a;
+        return (x, y, a);
+    }
 
-	if y == cy+a {
-		x-= 1;
-		if cx-x <= a {
-			return (x, y, a);
-		}
-        x = cx-a;
-		y = cy+a-1;
-		return (x, y, a);
-	}
+    if y == cy + a {
+        x -= 1;
+        if cx - x <= a {
+            return (x, y, a);
+        }
+        x = cx - a;
+        y = cy + a - 1;
+        return (x, y, a);
+    }
 
-	y-=1;
-	if y > cy-a {
-		return (x, y, a);
-	}
-	a +=1;
-	return (cx - a, cy - a, a);
+    y -= 1;
+    if y > cy - a {
+        return (x, y, a);
+    }
+    a += 1;
+    return (cx - a, cy - a, a);
 }
 
 // Move points from src to dst recursively with flood fill
@@ -184,7 +183,7 @@ fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
                 pixels_ff[x][y] = 0;
                 continue;
             }
-            pi.min_x -= 3;      // some space for comparing pieces
+            pi.min_x -= 3; // some space for comparing pieces
             pi.min_y -= 3;
             pi.max_x += 3;
             pi.max_y += 3;
@@ -200,11 +199,17 @@ fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
 }
 
 // Compare two pieces and return score
-fn compare_pieces_x_y_rot(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH], delta_x: i32, delta_y: i32, rotate: i32) -> i32 {
+fn compare_pieces_x_y_rot(p1: &PieceInfo,
+                          p2: &PieceInfo,
+                          pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH],
+                          delta_x: i32,
+                          delta_y: i32,
+                          rotate: i32)
+                          -> i32 {
 
     // Clear previous comparing
-    for y in p1.min_y..p1.max_y+1 {
-        for x in p1.min_x..p1.max_x+1 {
+    for y in p1.min_y..p1.max_y + 1 {
+        for x in p1.min_x..p1.max_x + 1 {
             pixels[x][y] &= 32;
         }
     }
@@ -220,7 +225,8 @@ fn compare_pieces_x_y_rot(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX
             let x2 = p2.min_x + x;
             let y2 = p2.min_y + y;
 
-            if pixels[x2][y2] == 0 {        // empty p2 pixel
+            if pixels[x2][y2] == 0 {
+                // empty p2 pixel
                 continue;
             }
 
@@ -241,22 +247,22 @@ fn compare_pieces_x_y_rot(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX
                 continue;
             }
 
-            if pixels[x1][y1] != 0 {        // intersection with p1
+            if pixels[x1][y1] != 0 {
+                // intersection with p1
                 pixels[x1][y1] |= 128;
-            }
-            else {
-                pixels[x1][y1] |= 64;       // no intersection, just draw p2
+            } else {
+                pixels[x1][y1] |= 64; // no intersection, just draw p2
             }
         }
     }
 
 
     // Compute score
-    let mut res:i32 = 0;
+    let mut res: i32 = 0;
     for y in p1.min_y..p1.max_y {
         for x in p1.min_x..p1.max_x {
             if pixels[x][y] & 128 == 0 {
-                continue;                   // skip all but intersection
+                continue; // skip all but intersection
             }
 
             // Find nearest point in piece p1 and p2
@@ -265,12 +271,10 @@ fn compare_pieces_x_y_rot(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX
             let mut dist_2 = 0;
             //println!("iter_begin x={:?} y={:?} a={:?}", iter.0, iter.1, iter.2);
             loop {
-                //println!("x={:?} y={:?} a={:?} pix={:?}", iter.0, iter.1, iter.2, pixels[iter.0 as usize][iter.1 as usize]);
-                if iter.0 >= p1.min_x as i32 &&
-                    iter.0 <= p1.max_x as i32 &&
-                    iter.1 >= p1.min_y as i32 &&
-                    iter.1 <= p1.max_y as i32
-                {
+                //println!("x={:?} y={:?} a={:?} pix={:?}",
+                // iter.0, iter.1, iter.2, pixels[iter.0 as usize][iter.1 as usize]);
+                if iter.0 >= p1.min_x as i32 && iter.0 <= p1.max_x as i32 &&
+                   iter.1 >= p1.min_y as i32 && iter.1 <= p1.max_y as i32 {
                     if pixels[iter.0 as usize][iter.1 as usize] == 32 && dist_1 == 0 {
                         dist_1 = iter.2;
                     }
@@ -287,30 +291,40 @@ fn compare_pieces_x_y_rot(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX
             // Close point is positive score, distant is negative
             res += 3 - dist_1 - dist_2;
             if iheight + res < 0 {
-                return res;             // bail out early when score is too bad
+                return res; // bail out early when score is too bad
             }
         }
     }
     return res;
 }
 
-fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH]) -> (i32,i32,i32) {
+fn compare_pieces(p1: &PieceInfo,
+                  p2: &PieceInfo,
+                  pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH])
+                  -> (i32, i32, i32) {
 
-    let mut best_score:i32 = 0;
+    let mut best_score: i32 = 0;
     let mut best_x: i32 = 0;
     let mut best_y: i32 = 0;
     let mut best_r: i32 = 0;
 
-    for r in -6..6 {    // fake rotation +-6pixels
-        for y in 0..p1.height()/2 {
-            for x in p1.width()/2..p1.width() {     // move less then half p1 width never fits
+    for r in -6..6 {
+        // fake rotation +-6pixels
+        for y in 0..p1.height() / 2 {
+            for x in p1.width() / 2..p1.width() {
+                // move less then half p1 width never fits
                 let score = compare_pieces_x_y_rot(p1, p2, pixels, x as i32, y as i32, r);
                 if score > best_score {
                     best_score = score;
                     best_x = x as i32;
                     best_y = y as i32;
                     best_r = r as i32;
-                    println!("x={:?} y={:?} r={:?} height={:?} score={:?}", x, y, r, p1.height(), score);
+                    println!("x={:?} y={:?} r={:?} height={:?} score={:?}",
+                             x,
+                             y,
+                             r,
+                             p1.height(),
+                             score);
                 }
             }
         }
@@ -367,7 +381,6 @@ fn main() {
     //println!("score {:?}", score);
 
     // Draw result bitmap
-    let black_pix = image::Rgba([0, 0, 0, 0]);
     for x in 0..MAX_WIDTH {
         for y in 0..MAX_HEIGHT {
             if x >= dims.0 as usize || y >= dims.1 as usize {
@@ -379,7 +392,7 @@ fn main() {
         }
     }
 
-/*
+    /*
     let green_pix = image::Rgba([0, 255, 0, 0]);
     let red_pix = image::Rgba([255, 0, 0, 0]);
     let blue_pix = image::Rgba([0, 0, 255, 0]);
