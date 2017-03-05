@@ -29,6 +29,15 @@ impl PieceInfo {
     fn mid_y(&self) -> usize {
         return (self.min_y + self.max_y) / 2;
     }
+
+    fn width(&self) -> usize {
+        return self.max_x - self.min_x;
+    }
+
+    fn height(&self) -> usize {
+        return self.max_y - self.min_y;
+    }
+
 }
 
 // Move points from src to dst recursively with flood fill
@@ -124,29 +133,52 @@ fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
 }
 
 // Compare two pieces and return score
-fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH]) -> u32 {
+fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH], delta_x: i32, delta_y: i32) -> u32 {
 
-        for y in p1.min_y..p1.max_y + 1 {
-            for x in p1.min_x..p1.max_x + 1 {
-                if pixels[p1.max_x - x][y] != 0 {
-                    println!("delta p1 {:?}", p1.max_x - x);
-                    pixels[p1.max_x - x + 2][y] = 255;
-                    break;
-                }
+    let mut width = p1.width();
+    if p2.width() > width {
+        width = p2.width();
+    }
+
+    let mut height = p1.height();
+    if p2.height() > height {
+        height = p2.height();
+    }
+
+    for y in 0..height {
+        for x in 0..width {
+
+            let x2 = p2.min_x + x + (10 * y / height);
+            let y2 = p2.min_y + y;
+
+            let ix1 = delta_x + (p1.min_x + x) as i32;
+            let iy1 = delta_y + (p1.min_y + y) as i32;
+
+            if ix1 < 0 || iy1 < 0 {
+                continue;
+            }
+
+            let x1 = ix1 as usize;
+            let y1 = iy1 as usize;
+
+            if x1 >= p1.max_x || x2 >= p2.max_x || y1 >= p1.max_y || y2 >= p2.max_y {
+                continue;
+            }
+
+            if pixels[x2][y2] == 0 {
+                continue;
+            }
+
+            if pixels[x1][y1] != 0 {
+                pixels[x1][y1] = 192;
+            }
+            else {
+                pixels[x1][y1] = 64;
             }
         }
+    }
 
-        for y in p2.min_y..p2.max_y + 1 {
-            for x in p2.min_x..p2.max_x + 1 {
-                if pixels[x][y] != 0 {
-                    println!("delta p2 {:?}", x - p2.min_x);
-                    pixels[x-2][y] = 255;
-                    break;
-                }
-            }
-        }
-
-        return 0;
+    return 0;
 }
 
 fn main() {
@@ -176,7 +208,7 @@ fn main() {
             }
             let pix = im.get_pixel(x as u32, y as u32);
             if pix[0] < 127 {
-                pixels[x as usize][y as usize] = 255;
+                pixels[x as usize][y as usize] = 32;
             }
         }
     }
@@ -190,26 +222,23 @@ fn main() {
 
     let num_pieces = split_pieces(&mut pcs, &mut pixels);
 
-    compare_pieces(&pcs[0], &pcs[1], &mut pixels);
+    compare_pieces(&pcs[0], &pcs[1], &mut pixels, 40, 18);
 
 
     // Draw result bitmap
     let black_pix = image::Rgba([0, 0, 0, 0]);
-    let grey_pix = image::Rgba([32, 32, 32, 0]);
     for x in 0..MAX_WIDTH {
         for y in 0..MAX_HEIGHT {
             if x >= dims.0 as usize || y >= dims.1 as usize {
                 continue;
             }
-            if pixels[x as usize][y as usize] != 0 {
-                im.put_pixel(x as u32, y as u32, grey_pix); // paint with black/grey
-            } else {
-                im.put_pixel(x as u32, y as u32, black_pix);
-            }
+            let c = pixels[x][y];
+            let pix = image::Rgba([c, c, c, 0]);
+            im.put_pixel(x as u32, y as u32, pix);
         }
     }
 
-
+/*
     let green_pix = image::Rgba([0, 255, 0, 0]);
     let red_pix = image::Rgba([255, 0, 0, 0]);
     let blue_pix = image::Rgba([0, 0, 255, 0]);
@@ -264,7 +293,7 @@ fn main() {
         }
     }
 
-
+*/
     // +----
     // |/ /
     // |/
