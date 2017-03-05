@@ -123,6 +123,32 @@ fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
     return p;
 }
 
+// Compare two pieces and return score
+fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[bool; MAX_HEIGHT]; MAX_WIDTH]) -> u32 {
+
+        for y in p1.min_y..p1.max_y + 1 {
+            for x in p1.min_x..p1.max_x + 1 {
+                if pixels[p1.max_x - x][y] {
+                    println!("delta p1 {:?}", p1.max_x - x);
+                    pixels[p1.max_x - x + 2][y] = true;
+                    break;
+                }
+            }
+        }
+
+        for y in p2.min_y..p2.max_y + 1 {
+            for x in p2.min_x..p2.max_x + 1 {
+                if pixels[x][y] {
+                    println!("delta p2 {:?}", x - p2.min_x);
+                    pixels[x-2][y] = true;
+                    break;
+                }
+            }
+        }
+
+        return 0;
+}
+
 fn main() {
 
     let file = if env::args().count() == 2 {
@@ -164,6 +190,9 @@ fn main() {
 
     let num_pieces = split_pieces(&mut pcs, &mut pixels);
 
+    compare_pieces(&pcs[0], &pcs[1], &mut pixels);
+
+
     // Draw result bitmap
     let black_pix = image::Rgba([0, 0, 0, 0]);
     let grey_pix = image::Rgba([32, 32, 32, 0]);
@@ -196,24 +225,44 @@ fn main() {
         im.put_pixel(pi.min_x as u32, pi.min_y as u32, red_pix);
         im.put_pixel(pi.max_x as u32, pi.max_y as u32, green_pix);
         im.put_pixel(pi.mid_x() as u32, pi.mid_y() as u32, blue_pix);
+
+        /*for y in pi.min_y..pi.max_y + 1 {
+            for x in pi.min_x..pi.max_x + 1 {
+                if pixels[x][y] {
+                    println!("delta piece {:?} = {:?}", p, x - pi.min_x);
+                    break;
+                }
+            }
+        }*/
     }
 
 
     // Detect edge
-    /*for p in 1..MAX_PIECES {
-        let white_pix = image::Rgba([0, 255, 0, 0]);
-        for y in 0..MAX_HEIGHT {
-            for x in 0..MAX_WIDTH {
+    for p in 0..num_pieces {
+        let pi = pcs[p];
+        for y in pi.min_y..pi.max_y + 1 {
+            for x in pi.min_x..pi.max_x + 1 {
                 if x >= dims.0 as usize || y >= dims.1 as usize {
                     continue;
                 }
                 if pixels[x as usize][y as usize] {
-                    im.put_pixel(x as u32, y as u32, white_pix);
+                    im.put_pixel(x as u32, y as u32, green_pix);
                     break;
                 }
             }
         }
-    }*/
+        for x in pi.min_x..pi.max_x + 1 {
+            for y in pi.min_y..pi.max_y + 1 {
+                if x >= dims.0 as usize || y >= dims.1 as usize {
+                    continue;
+                }
+                if pixels[x as usize][y as usize] {
+                    im.put_pixel(x as u32, y as u32, red_pix);
+                    break;
+                }
+            }
+        }
+    }
 
 
     // +----
