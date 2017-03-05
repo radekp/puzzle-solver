@@ -49,16 +49,16 @@ impl PieceInfo {
 //       7 6 5
 //
 // If a==0 it will start in cx,cy orherwise a is square side on start
-fn near_iter_begin(cx:i32, cy:i32, startA: i32) -> (i32, i32, i32) {
-	return (cx - startA, cy - startA, startA);
+fn near_iter_begin(cx:i32, cy:i32, start_a: i32) -> (i32, i32, i32) {
+	return (cx - start_a, cy - start_a, start_a);
 }
 
 // Return next point in spiral
-fn near_iter_next(cx:i32, cy:i32, prevX:i32, prevY:i32, prevA:i32) -> (i32, i32, i32) {
+fn near_iter_next(cx:i32, cy:i32, prev_x:i32, prev_y:i32, prev_a:i32) -> (i32, i32, i32) {
 
-    let mut x = prevX;
-    let mut y = prevY;
-    let mut a = prevA;
+    let mut x = prev_x;
+    let mut y = prev_y;
+    let mut a = prev_a;
 
 	if x == cx && y == cy {
 		return (cx - 1, cy - 1, a);
@@ -199,7 +199,14 @@ fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
 }
 
 // Compare two pieces and return score
-fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH], delta_x: i32, delta_y: i32, rotate: i32) -> u32 {
+fn compare_pieces_x_y_rot(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH], delta_x: i32, delta_y: i32, rotate: i32) -> i32 {
+
+    // Clear previous comparing
+    for y in p1.min_y..p1.max_y+1 {
+        for x in p1.min_x..p1.max_x+1 {
+            pixels[x][y] &= 32;
+        }
+    }
 
     let mut width = p1.width();
     if p2.width() > width {
@@ -252,7 +259,7 @@ fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]
 
 
     // Compute score
-    let mut res = 0;
+    let mut res:i32 = 0;
     for y in p1.min_y..p1.max_y {
         for x in p1.min_x..p1.max_x {
             if pixels[x][y] & 128 == 0 {
@@ -288,12 +295,32 @@ fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]
             if dist_1 <= 2 && dist_2 <= 2 {
                 res+= 1;
             } else {
-                println!("x={:?} y={:?} dist_1={:?} dist_2={:?}", x, y, dist_1, dist_2);
+                //println!("x={:?} y={:?} dist_1={:?} dist_2={:?}", x, y, dist_1, dist_2);
                 res -= 1;
             }
         }
     }
     return res;
+}
+
+fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH]) {
+
+    let mut best_score:i32 = 0;
+    let mut best_x: usize = 0;
+    let mut best_y: usize = 0;
+    let mut best_r: usize = 0;
+
+    for r in -6..6 {
+        for y in 0..p1.height() {
+            for x in 0..p1.width() {
+                let score = compare_pieces_x_y_rot(p1, p2, pixels, x as i32, y as i32, r);
+                if score > best_score {
+                    best_score = score;
+                    println!("x={:?} y={:?} r={:?} score={:?}", x, y, r, score);
+                }
+            }
+        }
+    }
 }
 
 fn main() {
@@ -337,9 +364,10 @@ fn main() {
 
     let num_pieces = split_pieces(&mut pcs, &mut pixels);
 
-    let score = compare_pieces(&pcs[0], &pcs[1], &mut pixels, 40, 17, 6);
-    println!("score {:?}", score);
-
+    compare_pieces(&pcs[0], &pcs[1], &mut pixels);
+    //let score = compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, 20, 15, 6);
+    //let score = compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, 0, 0, -5);
+    //println!("score {:?}", score);
 
     // Draw result bitmap
     let black_pix = image::Rgba([0, 0, 0, 0]);
