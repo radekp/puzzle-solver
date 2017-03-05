@@ -13,12 +13,12 @@ const MAX_HEIGHT: usize = 213;
 // Maximum number of pieces
 const MAX_PIECES: usize = 12;
 
+#[derive(Copy, Clone)]
 struct PieceInfo {
     min_x: usize,
     min_y: usize,
     max_x: usize,
     max_y: usize,
-    pixels: [[bool; MAX_HEIGHT]; MAX_WIDTH],
 }
 
 // Move points from src to dst recursively with flood fill
@@ -34,7 +34,6 @@ fn flood_fill(pieces: &mut [[[bool; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES],
     }
     pieces[0][x][y] = false;
     pieces[p][x][y] = true;
-    pi.pixels[x][y] = true;
 
     // Update min & max points
     if x > pi.max_x {
@@ -67,15 +66,14 @@ fn flood_fill(pieces: &mut [[[bool; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES],
 }
 
 // Split pieces
-fn split_pieces(pieces: &mut [[[bool; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES]) {
+fn split_pieces(pcs: &mut[PieceInfo; MAX_PIECES], pieces: &mut [[[bool; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES]) {
     let mut p = 1;
     for x in 0..MAX_WIDTH {
         for y in 0..MAX_HEIGHT {
             if !pieces[0][x][y] {
                 continue;
             }
-            let mut pi = PieceInfo{min_x: usize::max_value(), min_y: usize::max_value(), max_x: 0, max_y:0,
-                pixels:[[false; MAX_HEIGHT]; MAX_WIDTH]};
+            let mut pi = PieceInfo{min_x: usize::max_value(), min_y: usize::max_value(), max_x: 0, max_y:0};
 
             let num_pix = flood_fill(pieces, p, x, y, &mut pi);
             println!("piece {:?} numPix={:?} min={:?},{:?} max={:?},{:?}", p, num_pix, pi.min_x, pi.min_y, pi.max_x, pi.max_y);
@@ -134,7 +132,9 @@ fn main() {
         }
     }
 
-    split_pieces(&mut pieces);
+    let mut pcs: [PieceInfo; MAX_PIECES] = [PieceInfo{min_x: usize::max_value(), min_y: usize::max_value(), max_x: 0, max_y:0}; MAX_PIECES];
+
+    split_pieces(&mut pcs, &mut pieces);
 
 
     // Draw result bitmap
