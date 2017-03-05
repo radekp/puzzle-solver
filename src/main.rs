@@ -78,7 +78,7 @@ fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
                 pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH])
                 -> usize {
 
-    let mut pixels_ff: [[u8; MAX_HEIGHT]; MAX_WIDTH] = [[false; MAX_HEIGHT]; MAX_WIDTH];
+    let mut pixels_ff: [[u8; MAX_HEIGHT]; MAX_WIDTH] = [[0; MAX_HEIGHT]; MAX_WIDTH];
 
     for x in 0..MAX_WIDTH {
         for y in 0..MAX_HEIGHT {
@@ -130,7 +130,7 @@ fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]
             for x in p1.min_x..p1.max_x + 1 {
                 if pixels[p1.max_x - x][y] != 0 {
                     println!("delta p1 {:?}", p1.max_x - x);
-                    pixels[p1.max_x - x + 2][y] = true;
+                    pixels[p1.max_x - x + 2][y] = 255;
                     break;
                 }
             }
@@ -140,7 +140,7 @@ fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]
             for x in p2.min_x..p2.max_x + 1 {
                 if pixels[x][y] != 0 {
                     println!("delta p2 {:?}", x - p2.min_x);
-                    pixels[x-2][y] = true;
+                    pixels[x-2][y] = 255;
                     break;
                 }
             }
