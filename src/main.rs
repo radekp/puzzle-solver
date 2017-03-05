@@ -21,6 +21,16 @@ struct PieceInfo {
     max_y: usize,
 }
 
+impl PieceInfo {
+    fn mid_x(&self) -> usize {
+        return (self.min_x + self.max_x) / 2;
+    }
+
+    fn mid_y(&self) -> usize {
+        return (self.min_y + self.max_y) / 2;
+    }
+}
+
 // Move points from src to dst recursively with flood fill
 fn flood_fill(pixels: &mut [[bool; MAX_HEIGHT]; MAX_WIDTH],
               x: usize,
@@ -64,10 +74,11 @@ fn flood_fill(pixels: &mut [[bool; MAX_HEIGHT]; MAX_WIDTH],
 }
 
 // Split pieces
-fn split_pieces(pcs: &mut[PieceInfo; MAX_PIECES], pixels: &mut [[bool; MAX_HEIGHT]; MAX_WIDTH]) -> usize {
+fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
+                pixels: &mut [[bool; MAX_HEIGHT]; MAX_WIDTH])
+                -> usize {
 
-    let mut pixels_ff: [[bool; MAX_HEIGHT]; MAX_WIDTH] =
-        [[false; MAX_HEIGHT]; MAX_WIDTH];
+    let mut pixels_ff: [[bool; MAX_HEIGHT]; MAX_WIDTH] = [[false; MAX_HEIGHT]; MAX_WIDTH];
 
     for x in 0..MAX_WIDTH {
         for y in 0..MAX_HEIGHT {
@@ -81,14 +92,27 @@ fn split_pieces(pcs: &mut[PieceInfo; MAX_PIECES], pixels: &mut [[bool; MAX_HEIGH
             if !pixels_ff[x][y] {
                 continue;
             }
-            let mut pi = pcs[p];
+            let mut pi = PieceInfo {
+                min_x: usize::max_value(),
+                min_y: usize::max_value(),
+                max_x: 0,
+                max_y: 0,
+            };
+
             let num_pix = flood_fill(&mut pixels_ff, x, y, &mut pi);
-            println!("piece {:?} numPix={:?} min={:?},{:?} max={:?},{:?}", p, num_pix, pi.min_x, pi.min_y, pi.max_x, pi.max_y);
-            pcs[p] = pi;
+            println!("piece {:?} numPix={:?} min={:?},{:?} max={:?},{:?}",
+                     p,
+                     num_pix,
+                     pi.min_x,
+                     pi.min_y,
+                     pi.max_x,
+                     pi.max_y);
+
             if num_pix == 1 {
                 pixels_ff[x][y] = false;
                 continue;
             }
+            pcs[p] = pi;
 
             p = p + 1;
             if p >= MAX_PIECES {
@@ -97,15 +121,6 @@ fn split_pieces(pcs: &mut[PieceInfo; MAX_PIECES], pixels: &mut [[bool; MAX_HEIGH
         }
     }
     return p;
-}
-
-fn detect_edge(pieces: &mut [[[bool; MAX_HEIGHT]; MAX_WIDTH]; MAX_PIECES]) {
-    for p in 1..MAX_PIECES {
-        for x in 0..MAX_WIDTH {
-            for y in 0..MAX_HEIGHT {
-            }
-        }
-    }
 }
 
 fn main() {
@@ -125,8 +140,7 @@ fn main() {
     // The dimensions method returns the images width and height
     println!("dimensions {:?}", dims);
 
-    let mut pixels: [[bool; MAX_HEIGHT]; MAX_WIDTH] =
-        [[false; MAX_HEIGHT]; MAX_WIDTH];
+    let mut pixels: [[bool; MAX_HEIGHT]; MAX_WIDTH] = [[false; MAX_HEIGHT]; MAX_WIDTH];
 
     // Image -> array
     for x in 0..MAX_WIDTH {
@@ -141,35 +155,48 @@ fn main() {
         }
     }
 
-    let mut pcs: [PieceInfo; MAX_PIECES] = [PieceInfo{min_x: usize::max_value(), min_y: usize::max_value(), max_x: 0, max_y:0}; MAX_PIECES];
+    let mut pcs: [PieceInfo; MAX_PIECES] = [PieceInfo {
+        min_x: usize::max_value(),
+        min_y: usize::max_value(),
+        max_x: 0,
+        max_y: 0,
+    }; MAX_PIECES];
 
-    let numPieces = split_pieces(&mut pcs, &mut pixels);
+    let num_pieces = split_pieces(&mut pcs, &mut pixels);
 
     // Draw result bitmap
     let black_pix = image::Rgba([0, 0, 0, 0]);
     let grey_pix = image::Rgba([32, 32, 32, 0]);
-        for x in 0..MAX_WIDTH {
-            for y in 0..MAX_HEIGHT {
-                if x >= dims.0 as usize || y >= dims.1 as usize {
-                    continue;
-                }
-                if pixels[x as usize][y as usize] {
-                    im.put_pixel(x as u32, y as u32, grey_pix); // paint with black/grey
-                } else {
-                    im.put_pixel(x as u32, y as u32, black_pix);
-                }
+    for x in 0..MAX_WIDTH {
+        for y in 0..MAX_HEIGHT {
+            if x >= dims.0 as usize || y >= dims.1 as usize {
+                continue;
+            }
+            if pixels[x as usize][y as usize] {
+                im.put_pixel(x as u32, y as u32, grey_pix); // paint with black/grey
+            } else {
+                im.put_pixel(x as u32, y as u32, black_pix);
             }
         }
+    }
 
 
     let green_pix = image::Rgba([0, 255, 0, 0]);
-    for p in 0..numPieces {
-            let pi = pcs[p];
-            println!("draw piece {:?} min={:?},{:?} max={:?},{:?}", p, pi.min_x, pi.min_y, pi.max_x, pi.max_y);
+    let red_pix = image::Rgba([255, 0, 0, 0]);
+    let blue_pix = image::Rgba([0, 0, 255, 0]);
+    for p in 0..num_pieces {
+        let pi = pcs[p];
+        println!("draw piece {:?} min={:?},{:?} max={:?},{:?}",
+                 p,
+                 pi.min_x,
+                 pi.min_y,
+                 pi.max_x,
+                 pi.max_y);
 
-            im.put_pixel(pi.min_x as u32, pi.min_y as u32, green_pix);
-            im.put_pixel(pi.max_x as u32, pi.max_y as u32, green_pix);
-        }
+        im.put_pixel(pi.min_x as u32, pi.min_y as u32, red_pix);
+        im.put_pixel(pi.max_x as u32, pi.max_y as u32, green_pix);
+        im.put_pixel(pi.mid_x() as u32, pi.mid_y() as u32, blue_pix);
+    }
 
 
     // Detect edge
