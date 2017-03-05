@@ -1,6 +1,7 @@
 extern crate image;
 
 use std::env;
+use std::cmp;
 use std::fs::File;
 use std::path::Path;
 
@@ -208,27 +209,23 @@ fn compare_pieces_x_y_rot(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX
         }
     }
 
-    let mut width = p1.width();
-    if p2.width() > width {
-        width = p2.width();
-    }
-
-    let mut height = p1.height();
-    if p2.height() > height {
-        height = p2.height();
-    }
-
+    let width = cmp::min(p1.width(), p2.width());
+    let height = cmp::min(p1.height(), p2.height());
     let iheight = height as i32;
 
     // Move p2 piece to p1 area.
     for y in 0..height {
         for x in 0..width {
 
-            let ix = x as i32;
-            let iy = y as i32;
-
             let x2 = p2.min_x + x;
             let y2 = p2.min_y + y;
+
+            if pixels[x2][y2] == 0 {        // empty p2 pixel
+                continue;
+            }
+
+            let ix = x as i32;
+            let iy = y as i32;
 
             let ix1 = delta_x + (p1.min_x as i32 + ix) + ((rotate * iy) / iheight);
             let iy1 = delta_y + (p1.min_y + y) as i32;
@@ -240,11 +237,7 @@ fn compare_pieces_x_y_rot(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX
             let x1 = ix1 as usize;
             let y1 = iy1 as usize;
 
-            if x1 >= p1.max_x || x2 >= p2.max_x || y1 >= p1.max_y || y2 >= p2.max_y {
-                continue;
-            }
-
-            if pixels[x2][y2] == 0 {        // empty p2 pixel
+            if x1 >= p1.max_x || y1 >= p1.max_y {
                 continue;
             }
 
@@ -293,6 +286,9 @@ fn compare_pieces_x_y_rot(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX
 
             // Close point is positive score, distant is negative
             res += 3 - dist_1 - dist_2;
+            if iheight + res < 0 {
+                return res;             // bail out early when score is too bad
+            }
         }
     }
     return res;
@@ -360,7 +356,7 @@ fn main() {
     let num_pieces = split_pieces(&mut pcs, &mut pixels);
 
     compare_pieces(&pcs[0], &pcs[1], &mut pixels);
-    //let score = compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, 42, 16, 0);
+    //let score = compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, 40, 16, 5);
     //let score = compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, 0, 0, -5);
     //println!("score {:?}", score);
 
