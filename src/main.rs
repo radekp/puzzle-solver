@@ -32,16 +32,16 @@ impl PieceInfo {
 }
 
 // Move points from src to dst recursively with flood fill
-fn flood_fill(pixels: &mut [[bool; MAX_HEIGHT]; MAX_WIDTH],
+fn flood_fill(pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH],
               x: usize,
               y: usize,
               pi: &mut PieceInfo)
               -> u32 {
 
-    if !pixels[x][y] {
+    if pixels[x][y] == 0 {
         return 0;
     }
-    pixels[x][y] = false;
+    pixels[x][y] = 0;
 
     // Update min & max points
     if x > pi.max_x {
@@ -75,10 +75,10 @@ fn flood_fill(pixels: &mut [[bool; MAX_HEIGHT]; MAX_WIDTH],
 
 // Split pieces
 fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
-                pixels: &mut [[bool; MAX_HEIGHT]; MAX_WIDTH])
+                pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH])
                 -> usize {
 
-    let mut pixels_ff: [[bool; MAX_HEIGHT]; MAX_WIDTH] = [[false; MAX_HEIGHT]; MAX_WIDTH];
+    let mut pixels_ff: [[u8; MAX_HEIGHT]; MAX_WIDTH] = [[false; MAX_HEIGHT]; MAX_WIDTH];
 
     for x in 0..MAX_WIDTH {
         for y in 0..MAX_HEIGHT {
@@ -89,7 +89,7 @@ fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
     let mut p = 0;
     for x in 0..MAX_WIDTH {
         for y in 0..MAX_HEIGHT {
-            if !pixels_ff[x][y] {
+            if pixels_ff[x][y] == 0 {
                 continue;
             }
             let mut pi = PieceInfo {
@@ -109,7 +109,7 @@ fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
                      pi.max_y);
 
             if num_pix == 1 {
-                pixels_ff[x][y] = false;
+                pixels_ff[x][y] = 0;
                 continue;
             }
             pcs[p] = pi;
@@ -124,11 +124,11 @@ fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
 }
 
 // Compare two pieces and return score
-fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[bool; MAX_HEIGHT]; MAX_WIDTH]) -> u32 {
+fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH]) -> u32 {
 
         for y in p1.min_y..p1.max_y + 1 {
             for x in p1.min_x..p1.max_x + 1 {
-                if pixels[p1.max_x - x][y] {
+                if pixels[p1.max_x - x][y] != 0 {
                     println!("delta p1 {:?}", p1.max_x - x);
                     pixels[p1.max_x - x + 2][y] = true;
                     break;
@@ -138,7 +138,7 @@ fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[bool; MAX_HEIGH
 
         for y in p2.min_y..p2.max_y + 1 {
             for x in p2.min_x..p2.max_x + 1 {
-                if pixels[x][y] {
+                if pixels[x][y] != 0 {
                     println!("delta p2 {:?}", x - p2.min_x);
                     pixels[x-2][y] = true;
                     break;
@@ -166,7 +166,7 @@ fn main() {
     // The dimensions method returns the images width and height
     println!("dimensions {:?}", dims);
 
-    let mut pixels: [[bool; MAX_HEIGHT]; MAX_WIDTH] = [[false; MAX_HEIGHT]; MAX_WIDTH];
+    let mut pixels: [[u8; MAX_HEIGHT]; MAX_WIDTH] = [[0; MAX_HEIGHT]; MAX_WIDTH];
 
     // Image -> array
     for x in 0..MAX_WIDTH {
@@ -176,7 +176,7 @@ fn main() {
             }
             let pix = im.get_pixel(x as u32, y as u32);
             if pix[0] < 127 {
-                pixels[x as usize][y as usize] = true;
+                pixels[x as usize][y as usize] = 255;
             }
         }
     }
@@ -201,7 +201,7 @@ fn main() {
             if x >= dims.0 as usize || y >= dims.1 as usize {
                 continue;
             }
-            if pixels[x as usize][y as usize] {
+            if pixels[x as usize][y as usize] != 0 {
                 im.put_pixel(x as u32, y as u32, grey_pix); // paint with black/grey
             } else {
                 im.put_pixel(x as u32, y as u32, black_pix);
@@ -245,7 +245,7 @@ fn main() {
                 if x >= dims.0 as usize || y >= dims.1 as usize {
                     continue;
                 }
-                if pixels[x as usize][y as usize] {
+                if pixels[x as usize][y as usize] != 0 {
                     im.put_pixel(x as u32, y as u32, green_pix);
                     break;
                 }
@@ -256,7 +256,7 @@ fn main() {
                 if x >= dims.0 as usize || y >= dims.1 as usize {
                     continue;
                 }
-                if pixels[x as usize][y as usize] {
+                if pixels[x as usize][y as usize] != 0{
                     im.put_pixel(x as u32, y as u32, red_pix);
                     break;
                 }
