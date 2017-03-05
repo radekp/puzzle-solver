@@ -292,12 +292,7 @@ fn compare_pieces_x_y_rot(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX
             }
 
             // Close point is positive score, distant is negative
-            if dist_1 <= 2 && dist_2 <= 2 {
-                res+= 1;
-            } else {
-                //println!("x={:?} y={:?} dist_1={:?} dist_2={:?}", x, y, dist_1, dist_2);
-                res -= 1;
-            }
+            res += 4 - dist_1 - dist_2;
         }
     }
     return res;
@@ -311,8 +306,8 @@ fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]
     let mut best_r: usize = 0;
 
     for r in -6..6 {
-        for y in 0..p1.height() {
-            for x in 0..p1.width() {
+        for y in 15..20 {
+            for x in 35..45 {
                 let score = compare_pieces_x_y_rot(p1, p2, pixels, x as i32, y as i32, r);
                 if score > best_score {
                     best_score = score;
@@ -365,7 +360,7 @@ fn main() {
     let num_pieces = split_pieces(&mut pcs, &mut pixels);
 
     compare_pieces(&pcs[0], &pcs[1], &mut pixels);
-    //let score = compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, 20, 15, 6);
+    let score = compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, 40, 16, 5);
     //let score = compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, 0, 0, -5);
     //println!("score {:?}", score);
 
