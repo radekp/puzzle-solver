@@ -40,6 +40,68 @@ impl PieceInfo {
 
 }
 
+// Near point iterator
+// Iterates points in spiral centered at cx,cy
+//
+//     9 ....
+//       1 2 3
+//       8   4
+//       7 6 5
+//
+// If a==0 it will start in cx,cy orherwise a is square side on start
+fn near_iter_begin(cx:i32, cy:i32, startA: i32) -> (i32, i32, i32) {
+	return (cx - startA, cy - startA, startA);
+}
+
+// Return next point in spiral
+fn near_iter_next(cx:i32, cy:i32, prevX:i32, prevY:i32, prevA:i32) -> (i32, i32, i32) {
+
+    let mut x = prevX;
+    let mut y = prevY;
+    let mut a = prevA;
+
+	if x == cx && y == cy {
+		return (cx - 1, cy - 1, a);
+	}
+
+	if y == cy-a {
+		x += 1;
+		if x-cx <= a {
+			return (x, y, a);
+		}
+        x = cx+a;
+		y = cy-a+1;
+		return (x, y, a);
+	}
+
+	if x == cx+a {
+		y+=1;
+		if y-cy <= a {
+			return (x, y, a);
+		}
+        x = cx+a-1;
+		y = cy+a;
+		return (x, y, a);
+	}
+
+	if y == cy+a {
+		x-= 1;
+		if cx-x <= a {
+			return (x, y, a);
+		}
+        x = cx-a;
+		y = cy+a-1;
+		return (x, y, a);
+	}
+
+	y-=1;
+	if y > cy-a {
+		return (x, y, a);
+	}
+	a +=1;
+	return (cx - a, cy - a, a);
+}
+
 // Move points from src to dst recursively with flood fill
 fn flood_fill(pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH],
               x: usize,
@@ -121,6 +183,10 @@ fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
                 pixels_ff[x][y] = 0;
                 continue;
             }
+            pi.min_x -= 3;      // some space for comparing pieces
+            pi.min_y -= 3;
+            pi.max_x += 3;
+            pi.max_y += 3;
             pcs[p] = pi;
 
             p = p + 1;
@@ -133,7 +199,7 @@ fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
 }
 
 // Compare two pieces and return score
-fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH], delta_x: i32, delta_y: i32) -> u32 {
+fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH], delta_x: i32, delta_y: i32, rotate: i32) -> u32 {
 
     let mut width = p1.width();
     if p2.width() > width {
@@ -145,13 +211,19 @@ fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]
         height = p2.height();
     }
 
+    let iheight = height as i32;
+
+    // Move p2 piece to p1 area.
     for y in 0..height {
         for x in 0..width {
 
-            let x2 = p2.min_x + x + (10 * y / height);
+            let ix = x as i32;
+            let iy = y as i32;
+
+            let x2 = p2.min_x + x;
             let y2 = p2.min_y + y;
 
-            let ix1 = delta_x + (p1.min_x + x) as i32;
+            let ix1 = delta_x + (p1.min_x as i32 + ix) + ((rotate * iy) / iheight);
             let iy1 = delta_y + (p1.min_y + y) as i32;
 
             if ix1 < 0 || iy1 < 0 {
@@ -165,20 +237,63 @@ fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]
                 continue;
             }
 
-            if pixels[x2][y2] == 0 {
+            if pixels[x2][y2] == 0 {        // empty p2 pixel
                 continue;
             }
 
-            if pixels[x1][y1] != 0 {
-                pixels[x1][y1] = 192;
+            if pixels[x1][y1] != 0 {        // intersection with p1
+                pixels[x1][y1] |= 128;
             }
             else {
-                pixels[x1][y1] = 64;
+                pixels[x1][y1] |= 64;       // no intersection, just draw p2
             }
         }
     }
 
-    return 0;
+
+    // Compute score
+    let mut res = 0;
+    for y in p1.min_y..p1.max_y {
+        for x in p1.min_x..p1.max_x {
+            if pixels[x][y] & 128 == 0 {
+                continue;                   // skip all but intersection
+            }
+
+            // Find nearest point in piece p1 and p2
+            let mut iter = near_iter_begin(x as i32, y as i32, 1);
+            let mut dist_1 = 0;
+            let mut dist_2 = 0;
+            //println!("iter_begin x={:?} y={:?} a={:?}", iter.0, iter.1, iter.2);
+            loop {
+                //println!("x={:?} y={:?} a={:?} pix={:?}", iter.0, iter.1, iter.2, pixels[iter.0 as usize][iter.1 as usize]);
+                if iter.0 >= p1.min_x as i32 &&
+                    iter.0 <= p1.max_x as i32 &&
+                    iter.1 >= p1.min_y as i32 &&
+                    iter.1 <= p1.max_y as i32
+                {
+                    if pixels[iter.0 as usize][iter.1 as usize] == 32 && dist_1 == 0 {
+                        dist_1 = iter.2;
+                    }
+                    if pixels[iter.0 as usize][iter.1 as usize] == 64 && dist_2 == 0 {
+                        dist_2 = iter.2;
+                    }
+                    if dist_1 > 0 && dist_2 > 0 {
+                        break;
+                    }
+                }
+                iter = near_iter_next(x as i32, y as i32, iter.0, iter.1, iter.2);
+            }
+
+            // Close point is positive score, distant is negative
+            if dist_1 <= 2 && dist_2 <= 2 {
+                res+= 1;
+            } else {
+                println!("x={:?} y={:?} dist_1={:?} dist_2={:?}", x, y, dist_1, dist_2);
+                res -= 1;
+            }
+        }
+    }
+    return res;
 }
 
 fn main() {
@@ -222,7 +337,8 @@ fn main() {
 
     let num_pieces = split_pieces(&mut pcs, &mut pixels);
 
-    compare_pieces(&pcs[0], &pcs[1], &mut pixels, 40, 18);
+    let score = compare_pieces(&pcs[0], &pcs[1], &mut pixels, 40, 17, 6);
+    println!("score {:?}", score);
 
 
     // Draw result bitmap
