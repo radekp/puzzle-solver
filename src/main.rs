@@ -294,24 +294,28 @@ fn compare_pieces_x_y_rot(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX
     return res;
 }
 
-fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH]) {
+fn compare_pieces(p1: &PieceInfo, p2: &PieceInfo, pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH]) -> (i32,i32,i32) {
 
     let mut best_score:i32 = 0;
-    let mut best_x: usize = 0;
-    let mut best_y: usize = 0;
-    let mut best_r: usize = 0;
+    let mut best_x: i32 = 0;
+    let mut best_y: i32 = 0;
+    let mut best_r: i32 = 0;
 
-    for r in -6..6 {
-        for y in 0..p1.height() {
-            for x in 0..p1.width() {
+    for r in -6..6 {    // fake rotation +-6pixels
+        for y in 0..p1.height()/2 {
+            for x in p1.width()/2..p1.width() {     // move less then half p1 width never fits
                 let score = compare_pieces_x_y_rot(p1, p2, pixels, x as i32, y as i32, r);
                 if score > best_score {
                     best_score = score;
-                    println!("x={:?} y={:?} r={:?} score={:?}", x, y, r, score);
+                    best_x = x as i32;
+                    best_y = y as i32;
+                    best_r = r as i32;
+                    println!("x={:?} y={:?} r={:?} height={:?} score={:?}", x, y, r, p1.height(), score);
                 }
             }
         }
     }
+    return (best_x, best_y, best_r);
 }
 
 fn main() {
@@ -355,8 +359,10 @@ fn main() {
 
     let num_pieces = split_pieces(&mut pcs, &mut pixels);
 
-    compare_pieces(&pcs[0], &pcs[1], &mut pixels);
-    //let score = compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, 40, 16, 5);
+    let cmp = compare_pieces(&pcs[0], &pcs[1], &mut pixels);
+    compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, cmp.0, cmp.1, cmp.2);
+
+    //let score = compare_pieces_x_y_rot(&pcs[7], &pcs[9], &mut pixels, 39, 16, -1);
     //let score = compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, 0, 0, -5);
     //println!("score {:?}", score);
 
