@@ -1,3 +1,4 @@
+extern crate sdl2;
 extern crate image;
 
 use std::env;
@@ -6,6 +7,11 @@ use std::fs::File;
 use std::path::Path;
 
 use image::GenericImage;
+
+use sdl2::pixels::Color;
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::image::{LoadTexture, INIT_PNG, INIT_JPG};
 
 // Maximal wifth/height for pieces array
 const MAX_WIDTH: usize = 512;
@@ -185,7 +191,7 @@ fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
             }
             pi.min_x -= 3; // some space for comparing pieces
             pi.min_y -= 3;
-            pi.max_x += 3;
+            pi.max_x += 20;
             pi.max_y += 3;
             pcs[p] = pi;
 
@@ -333,6 +339,7 @@ fn compare_pieces(p1: &PieceInfo,
 }
 
 fn main() {
+
 
     let file = if env::args().count() == 2 {
         env::args().nth(1).unwrap()
@@ -483,4 +490,30 @@ fn main() {
 
     // Write the contents of this image to the Writer in PNG format.
     let _ = im.save(fout, image::PNG).unwrap();
+
+
+    let sdl_context = sdl2::init().unwrap();
+    let video_subsystem = sdl_context.video().unwrap();
+    let _image_context = sdl2::image::init(INIT_PNG | INIT_JPG).unwrap();
+    let window = video_subsystem.window("rust-sdl2 demo: Video", 800, 600)
+      .position_centered()
+      .build()
+      .unwrap();
+
+    let mut renderer = window.renderer().software().build().unwrap();
+    let texture = renderer.load_texture("IMG_20170225_152806.jpg.png").unwrap();
+
+    renderer.copy(&texture, None, None).expect("Render failed");
+    renderer.present();
+
+    'mainloop: loop {
+        for event in sdl_context.event_pump().unwrap().poll_iter() {
+            match event {
+                Event::Quit{..} |
+                Event::KeyDown {keycode: Option::Some(Keycode::Escape), ..} =>
+                    break 'mainloop,
+                _ => {}
+            }
+        }
+    }
 }
