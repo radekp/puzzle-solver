@@ -12,6 +12,7 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use sdl2::image::LoadTexture;
 
 // Maximal wifth/height for pieces array
 const MAX_WIDTH: usize = 512;
@@ -380,8 +381,8 @@ fn main() {
 
     let num_pieces = split_pieces(&mut pcs, &mut pixels);
 
-    let cmp = compare_pieces(&pcs[0], &pcs[1], &mut pixels);
-    compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, cmp.0, cmp.1, cmp.2);
+    /*let cmp = compare_pieces(&pcs[0], &pcs[1], &mut pixels);
+    compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, cmp.0, cmp.1, cmp.2);*/
 
     //let score = compare_pieces_x_y_rot(&pcs[7], &pcs[9], &mut pixels, 39, 16, -1);
     //let score = compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, 0, 0, -5);
@@ -503,6 +504,8 @@ fn main() {
 
     let mut renderer = window.renderer().build().unwrap();
 
+    let mut texture2 = renderer.load_texture("IMG_20170225_152806.jpg").unwrap();
+
     let mut texture = renderer.create_texture_streaming(
         PixelFormatEnum::RGB24, MAX_WIDTH as u32, MAX_HEIGHT as u32).unwrap();
     // Create a red-green gradient
@@ -519,14 +522,18 @@ fn main() {
 
     renderer.clear();
     renderer.copy(&texture, None, Some(Rect::new(0, 0, MAX_WIDTH as u32, MAX_HEIGHT as u32))).unwrap();
+    renderer.copy(&texture2, None, Some(Rect::new(10, 0, MAX_WIDTH as u32, MAX_HEIGHT as u32))).unwrap();
     renderer.present();
+
+    let rpix = renderer.read_pixels(Some(Rect::new(0, 0, MAX_WIDTH as u32, MAX_HEIGHT as u32)), PixelFormatEnum::RGB24);
+    println!("{:?}", rpix);
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
-                Event::Quit {..} 
+                Event::Quit {..}
                 | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'running
                 },
