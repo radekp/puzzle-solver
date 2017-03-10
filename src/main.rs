@@ -30,7 +30,7 @@ struct PieceInfo {
 }
 
 impl PieceInfo {
-/*    fn mid_x(&self) -> usize {
+    /*    fn mid_x(&self) -> usize {
         return (self.min_x + self.max_x) / 2;
     }
 
@@ -341,6 +341,72 @@ fn compare_pieces(p1: &PieceInfo,
 
 fn main() {
 
+    let sdl_context = sdl2::init().unwrap();
+
+    let video_subsystem = sdl_context.video().unwrap();
+
+    let window = video_subsystem.window("rust-sdl2 demo: Video", 800, 600)
+        .position_centered()
+        .opengl()
+        .build()
+        .unwrap();
+
+    let mut renderer = window.renderer().build().unwrap();
+    let mut texture = renderer.load_texture("1.jpg").unwrap();
+
+    renderer.clear();
+    renderer.copy(&texture,
+                  None,
+                  None)
+        .unwrap();
+    renderer.present();
+
+    let rpix = renderer.read_pixels(Some(Rect::new(0, 0, 800, 600)),
+                                    PixelFormatEnum::RGB24).unwrap();
+
+    let mut texture2 = renderer.create_texture_streaming(PixelFormatEnum::RGB24,
+                                                         800,
+                                                         600).unwrap();
+
+    // Create a red-green gradient
+	let mut index = 0;
+    texture2.with_lock(None, |buffer: &mut [u8], pitch: usize|
+		 for y in 0..600 {
+            for x in 0..800 {
+                let offset = y * pitch + x * 3;
+                buffer[offset + 0] = rpix[offset];
+                buffer[offset + 1] = rpix[offset + 1];
+                buffer[offset + 2] = rpix[offset + 2];
+				index += 1;
+            }
+        })
+        .unwrap();
+
+	renderer.clear();
+    renderer.copy(&texture2,
+                  None,
+                  None)
+        .unwrap();
+    renderer.present();
+
+
+    let mut event_pump = sdl_context.event_pump().unwrap();
+
+    'running: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. } |
+                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'running,
+                _ => {}
+            }
+        }
+        // The rest of the game loop goes here...
+    }
+}
+
+/*
+fn main_old() {
+
 
     let file = if env::args().count() == 2 {
         env::args().nth(1).unwrap()
@@ -381,8 +447,8 @@ fn main() {
 
     let num_pieces = split_pieces(&mut pcs, &mut pixels);
 
-    /*let cmp = compare_pieces(&pcs[0], &pcs[1], &mut pixels);
-    compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, cmp.0, cmp.1, cmp.2);*/
+    let cmp = compare_pieces(&pcs[0], &pcs[1], &mut pixels);
+    compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, cmp.0, cmp.1, cmp.2);
 
     //let score = compare_pieces_x_y_rot(&pcs[7], &pcs[9], &mut pixels, 39, 16, -1);
     //let score = compare_pieces_x_y_rot(&pcs[0], &pcs[1], &mut pixels, 0, 0, -5);
@@ -400,7 +466,7 @@ fn main() {
         }
     }
 
-    /*
+    
     let green_pix = image::Rgba([0, 255, 0, 0]);
     let red_pix = image::Rgba([255, 0, 0, 0]);
     let blue_pix = image::Rgba([0, 0, 255, 0]);
@@ -417,14 +483,14 @@ fn main() {
         im.put_pixel(pi.max_x as u32, pi.max_y as u32, green_pix);
         im.put_pixel(pi.mid_x() as u32, pi.mid_y() as u32, blue_pix);
 
-        /*for y in pi.min_y..pi.max_y + 1 {
+        for y in pi.min_y..pi.max_y + 1 {
             for x in pi.min_x..pi.max_x + 1 {
                 if pixels[x][y] {
                     println!("delta piece {:?} = {:?}", p, x - pi.min_x);
                     break;
                 }
             }
-        }*/
+        }
     }
 
 
@@ -455,11 +521,10 @@ fn main() {
         }
     }
 
-*/
     // +----
     // |/ /
     // |/
-    /*let mut prevEdgeDetected = false;
+    let mut prevEdgeDetected = false;
     for i in 0..1500 {
         let mut edgeDetected = false;
 		for j in 0..500 {
@@ -483,7 +548,7 @@ fn main() {
             break;
 		}
         prevEdgeDetected = edgeDetected;
-	}*/
+	}
 
 
 
@@ -542,4 +607,4 @@ fn main() {
         }
         // The rest of the game loop goes here...
     }
-}
+}*/
