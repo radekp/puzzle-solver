@@ -13,6 +13,7 @@ use sdl2::rect::Rect;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::image::LoadTexture;
+use sdl2::render::TextureQuery;
 
 // Maximal wifth/height for pieces array
 const MAX_WIDTH: usize = 512;
@@ -354,38 +355,43 @@ fn main() {
     let mut renderer = window.renderer().build().unwrap();
     let mut texture = renderer.load_texture("1.jpg").unwrap();
 
+    let TextureQuery { width, height, .. } = texture.query();
+
+    println!("{}x{}", width, height);
+
     renderer.clear();
-    renderer.copy(&texture,
-                  None,
-                  None)
+    renderer.copy_ex(&texture,
+                 None,
+                 Some(Rect::new((height / 3) as i32, (height / 3) as i32, width, height)),
+                 -45.0,
+                 None,
+                 false,
+                 false)
         .unwrap();
+
     renderer.present();
 
-    let rpix = renderer.read_pixels(Some(Rect::new(0, 0, 800, 600)),
-                                    PixelFormatEnum::RGB24).unwrap();
+    let pixels = renderer.read_pixels(Some(Rect::new(0, 0, 800, 600)), PixelFormatEnum::RGB24)
+        .unwrap();
 
-    let mut texture2 = renderer.create_texture_streaming(PixelFormatEnum::RGB24,
-                                                         800,
-                                                         600).unwrap();
+    let mut texture2 = renderer.create_texture_streaming(PixelFormatEnum::RGB24, 800, 600)
+        .unwrap();
 
     // Create a red-green gradient
-	let mut index = 0;
-    texture2.with_lock(None, |buffer: &mut [u8], pitch: usize|
-		 for y in 0..600 {
+    let mut index = 0;
+    texture2.with_lock(None, |buffer: &mut [u8], pitch: usize| for y in 0..600 {
             for x in 0..800 {
                 let offset = y * pitch + x * 3;
-                buffer[offset + 0] = rpix[offset];
-                buffer[offset + 1] = rpix[offset + 1];
-                buffer[offset + 2] = rpix[offset + 2];
-				index += 1;
+                buffer[offset + 0] = pixels[offset];
+                buffer[offset + 1] = pixels[offset + 1];
+                buffer[offset + 2] = pixels[offset + 2];
+                index += 1;
             }
         })
         .unwrap();
 
-	renderer.clear();
-    renderer.copy(&texture2,
-                  None,
-                  None)
+    renderer.clear();
+    renderer.copy(&texture2, None, None)
         .unwrap();
     renderer.present();
 
@@ -466,7 +472,7 @@ fn main_old() {
         }
     }
 
-    
+
     let green_pix = image::Rgba([0, 255, 0, 0]);
     let red_pix = image::Rgba([255, 0, 0, 0]);
     let blue_pix = image::Rgba([0, 0, 255, 0]);
