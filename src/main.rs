@@ -340,6 +340,50 @@ fn compare_pieces(p1: &PieceInfo,
     return (best_x, best_y, best_r);
 }
 
+// Detect piece color - in my case they are dark blue
+fn detect_piece(pixels: &mut Vec<u8>, x:usize, y:usize) {
+    let offset = 3 * (800 * y + x);
+    let r = pixels[offset] as i32;
+    let b = pixels[offset + 2] as i32;
+    if b - r > 30 {
+        pixels[offset] = 32;
+        pixels[offset + 1] = 32;
+        pixels[offset + 2] = 32;
+    } else {
+        pixels[offset] = 0;
+        pixels[offset + 1] = 0;
+        pixels[offset + 2] = 0;
+    }
+}
+
+// Draw border pixels with red=127
+fn detect_border(pixels: &mut Vec<u8>, x:usize, y:usize) {
+    let offset = 3 * (800 * y + x);
+    if pixels[offset] == 0 {
+        return;
+    }
+    if x > 0 {
+        let offset_xm = 3 * (800 * y + x - 1);
+        if pixels[offset_xm] == 0 {
+            pixels[offset] = 127;
+        }
+    }
+    if y > 0 {
+        let offset_ym = 3 * (800 * (y-1) + x);
+        if pixels[offset_ym] == 0 {
+            pixels[offset] = 127;
+        }
+    }
+        let offset_xp = 3 * (800 * y + x + 1);
+        if pixels[offset_xp] == 0 {
+            pixels[offset] = 127;
+        }
+        let offset_yp = 3 * (800 * (y+1) + x);
+        if pixels[offset_yp] == 0 {
+            pixels[offset] = 127;
+        }
+}
+
 fn main() {
 
     let sdl_context = sdl2::init().unwrap();
@@ -383,18 +427,14 @@ fn main() {
         // Detect piece
         for y in 0..600 {
             for x in 0..800 {
-                let offset = 3 * (800 * y + x);
-                let r = pixels[offset] as i32;
-                let b = pixels[offset + 2] as i32;
-                if b - r > 30 {
-                    pixels[offset] = 255;
-                    pixels[offset + 1] = 255;
-                    pixels[offset + 2] = 255;
-                } else {
-                    pixels[offset] = 0;
-                    pixels[offset + 1] = 0;
-                    pixels[offset + 2] = 0;
-                }
+                detect_piece(&mut pixels, x, y);
+            }
+        }
+
+        // Detect borders
+        for y in 0..600-1 {
+            for x in 0..800-1 {
+                detect_border(&mut pixels, x, y);
             }
         }
 
@@ -403,7 +443,7 @@ fn main() {
         loop {
             if iter.0 >= 0 && iter.0 < 800 && iter.1 >= 0 && iter.1 < 600 {
                 let offset = 3 * (800 * iter.1 + iter.0) as usize;
-                if pixels[offset] == 255 {
+                if pixels[offset] != 0 {
                     pixels[offset] = 0;
                     pixels[offset+2] = 0;
                     println!("{},{}", iter.0, iter.1);
