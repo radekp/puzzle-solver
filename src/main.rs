@@ -404,15 +404,24 @@ fn main() {
     println!("{}x{}", width, height);
 
     // Some space so that rotation does not crop image
-    let shift = (cmp::max(width, height) / 3) as i32;
+    let shift = (cmp::max(width, height) / 3);
 
-    'rotating: for r in 0..360 {
+	for side in 0..4 {
+
+	let mut best_x:usize = 800;
+	let mut best_y:usize = 600;
+	let mut best_dst = usize::max_value();
+
+	'rotating: for r in -10..11 {
+
+		let angle = 90 * side + r;
+		println!("angle={}", angle);
 
         renderer.clear();
         renderer.copy_ex(&texture,
                      None,
-                     Some(Rect::new(shift, shift, width, height)),
-                     r as f64,
+                     Some(Rect::new(shift as i32, shift as i32, width, height)),
+                     angle as f64,
                      None,
                      false,
                      false)
@@ -437,8 +446,56 @@ fn main() {
                 detect_border(&mut pixels, x, y);
             }
         }
+        
+        let mut min_x:usize = 800;
+        let mut min_y:usize = 600;
+        for y in 0..600 {
+            for x in 0..800 {
+			    let offset = 3 * (800 * y + x);
+				if pixels[offset] != 127 {
+					continue;
+				}
+				min_x = cmp::min(x, min_x);
+				min_y = cmp::min(y, min_y);
+			}
+		}
 
-        // Find corner
+		min_x = 0;
+		min_y = 0;
+
+        for y in 0..600 {
+            for x in 0..800 {
+			    let offset = 3 * (800 * y + x);
+				if pixels[offset] != 127 {
+					continue;
+				}
+				let dx = x - min_x;
+				let dy = y - min_y;
+				let dst = dx * dx + dy * dy;
+				if dst < best_dst {
+					best_x = x;
+					best_y = y;
+					best_dst = dst;
+					
+					println!("best={},{}", best_x, best_y);
+					for xx in min_x..best_x+1 {
+						let offset = 3 * (800 * best_y + xx);
+						pixels[offset] = 0;
+						pixels[offset+1] = 255;
+						pixels[offset+2] = 0;
+					}
+					for yy in min_y..best_y+1 {
+						let offset = 3 * (800 * yy + best_x);
+						pixels[offset] = 0;
+						pixels[offset+1] = 255;
+						pixels[offset+2] = 0;
+					}
+				}
+            }
+        }
+        
+
+/*        // Find corner
         let mut iter = near_iter_begin(0, 0, 1);
         loop {
             if iter.0 >= 0 && iter.0 < 800 && iter.1 >= 0 && iter.1 < 600 {
@@ -452,7 +509,9 @@ fn main() {
                 pixels[offset] = 128;
             }
             iter = near_iter_next(0, 0, iter.0, iter.1, iter.2);
-        }
+        }*/
+
+		
 
 
         let mut texture2 = renderer.create_texture_streaming(PixelFormatEnum::RGB24, 800, 600)
@@ -490,6 +549,7 @@ fn main() {
             }
             // The rest of the game loop goes here...
         }
+	}
     }
 }
 
