@@ -393,7 +393,7 @@ fn main() {
 
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH, WND_HEIGHT)
+    let window = video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
         .position_centered()
         .opengl()
         .build()
@@ -407,7 +407,7 @@ fn main() {
     println!("{}x{}", width, height);
 
     // Some space so that rotation does not crop image
-    let shift = (cmp::max(width, height) / 3);
+    let shift = cmp::max(width, height) / 3;
 
     for side in 0..4 {
 
@@ -428,7 +428,7 @@ fn main() {
 
             //renderer.present();
 
-            let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, WND_WIDTH, WND_HEIGHT)),
+            let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, WND_WIDTH as u32, WND_HEIGHT as u32)),
                                                   PixelFormatEnum::RGB24)
                 .unwrap();
 
@@ -538,7 +538,7 @@ fn main() {
 
 
 
-            let mut texture2 = renderer.create_texture_streaming(PixelFormatEnum::RGB24, WND_WIDTH, WND_HEIGHT)
+            let mut texture2 = renderer.create_texture_streaming(PixelFormatEnum::RGB24, WND_WIDTH as u32, WND_HEIGHT as u32)
                 .unwrap();
 
             // Create a red-green gradient
