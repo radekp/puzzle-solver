@@ -407,7 +407,10 @@ fn main() {
     println!("{}x{}", width, height);
 
     // Some space so that rotation does not crop image
-    let shift = cmp::max(width, height) / 3;
+    let shift = cmp::max(width, height) / 3 + 1;
+
+	// This is last pixel that can be piece
+    let max = (5 * shift) as usize;	// 1xleft shift, 3/3 texture, 1xright shift
 
     for side in 0..4 {
 
@@ -433,15 +436,15 @@ fn main() {
                 .unwrap();
 
             // Detect piece
-            for y in 0..WND_HEIGHT {
-                for x in 0..WND_WIDTH {
+            for y in 0..max {
+                for x in 0..max {
                     detect_piece(&mut pixels, x, y);
                 }
             }
 
             // Detect borders
-            for y in 0..WND_HEIGHT - 1 {
-                for x in 0..WND_WIDTH - 1 {
+            for y in 0..max - 1 {
+                for x in 0..max - 1 {
                     detect_border(&mut pixels, x, y);
                 }
             }
@@ -455,34 +458,32 @@ fn main() {
             let mut best_bot_dst = usize::max_value();
 
 
-            for y in 0..WND_HEIGHT {
-                for x in 0..WND_WIDTH {
+            for y in 0..max {
+                for x in 0..max {
                     let offset = 3 * (WND_WIDTH * y + x);
                     if pixels[offset] != 127 {
                         continue;
                     }
                     let dx = x;
                     let dy = y;
-                    let md = cmp::max(dx, dy) - cmp::min(dx, dy); // to prefer x close to y
-                    let dst = dx * dx + dy * dy + md * md;
+                    let dst = dx * dx + dy * dy;
 
                     if dst < best_dst {
                         best_x = x;
                         best_y = y;
                         best_dst = dst;
-                        println!("best dx={} dy={} md={}", dx, dy, md);
+                        println!("best dx={} dy={}", dx, dy);
                     }
                     
                     let bx = x;
-                    let by = (4 * shift as usize) - y;
-                    let mb = cmp::max(bx, by) - cmp::min(bx, by); // to prefer x close to y
+                    let by = max - y;
                     let bst = bx * bx + by * by;// + mb * mb;
 
                     if bst < best_bot_dst {
                         best_bot_x = x;
                         best_bot_y = y;
                         best_bot_dst = bst;
-                        println!("best bot dx={} dy={} md={}", dx, dy, md);
+                        println!("best bot dx={} dy={}", dx, dy);
                     }
                     
                 }
@@ -504,17 +505,15 @@ fn main() {
             }
             for x in 0..best_bot_x + 1 {
                 let offset = 3 * (WND_WIDTH * best_bot_y + x);
-                pixels[offset] = 0;
-                pixels[offset + 1] = 255;
+                pixels[offset] = 255;
                 pixels[offset + 2] = 0;
             }
-            for y in best_bot_y..4 * shift as usize {
+            for y in 0..max as usize {
             	if y >= WND_HEIGHT {
             		break;
             	}
                 let offset = 3 * (WND_WIDTH * y + best_bot_x);
-                pixels[offset] = 0;
-                pixels[offset + 1] = 255;
+                pixels[offset] = 255;
                 pixels[offset + 2] = 0;
             }
 
