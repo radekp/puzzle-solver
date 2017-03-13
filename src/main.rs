@@ -19,6 +19,9 @@ use sdl2::render::TextureQuery;
 const MAX_WIDTH: usize = 512;
 const MAX_HEIGHT: usize = 213;
 
+const WND_WIDTH: usize = 1280;
+const WND_HEIGHT: usize = 1024;
+
 // Maximum number of pieces
 const MAX_PIECES: usize = 12;
 
@@ -342,7 +345,7 @@ fn compare_pieces(p1: &PieceInfo,
 
 // Detect piece color - in my case they are dark blue
 fn detect_piece(pixels: &mut Vec<u8>, x: usize, y: usize) {
-    let offset = 3 * (800 * y + x);
+    let offset = 3 * (WND_WIDTH * y + x);
     let r = pixels[offset] as i32;
     let b = pixels[offset + 2] as i32;
     if b - r > 30 {
@@ -358,27 +361,27 @@ fn detect_piece(pixels: &mut Vec<u8>, x: usize, y: usize) {
 
 // Draw border pixels with red=127
 fn detect_border(pixels: &mut Vec<u8>, x: usize, y: usize) {
-    let offset = 3 * (800 * y + x);
+    let offset = 3 * (WND_WIDTH * y + x);
     if pixels[offset] == 0 {
         return;
     }
     if x > 0 {
-        let offset_xm = 3 * (800 * y + x - 1);
+        let offset_xm = 3 * (WND_WIDTH * y + x - 1);
         if pixels[offset_xm] == 0 {
             pixels[offset] = 127;
         }
     }
     if y > 0 {
-        let offset_ym = 3 * (800 * (y - 1) + x);
+        let offset_ym = 3 * (WND_WIDTH * (y - 1) + x);
         if pixels[offset_ym] == 0 {
             pixels[offset] = 127;
         }
     }
-    let offset_xp = 3 * (800 * y + x + 1);
+    let offset_xp = 3 * (WND_WIDTH * y + x + 1);
     if pixels[offset_xp] == 0 {
         pixels[offset] = 127;
     }
-    let offset_yp = 3 * (800 * (y + 1) + x);
+    let offset_yp = 3 * (WND_WIDTH * (y + 1) + x);
     if pixels[offset_yp] == 0 {
         pixels[offset] = 127;
     }
@@ -390,7 +393,7 @@ fn main() {
 
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("rust-sdl2 demo: Video", 800, 600)
+    let window = video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH, WND_HEIGHT)
         .position_centered()
         .opengl()
         .build()
@@ -425,36 +428,36 @@ fn main() {
 
             //renderer.present();
 
-            let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, 800, 600)),
+            let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, WND_WIDTH, WND_HEIGHT)),
                                                   PixelFormatEnum::RGB24)
                 .unwrap();
 
             // Detect piece
-            for y in 0..600 {
-                for x in 0..800 {
+            for y in 0..WND_HEIGHT {
+                for x in 0..WND_WIDTH {
                     detect_piece(&mut pixels, x, y);
                 }
             }
 
             // Detect borders
-            for y in 0..600 - 1 {
-                for x in 0..800 - 1 {
+            for y in 0..WND_HEIGHT - 1 {
+                for x in 0..WND_WIDTH - 1 {
                     detect_border(&mut pixels, x, y);
                 }
             }
 
-            let mut best_x: usize = 800;
-            let mut best_y: usize = 600;
+            let mut best_x: usize = WND_WIDTH;
+            let mut best_y: usize = WND_HEIGHT;
             let mut best_dst = usize::max_value();
             
-            let mut best_bot_x: usize = 800;
+            let mut best_bot_x: usize = WND_WIDTH;
             let mut best_bot_y: usize = 0;
             let mut best_bot_dst = usize::max_value();
 
 
-            for y in 0..600 {
-                for x in 0..800 {
-                    let offset = 3 * (800 * y + x);
+            for y in 0..WND_HEIGHT {
+                for x in 0..WND_WIDTH {
+                    let offset = 3 * (WND_WIDTH * y + x);
                     if pixels[offset] != 127 {
                         continue;
                     }
@@ -488,28 +491,28 @@ fn main() {
 
             println!("best={},{}", best_x, best_y);
             for x in 0..best_x + 1 {
-                let offset = 3 * (800 * best_y + x);
+                let offset = 3 * (WND_WIDTH * best_y + x);
                 pixels[offset] = 0;
                 pixels[offset + 1] = 255;
                 pixels[offset + 2] = 0;
             }
             for y in 0..best_y + 1 {
-                let offset = 3 * (800 * y + best_x);
+                let offset = 3 * (WND_WIDTH * y + best_x);
                 pixels[offset] = 0;
                 pixels[offset + 1] = 255;
                 pixels[offset + 2] = 0;
             }
             for x in 0..best_bot_x + 1 {
-                let offset = 3 * (800 * best_bot_y + x);
+                let offset = 3 * (WND_WIDTH * best_bot_y + x);
                 pixels[offset] = 0;
                 pixels[offset + 1] = 255;
                 pixels[offset + 2] = 0;
             }
             for y in best_bot_y..4 * shift as usize {
-            	if y >= 600 {
+            	if y >= WND_HEIGHT {
             		break;
             	}
-                let offset = 3 * (800 * y + best_bot_x);
+                let offset = 3 * (WND_WIDTH * y + best_bot_x);
                 pixels[offset] = 0;
                 pixels[offset + 1] = 255;
                 pixels[offset + 2] = 0;
@@ -519,8 +522,8 @@ fn main() {
             /*        // Find corner
         let mut iter = near_iter_begin(0, 0, 1);
         loop {
-            if iter.0 >= 0 && iter.0 < 800 && iter.1 >= 0 && iter.1 < 600 {
-                let offset = 3 * (800 * iter.1 + iter.0) as usize;
+            if iter.0 >= 0 && iter.0 < WND_WIDTH && iter.1 >= 0 && iter.1 < WND_HEIGHT {
+                let offset = 3 * (WND_WIDTH * iter.1 + iter.0) as usize;
                 if pixels[offset] != 0 {
                     pixels[offset] = 0;
                     pixels[offset+2] = 0;
@@ -535,13 +538,13 @@ fn main() {
 
 
 
-            let mut texture2 = renderer.create_texture_streaming(PixelFormatEnum::RGB24, 800, 600)
+            let mut texture2 = renderer.create_texture_streaming(PixelFormatEnum::RGB24, WND_WIDTH, WND_HEIGHT)
                 .unwrap();
 
             // Create a red-green gradient
             let mut index = 0;
-            texture2.with_lock(None, |buffer: &mut [u8], pitch: usize| for y in 0..600 {
-                    for x in 0..800 {
+            texture2.with_lock(None, |buffer: &mut [u8], pitch: usize| for y in 0..WND_HEIGHT {
+                    for x in 0..WND_WIDTH {
                         let offset = y * pitch + x * 3;
                         buffer[offset + 0] = pixels[offset];
                         buffer[offset + 1] = pixels[offset + 1];
@@ -730,7 +733,7 @@ fn main_old() {
    let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("rust-sdl2 demo: Video", 800, 600)
+    let window = video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH, WND_HEIGHT)
         .position_centered()
         .opengl()
         .build()
