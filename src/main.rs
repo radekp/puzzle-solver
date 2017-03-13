@@ -359,54 +359,97 @@ fn main() {
 
     println!("{}x{}", width, height);
 
-    renderer.clear();
-    renderer.copy_ex(&texture,
-                 None,
-                 Some(Rect::new((height / 3) as i32, (height / 3) as i32, width, height)),
-                 -45.0,
-                 None,
-                 false,
-                 false)
-        .unwrap();
+    // Some space so that rotation does not crop image
+    let shift = (cmp::max(width, height) / 3) as i32;
 
-    renderer.present();
+    'rotating: for r in 0..360 {
 
-    let pixels = renderer.read_pixels(Some(Rect::new(0, 0, 800, 600)), PixelFormatEnum::RGB24)
-        .unwrap();
+        renderer.clear();
+        renderer.copy_ex(&texture,
+                     None,
+                     Some(Rect::new(shift, shift, width, height)),
+                     r as f64,
+                     None,
+                     false,
+                     false)
+            .unwrap();
 
-    let mut texture2 = renderer.create_texture_streaming(PixelFormatEnum::RGB24, 800, 600)
-        .unwrap();
+        //renderer.present();
 
-    // Create a red-green gradient
-    let mut index = 0;
-    texture2.with_lock(None, |buffer: &mut [u8], pitch: usize| for y in 0..600 {
+        let mut pixels =
+            renderer.read_pixels(Some(Rect::new(0, 0, 800, 600)), PixelFormatEnum::RGB24)
+                .unwrap();
+
+        // Detect piece
+        for y in 0..600 {
             for x in 0..800 {
-                let offset = y * pitch + x * 3;
-                buffer[offset + 0] = pixels[offset];
-                buffer[offset + 1] = pixels[offset + 1];
-                buffer[offset + 2] = pixels[offset + 2];
-                index += 1;
-            }
-        })
-        .unwrap();
-
-    renderer.clear();
-    renderer.copy(&texture2, None, None)
-        .unwrap();
-    renderer.present();
-
-
-    let mut event_pump = sdl_context.event_pump().unwrap();
-
-    'running: loop {
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Quit { .. } |
-                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'running,
-                _ => {}
+                let offset = 3 * (800 * y + x);
+                let r = pixels[offset] as i32;
+                let b = pixels[offset + 2] as i32;
+                if b - r > 30 {
+                    pixels[offset] = 255;
+                    pixels[offset + 1] = 255;
+                    pixels[offset + 2] = 255;
+                } else {
+                    pixels[offset] = 0;
+                    pixels[offset + 1] = 0;
+                    pixels[offset + 2] = 0;
+                }
             }
         }
-        // The rest of the game loop goes here...
+
+        // Find corner
+        let mut iter = near_iter_begin(0, 0, 1);
+        loop {
+            if iter.0 >= 0 && iter.0 < 800 && iter.1 >= 0 && iter.1 < 600 {
+                let offset = 3 * (800 * iter.1 + iter.0) as usize;
+                if pixels[offset] == 255 {
+                    pixels[offset] = 0;
+                    pixels[offset+2] = 0;
+                    println!("{},{}", iter.0, iter.1);
+                    break;
+                }
+                pixels[offset] = 128;
+            }
+            iter = near_iter_next(0, 0, iter.0, iter.1, iter.2);
+        }
+
+
+        let mut texture2 = renderer.create_texture_streaming(PixelFormatEnum::RGB24, 800, 600)
+            .unwrap();
+
+        // Create a red-green gradient
+        let mut index = 0;
+        texture2.with_lock(None, |buffer: &mut [u8], pitch: usize| for y in 0..600 {
+                for x in 0..800 {
+                    let offset = y * pitch + x * 3;
+                    buffer[offset + 0] = pixels[offset];
+                    buffer[offset + 1] = pixels[offset + 1];
+                    buffer[offset + 2] = pixels[offset + 2];
+                    index += 1;
+                }
+            })
+            .unwrap();
+
+        renderer.clear();
+        renderer.copy(&texture2, None, None)
+            .unwrap();
+        renderer.present();
+
+
+        let mut event_pump = sdl_context.event_pump().unwrap();
+
+        'running: loop {
+            for event in event_pump.poll_iter() {
+                match event {
+                    Event::KeyDown { keycode: Some(Keycode::R), .. } => break 'running,
+                    Event::Quit { .. } |
+                    Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'rotating,
+                    _ => {}
+                }
+            }
+            // The rest of the game loop goes here...
+        }
     }
 }
 
