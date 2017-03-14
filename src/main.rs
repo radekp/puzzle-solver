@@ -400,7 +400,7 @@ fn main() {
         .unwrap();
 
     let mut renderer = window.renderer().build().unwrap();
-    let mut texture = renderer.load_texture("4.jpg").unwrap();
+    let mut texture = renderer.load_texture("2.jpg").unwrap();
 
     let TextureQuery { width, height, .. } = texture.query();
 
@@ -449,10 +449,50 @@ fn main() {
                 }
             }
 
+            let hole_step = max / 32;
+            for y in hole_step..max {
+                let mut left = usize::max_value();
+                let mut right = usize::max_value();
+                for x in 0..max {
+                    let offset_up = 3 * (WND_WIDTH * (y - hole_step) + x);
+                    if pixels[offset_up] < 127 {
+                        let offset_down = 3 * (WND_WIDTH * (y + hole_step) + x);
+                        if pixels[offset_down] < 127 {
+                            continue;
+                        }
+                    }
+                    if left == usize::max_value() {
+                        left = x;
+                    }
+                    right = x;
+                }
+                if right - left < max / 6 {
+                    continue;
+                }
+                for x in 0..max {
+                    let offset = 3 * (WND_WIDTH * y + x);
+                    if pixels[offset] >= 127 {
+                        pixels[offset] = 192;
+                    }
+                }
+            }
+            for y in 0..max {
+                for x in 0..max {
+                    let offset = 3 * (WND_WIDTH * y + x);
+                    if pixels[offset] == 127 {
+                        pixels[offset] = 32;
+                    } else if pixels[offset] == 192 {
+                        pixels[offset] = 127;
+                    }
+                }
+            }
+
+
+
             let mut best_x: usize = WND_WIDTH;
             let mut best_y: usize = WND_HEIGHT;
             let mut best_dst = usize::max_value();
-            
+
             let mut best_bot_x: usize = WND_WIDTH;
             let mut best_bot_y: usize = 0;
             let mut best_bot_dst = usize::max_value();
@@ -472,9 +512,9 @@ fn main() {
                         best_x = x;
                         best_y = y;
                         best_dst = dst;
-                        println!("best dx={} dy={}", dx, dy);
+                        //println!("best dx={} dy={}", dx, dy);
                     }
-                    
+
                     let bx = x;
                     let by = max - y;
                     let bst = bx * bx + by * by;// + mb * mb;
@@ -483,14 +523,14 @@ fn main() {
                         best_bot_x = x;
                         best_bot_y = y;
                         best_bot_dst = bst;
-                        println!("best bot dx={} dy={}", dx, dy);
+                        //println!("best bot dx={} dy={}", dx, dy);
                     }
-                    
+
                 }
             }
-            
 
-            println!("best={},{}", best_x, best_y);
+
+            //println!("best={},{}", best_x, best_y);
             for x in 0..best_x + 1 {
                 let offset = 3 * (WND_WIDTH * best_y + x);
                 pixels[offset] = 0;
