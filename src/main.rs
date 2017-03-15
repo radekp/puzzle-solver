@@ -387,6 +387,76 @@ fn detect_border(pixels: &mut Vec<u8>, x: usize, y: usize) {
     }
 }
 
+// Remove jags from puzzle:
+//          __
+//         /  \			< remove this line
+//        |    |		< and this
+//        \   /         < and this
+//   ------   ------    < keep this line
+//  /               \   < and this line, because they are above width_limit
+//
+fn unjag(pixels: &mut Vec<u8>, max:usize, plus_min_dst: usize, width_limit: usize, height_limit: usize, col_mask_edge: u8, col_mask_jag: u8) {
+	        
+	        // Foreach row
+	        for y in plus_min_dst..max {
+	        	// Compute left and right coordinate
+                let mut left = usize::max_value();
+                let mut right = usize::max_value();
+                for x in 0..max {
+                    let offset_up = 3 * (WND_WIDTH * (y - plus_min_dst) + x);
+                    if pixels[offset_up] & col_mask_edge == 0 {
+                        let offset_down = 3 * (WND_WIDTH * (y + plus_min_dst) + x);
+                        if pixels[offset_down] & col_mask_edge == 0 {
+                            continue;
+                        }
+                    }
+                    if left == usize::max_value() {
+                        left = x;
+                    }
+                    right = x;
+                }
+                // Is the shape wide enough?
+                if right - left < width_limit {
+                    continue;
+                }
+                for x in 0..max {
+                    let offset = 3 * (WND_WIDTH * y + x);
+                    if pixels[offset] & col_mask_edge != 0 {
+                        pixels[offset] |= col_mask_jag;
+                    }
+                }
+            }
+            
+   	        // Same for columns
+	        /*for x in plus_min_dst..max {
+                let mut top = usize::max_value();
+                let mut bottom = usize::max_value();
+                for y in 0..max {
+                    let offset_left = 3 * (WND_WIDTH * y + x - plus_min_dst);
+                    if pixels[offset_left] & col_mask_edge == 0 {
+                        let offset_right = 3 * (WND_WIDTH * y + x + plus_min_dst);
+                        if pixels[offset_right] & col_mask_edge == 0 {
+                            continue;
+                        }
+                    }
+                    if top == usize::max_value() {
+                        top = y;
+                    }
+					bottom = y;
+                }
+                if bottom - top < height_limit {
+                    continue;
+                }
+                for y in 0..max {
+                    let offset = 3 * (WND_WIDTH * y + x);
+                    if pixels[offset] & col_mask_edge != 0 {
+                        pixels[offset] |= col_mask_jag;
+                    }
+                }
+            }*/
+}
+
+
 fn main() {
 
     let sdl_context = sdl2::init().unwrap();
@@ -449,44 +519,8 @@ fn main() {
                 }
             }
 
-            let hole_step = max / 32;
-            for y in hole_step..max {
-                let mut left = usize::max_value();
-                let mut right = usize::max_value();
-                for x in 0..max {
-                    let offset_up = 3 * (WND_WIDTH * (y - hole_step) + x);
-                    if pixels[offset_up] < 127 {
-                        let offset_down = 3 * (WND_WIDTH * (y + hole_step) + x);
-                        if pixels[offset_down] < 127 {
-                            continue;
-                        }
-                    }
-                    if left == usize::max_value() {
-                        left = x;
-                    }
-                    right = x;
-                }
-                if right - left < max / 6 {
-                    continue;
-                }
-                for x in 0..max {
-                    let offset = 3 * (WND_WIDTH * y + x);
-                    if pixels[offset] >= 127 {
-                        pixels[offset] = 192;
-                    }
-                }
-            }
-            for y in 0..max {
-                for x in 0..max {
-                    let offset = 3 * (WND_WIDTH * y + x);
-                    if pixels[offset] == 127 {
-                        pixels[offset] = 32;
-                    } else if pixels[offset] == 192 {
-                        pixels[offset] = 127;
-                    }
-                }
-            }
-
+			// Remove jags so that they dont spoil finding corners
+			unjag(&mut pixels, max, max/32, max/6, max/6, 127, 192);
 
 
             let mut best_x: usize = WND_WIDTH;
