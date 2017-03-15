@@ -600,7 +600,7 @@ fn main() {
     for side in 0..4 {
 
         let mut best_corner_delta = usize::max_value();
-        let mut best_corner_delta_r = 0;
+        let mut best_corner_angle = 0;
 
         'rotating: for r in -10..11 {
 
@@ -614,7 +614,7 @@ fn main() {
             println!("corner_delta={}", corner_delta);
             if corner_delta < best_corner_delta {
                 best_corner_delta = corner_delta;
-                best_corner_delta_r = r;
+                best_corner_angle = angle;
             }
 
             let mut res_texture = renderer.create_texture_streaming(PixelFormatEnum::RGB24, WND_WIDTH as u32, WND_HEIGHT as u32)
