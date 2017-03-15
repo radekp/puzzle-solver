@@ -212,7 +212,7 @@ fn detect_jags(pixels: &mut Vec<u8>,
 }
 
 // Find top-left and bottom-left corners and return delta x between them
-fn find_corners_delta(pixels: &mut Vec<u8>, sqr:usize, bounds: URect) -> usize {
+fn find_corners_delta(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) -> usize {
 
     let mut best_x: usize = WND_WIDTH;
     let mut best_y: usize = WND_HEIGHT;
@@ -310,7 +310,12 @@ fn rotate_and_find_corners_delta(renderer: &mut Renderer,
             .unwrap();
 
     // Detect piece and bounds
-    let mut bounds = URect{min_x:usize::max_value(), min_y: usize::max_value(), max_x: 0, max_y: 0};
+    let mut bounds = URect {
+        min_x: usize::max_value(),
+        min_y: usize::max_value(),
+        max_x: 0,
+        max_y: 0,
+    };
     for y in 0..sqr {
         for x in 0..sqr {
             if !detect_material(&mut pixels, x, y) {
@@ -345,7 +350,10 @@ enum UserAction {
     Quit,
 }
 
-fn display_pixels(pixels: &Vec<u8>, sdl_context: &sdl2::Sdl, renderer: &mut Renderer) -> UserAction {
+fn display_pixels(pixels: &Vec<u8>,
+                  sdl_context: &sdl2::Sdl,
+                  renderer: &mut Renderer)
+                  -> UserAction {
 
     let mut res_texture = renderer.create_texture_streaming(PixelFormatEnum::RGB24,
                                   WND_WIDTH as u32,
@@ -373,24 +381,24 @@ fn display_pixels(pixels: &Vec<u8>, sdl_context: &sdl2::Sdl, renderer: &mut Rend
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
-        loop {
-            for event in event_pump.poll_iter() {
-                match event {
-                    Event::KeyDown { keycode: Some(Keycode::R), .. } => return UserAction::Rotate,
-                    Event::Quit { .. } |
-                    Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return UserAction::Quit,
-                    _ => {}
-                }
+    loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::KeyDown { keycode: Some(Keycode::R), .. } => return UserAction::Rotate,
+                Event::Quit { .. } |
+                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return UserAction::Quit,
+                _ => {}
             }
-            // The rest of the game loop goes here...
         }
+        // The rest of the game loop goes here...
+    }
 }
 
 fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
 
     let mut renderer = window.renderer().build().unwrap();
 
-    let texture = renderer.load_texture("2.jpg").unwrap();
+    let texture = renderer.load_texture(path).unwrap();
 
     let TextureQuery { width, height, .. } = texture.query();
 
@@ -430,14 +438,13 @@ fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
                 best_corner_angle = angle;
             }
 
-            match display_pixels(&pixels, sdl_context, &mut renderer)
-            {
+            match display_pixels(&pixels, sdl_context, &mut renderer) {
                 UserAction::Quit => break 'rotating,
                 _ => {}
             }
         }
 
-    let rv = rotate_and_find_corners_delta(&mut renderer,
+        let rv = rotate_and_find_corners_delta(&mut renderer,
                                                &texture,
                                                best_corner_angle as f64,
                                                shift as usize,
@@ -445,8 +452,8 @@ fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
                                                width,
                                                height);
 
-                                               let pixels = rv.1;
-                display_pixels(&pixels, sdl_context, &mut renderer);
+        let pixels = rv.1;
+        display_pixels(&pixels, sdl_context, &mut renderer);
     }
 }
 
@@ -463,5 +470,5 @@ fn main() {
             .build()
             .unwrap();
 
-    process_jpg("1.jpg", &sdl_context, window);
+    process_jpg("4.jpg", &sdl_context, window);
 }
