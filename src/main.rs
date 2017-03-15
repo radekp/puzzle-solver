@@ -2,6 +2,7 @@ extern crate sdl2;
 extern crate image;
 
 use std::cmp;
+use std::path::Path;
 
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
@@ -11,6 +12,7 @@ use sdl2::image::LoadTexture;
 use sdl2::render::TextureQuery;
 use sdl2::render::Renderer;
 use sdl2::render::Texture;
+use sdl2::video::Window;
 
 // SDL window size - puzzle pieces bitmap must fit even with rotation
 const WND_WIDTH: usize = 1024;
@@ -338,20 +340,56 @@ fn rotate_and_find_corners_delta(renderer: &mut Renderer,
     return (find_corners_delta(&mut pixels, sqr, bounds), pixels);
 }
 
-fn main() {
+enum UserAction {
+    Rotate,
+    Quit,
+}
 
-    let sdl_context = sdl2::init().unwrap();
+fn display_pixels(pixels: &Vec<u8>, sdl_context: &sdl2::Sdl, renderer: &mut Renderer) -> UserAction {
 
-    let video_subsystem = sdl_context.video().unwrap();
+    let mut res_texture = renderer.create_texture_streaming(PixelFormatEnum::RGB24,
+                                  WND_WIDTH as u32,
+                                  WND_HEIGHT as u32)
+        .unwrap();
 
-    let window =
-        video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
-            .position_centered()
-            .opengl()
-            .build()
-            .unwrap();
+    // Create texture with result
+    let mut index = 0;
+    res_texture.with_lock(None,
+                   |buffer: &mut [u8], pitch: usize| for y in 0..WND_HEIGHT {
+                       for x in 0..WND_WIDTH {
+                           let offset = y * pitch + x * 3;
+                           buffer[offset + 0] = pixels[offset];
+                           buffer[offset + 1] = pixels[offset + 1];
+                           buffer[offset + 2] = pixels[offset + 2];
+                           index += 1;
+                       }
+                   })
+        .unwrap();
+
+    renderer.clear();
+    renderer.copy(&res_texture, None, None).unwrap();
+    renderer.present();
+
+
+    let mut event_pump = sdl_context.event_pump().unwrap();
+
+        loop {
+            for event in event_pump.poll_iter() {
+                match event {
+                    Event::KeyDown { keycode: Some(Keycode::R), .. } => return UserAction::Rotate,
+                    Event::Quit { .. } |
+                    Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return UserAction::Quit,
+                    _ => {}
+                }
+            }
+            // The rest of the game loop goes here...
+        }
+}
+
+fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
 
     let mut renderer = window.renderer().build().unwrap();
+
     let texture = renderer.load_texture("2.jpg").unwrap();
 
     let TextureQuery { width, height, .. } = texture.query();
@@ -371,7 +409,9 @@ fn main() {
 
         'rotating: for r in -10..11 {
 
-            let angle = 90 * side + r;
+            let mut angle = 90 * side + r;
+
+
             println!("angle={}", angle);
 
             let rv = rotate_and_find_corners_delta(&mut renderer,
@@ -390,47 +430,38 @@ fn main() {
                 best_corner_angle = angle;
             }
 
-            let mut res_texture = renderer.create_texture_streaming(PixelFormatEnum::RGB24,
-                                          WND_WIDTH as u32,
-                                          WND_HEIGHT as u32)
-                .unwrap();
-
-            // Create texture with result
-            let mut index = 0;
-            res_texture.with_lock(None,
-                           |buffer: &mut [u8], pitch: usize| for y in 0..WND_HEIGHT {
-                               for x in 0..WND_WIDTH {
-                                   let offset = y * pitch + x * 3;
-                                   buffer[offset + 0] = pixels[offset];
-                                   buffer[offset + 1] = pixels[offset + 1];
-                                   buffer[offset + 2] = pixels[offset + 2];
-                                   index += 1;
-                               }
-                           })
-                .unwrap();
-
-            renderer.clear();
-            renderer.copy(&res_texture, None, None).unwrap();
-            renderer.present();
-
-
-            let mut event_pump = sdl_context.event_pump().unwrap();
-
-            'running: loop {
-                for event in event_pump.poll_iter() {
-                    match event {
-                        Event::KeyDown { keycode: Some(Keycode::R), .. } => break 'running,
-                        Event::Quit { .. } |
-                        Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'rotating,
-                        _ => {}
-                    }
-                }
-                // The rest of the game loop goes here...
+            match display_pixels(&pixels, sdl_context, &mut renderer)
+            {
+                UserAction::Quit => break 'rotating,
+                _ => {}
             }
         }
 
-        println!("best_corner_angle={} best_corner_delta={}",
-                 best_corner_angle,
-                 best_corner_delta);
+    let rv = rotate_and_find_corners_delta(&mut renderer,
+                                               &texture,
+                                               best_corner_angle as f64,
+                                               shift as usize,
+                                               sqr,
+                                               width,
+                                               height);
+
+                                               let pixels = rv.1;
+                display_pixels(&pixels, sdl_context, &mut renderer);
     }
+}
+
+fn main() {
+
+    let sdl_context = sdl2::init().unwrap();
+
+    let video_subsystem = sdl_context.video().unwrap();
+
+    let window =
+        video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
+            .position_centered()
+            .opengl()
+            .build()
+            .unwrap();
+
+    process_jpg("1.jpg", &sdl_context, window);
 }
