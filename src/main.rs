@@ -20,6 +20,13 @@ const COL_MASK_MATERIAL: u8 = 1 << 4;
 const COL_MASK_BORDER: u8 = 1 << 7;
 const COL_MASK_JAG: u8 = 1 << 5;
 
+struct URect {
+    min_x: usize,
+    min_y: usize,
+    max_x: usize,
+    max_y: usize,
+}
+
 // Near point iterator
 // Iterates points in spiral centered at cx,cy
 //
@@ -83,7 +90,7 @@ fn near_iter_next(cx: i32, cy: i32, prev_x: i32, prev_y: i32, prev_a: i32) -> (i
 }
 
 // Detect piece color - in my case they are dark blue
-fn detect_material(pixels: &mut Vec<u8>, x: usize, y: usize) {
+fn detect_material(pixels: &mut Vec<u8>, x: usize, y: usize) -> bool {
     let offset = 3 * (WND_WIDTH * y + x);
     let r = pixels[offset] as i32;
     let b = pixels[offset + 2] as i32;
@@ -91,11 +98,12 @@ fn detect_material(pixels: &mut Vec<u8>, x: usize, y: usize) {
         pixels[offset] = COL_MASK_MATERIAL;
         pixels[offset + 1] = COL_MASK_MATERIAL;
         pixels[offset + 2] = COL_MASK_MATERIAL;
-    } else {
-        pixels[offset] = 0;
-        pixels[offset + 1] = 0;
-        pixels[offset + 2] = 0;
+        return true;
     }
+    pixels[offset] = 0;
+    pixels[offset + 1] = 0;
+    pixels[offset + 2] = 0;
+    return false;
 }
 
 // Draw border pixels with red=127
@@ -273,7 +281,7 @@ fn rotate_and_find_corners_delta(renderer: &mut Renderer,
                                  texture: &Texture,
                                  angle: f64,
                                  shift: usize,
-                                 max: usize,
+                                 sqr: usize,
                                  width: u32,
                                  height: u32)
                                  -> (usize, Vec<u8>) {
@@ -297,24 +305,35 @@ fn rotate_and_find_corners_delta(renderer: &mut Renderer,
                          PixelFormatEnum::RGB24)
             .unwrap();
 
-    // Detect piece
-    for y in 0..max {
-        for x in 0..max {
-            detect_material(&mut pixels, x, y);
+    // Detect piece and bounds
+    let mut bounds = URect{min_x:usize::max_value(), min_y: usize::max_value(), max_x: 0, max_y: 0};
+    for y in 0..sqr {
+        for x in 0..sqr {
+            if !detect_material(&mut pixels, x, y) {
+                continue;
+            }
+            bounds.min_x = cmp::min(x, bounds.min_x);
+            bounds.min_y = cmp::min(y, bounds.min_y);
+            bounds.max_x = cmp::max(x, bounds.max_x);
+            bounds.max_y = cmp::max(y, bounds.max_y);
         }
     }
 
+    // Add one more so that we dont have to write ..max+1 everywhere
+    bounds.max_x += 1;
+    bounds.max_y += 1;
+
     // Detect borders
-    for y in 0..max - 1 {
-        for x in 0..max - 1 {
+    for y in bounds.min_y..bounds.max_y {
+        for x in bounds.min_x..bounds.max_x {
             detect_border(&mut pixels, x, y);
         }
     }
 
     // Find jags that could spoil finding corners
-    detect_jags(&mut pixels, max, max / 32, max / 6, max / 6);
+    detect_jags(&mut pixels, sqr, sqr / 32, sqr / 6, sqr / 6);
 
-    return (find_corners_delta(&mut pixels, max), pixels);
+    return (find_corners_delta(&mut pixels, sqr), pixels);
 }
 
 fn main() {
@@ -340,8 +359,8 @@ fn main() {
     // Some space so that rotation does not crop image
     let shift = cmp::max(width, height) / 3 + 1;
 
-    // This is last pixel that can be piece
-    let max = (5 * shift) as usize; // 1xleft shift, 3/3 texture, 1xright shift
+    // Squate that the puzzle always fits
+    let sqr = (5 * shift) as usize; // 1xleft shift, 3/3 texture, 1xright shift
 
     for side in 0..4 {
 
@@ -357,7 +376,7 @@ fn main() {
                                                    &texture,
                                                    angle as f64,
                                                    shift as usize,
-                                                   max,
+                                                   sqr,
                                                    width,
                                                    height);
             let corner_delta = rv.0;
