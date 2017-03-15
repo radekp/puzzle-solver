@@ -1,12 +1,7 @@
 extern crate sdl2;
 extern crate image;
 
-use std::env;
 use std::cmp;
-use std::fs::File;
-use std::path::Path;
-
-use image::GenericImage;
 
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
@@ -17,45 +12,13 @@ use sdl2::render::TextureQuery;
 use sdl2::render::Renderer;
 use sdl2::render::Texture;
 
-// Maximal wifth/height for pieces array
-const MAX_WIDTH: usize = 512;
-const MAX_HEIGHT: usize = 213;
-
-const WND_WIDTH: usize = 1280;
+// SDL window size - puzzle pieces bitmap must fit even with rotation
+const WND_WIDTH: usize = 1024;
 const WND_HEIGHT: usize = 1024;
-
-// Maximum number of pieces
-const MAX_PIECES: usize = 12;
 
 const COL_MASK_MATERIAL: u8 = 1 << 4;
 const COL_MASK_BORDER:u8 = 1 << 7;
 const COL_MASK_JAG:u8 = 1 << 5;
-
-#[derive(Copy, Clone)]
-struct PieceInfo {
-    min_x: usize,
-    min_y: usize,
-    max_x: usize,
-    max_y: usize,
-}
-
-impl PieceInfo {
-    /*    fn mid_x(&self) -> usize {
-        return (self.min_x + self.max_x) / 2;
-    }
-
-    fn mid_y(&self) -> usize {
-        return (self.min_y + self.max_y) / 2;
-    }*/
-
-    fn width(&self) -> usize {
-        return self.max_x - self.min_x;
-    }
-
-    fn height(&self) -> usize {
-        return self.max_y - self.min_y;
-    }
-}
 
 // Near point iterator
 // Iterates points in spiral centered at cx,cy
@@ -117,236 +80,6 @@ fn near_iter_next(cx: i32, cy: i32, prev_x: i32, prev_y: i32, prev_a: i32) -> (i
     }
     a += 1;
     return (cx - a, cy - a, a);
-}
-
-// Move points from src to dst recursively with flood fill
-fn flood_fill(pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH],
-              x: usize,
-              y: usize,
-              pi: &mut PieceInfo)
-              -> u32 {
-
-    if pixels[x][y] == 0 {
-        return 0;
-    }
-    pixels[x][y] = 0;
-
-    // Update min & max points
-    if x > pi.max_x {
-        pi.max_x = x;
-    }
-    if y > pi.max_y {
-        pi.max_y = y;
-    }
-    if x < pi.min_x {
-        pi.min_x = x;
-    }
-    if y < pi.min_y {
-        pi.min_y = y;
-    }
-
-    let mut res: u32 = 1;
-    if x > 0 {
-        res = res + flood_fill(pixels, x - 1, y, pi);
-    }
-    if y > 0 {
-        res = res + flood_fill(pixels, x, y - 1, pi);
-    }
-    if x < MAX_WIDTH {
-        res = res + flood_fill(pixels, x + 1, y, pi);
-    }
-    if y < MAX_HEIGHT {
-        res = res + flood_fill(pixels, x, y + 1, pi);
-    }
-    return res;
-}
-
-// Split pieces
-fn split_pieces(pcs: &mut [PieceInfo; MAX_PIECES],
-                pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH])
-                -> usize {
-
-    let mut pixels_ff: [[u8; MAX_HEIGHT]; MAX_WIDTH] = [[0; MAX_HEIGHT]; MAX_WIDTH];
-
-    for x in 0..MAX_WIDTH {
-        for y in 0..MAX_HEIGHT {
-            pixels_ff[x][y] = pixels[x][y];
-        }
-    }
-
-    let mut p = 0;
-    for x in 0..MAX_WIDTH {
-        for y in 0..MAX_HEIGHT {
-            if pixels_ff[x][y] == 0 {
-                continue;
-            }
-            let mut pi = PieceInfo {
-                min_x: usize::max_value(),
-                min_y: usize::max_value(),
-                max_x: 0,
-                max_y: 0,
-            };
-
-            let num_pix = flood_fill(&mut pixels_ff, x, y, &mut pi);
-            println!("piece {:?} numPix={:?} min={:?},{:?} max={:?},{:?}",
-                     p,
-                     num_pix,
-                     pi.min_x,
-                     pi.min_y,
-                     pi.max_x,
-                     pi.max_y);
-
-            if num_pix == 1 {
-                pixels_ff[x][y] = 0;
-                continue;
-            }
-            pi.min_x -= 3; // some space for comparing pieces
-            pi.min_y -= 3;
-            pi.max_x += 20;
-            pi.max_y += 3;
-            pcs[p] = pi;
-
-            p = p + 1;
-            if p >= MAX_PIECES {
-                return MAX_PIECES;
-            }
-        }
-    }
-    return p;
-}
-
-// Compare two pieces and return score
-fn compare_pieces_x_y_rot(p1: &PieceInfo,
-                          p2: &PieceInfo,
-                          pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH],
-                          delta_x: i32,
-                          delta_y: i32,
-                          rotate: i32)
-                          -> i32 {
-
-    // Clear previous comparing
-    for y in p1.min_y..p1.max_y + 1 {
-        for x in p1.min_x..p1.max_x + 1 {
-            pixels[x][y] &= 32;
-        }
-    }
-
-    let width = cmp::min(p1.width(), p2.width());
-    let height = cmp::min(p1.height(), p2.height());
-    let iheight = height as i32;
-
-    // Move p2 piece to p1 area.
-    for y in 0..height {
-        for x in 0..width {
-
-            let x2 = p2.min_x + x;
-            let y2 = p2.min_y + y;
-
-            if pixels[x2][y2] == 0 {
-                // empty p2 pixel
-                continue;
-            }
-
-            let ix = x as i32;
-            let iy = y as i32;
-
-            let ix1 = delta_x + (p1.min_x as i32 + ix) + ((rotate * iy) / iheight);
-            let iy1 = delta_y + (p1.min_y + y) as i32;
-
-            if ix1 < 0 || iy1 < 0 {
-                continue;
-            }
-
-            let x1 = ix1 as usize;
-            let y1 = iy1 as usize;
-
-            if x1 >= p1.max_x || y1 >= p1.max_y {
-                continue;
-            }
-
-            if pixels[x1][y1] != 0 {
-                // intersection with p1
-                pixels[x1][y1] |= 128;
-            } else {
-                pixels[x1][y1] |= 64; // no intersection, just draw p2
-            }
-        }
-    }
-
-
-    // Compute score
-    let mut res: i32 = 0;
-    for y in p1.min_y..p1.max_y {
-        for x in p1.min_x..p1.max_x {
-            if pixels[x][y] & 128 == 0 {
-                continue; // skip all but intersection
-            }
-
-            // Find nearest point in piece p1 and p2
-            let mut iter = near_iter_begin(x as i32, y as i32, 1);
-            let mut dist_1 = 0;
-            let mut dist_2 = 0;
-            //println!("iter_begin x={:?} y={:?} a={:?}", iter.0, iter.1, iter.2);
-            loop {
-                //println!("x={:?} y={:?} a={:?} pix={:?}",
-                // iter.0, iter.1, iter.2, pixels[iter.0 as usize][iter.1 as usize]);
-                if iter.0 >= p1.min_x as i32 && iter.0 <= p1.max_x as i32 &&
-                   iter.1 >= p1.min_y as i32 && iter.1 <= p1.max_y as i32 {
-                    if pixels[iter.0 as usize][iter.1 as usize] == 32 && dist_1 == 0 {
-                        dist_1 = iter.2;
-                    }
-                    if pixels[iter.0 as usize][iter.1 as usize] == 64 && dist_2 == 0 {
-                        dist_2 = iter.2;
-                    }
-                    if dist_1 > 0 && dist_2 > 0 {
-                        break;
-                    }
-                }
-                iter = near_iter_next(x as i32, y as i32, iter.0, iter.1, iter.2);
-            }
-
-            // Close point is positive score, distant is negative
-            res += 3 - dist_1 - dist_2;
-            if iheight + res < 0 {
-                return res; // bail out early when score is too bad
-            }
-        }
-    }
-    return res;
-}
-
-fn compare_pieces(p1: &PieceInfo,
-                  p2: &PieceInfo,
-                  pixels: &mut [[u8; MAX_HEIGHT]; MAX_WIDTH])
-                  -> (i32, i32, i32) {
-
-    let mut best_score: i32 = 0;
-    let mut best_x: i32 = 0;
-    let mut best_y: i32 = 0;
-    let mut best_r: i32 = 0;
-
-    for r in -6..6 {
-        // fake rotation +-6pixels
-        for y in 0..p1.height() / 2 {
-            for x in p1.width() / 2..p1.width() {
-                // move less then half p1 width never fits
-                let score = compare_pieces_x_y_rot(p1, p2, pixels, x as i32, y as i32, r);
-                if score > best_score {
-                    best_score = score;
-                    best_x = x as i32;
-                    best_y = y as i32;
-                    best_r = r as i32;
-                    println!("x={:?} y={:?} r={:?} height={:?} score={:?}",
-                             x,
-                             y,
-                             r,
-                             p1.height(),
-                             score);
-                }
-            }
-        }
-    }
-    return (best_x, best_y, best_r);
 }
 
 // Detect piece color - in my case they are dark blue
@@ -585,7 +318,7 @@ fn main() {
         .unwrap();
 
     let mut renderer = window.renderer().build().unwrap();
-    let mut texture = renderer.load_texture("2.jpg").unwrap();
+    let texture = renderer.load_texture("2.jpg").unwrap();
 
     let TextureQuery { width, height, .. } = texture.query();
 
@@ -652,6 +385,8 @@ fn main() {
                 // The rest of the game loop goes here...
             }
         }
+
+        println!("best_corner_angle={} best_corner_delta={}", best_corner_angle, best_corner_delta);
     }
 }
 
