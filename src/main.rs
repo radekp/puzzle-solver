@@ -25,6 +25,10 @@ const WND_HEIGHT: usize = 1024;
 // Maximum number of pieces
 const MAX_PIECES: usize = 12;
 
+const COL_MASK_MATERIAL: u8 = 1 << 4;
+const COL_MASK_BORDER:u8 = 1 << 7;
+const COL_MASK_JAG:u8 = 1 << 5;
+
 #[derive(Copy, Clone)]
 struct PieceInfo {
     min_x: usize,
@@ -344,14 +348,14 @@ fn compare_pieces(p1: &PieceInfo,
 }
 
 // Detect piece color - in my case they are dark blue
-fn detect_piece(pixels: &mut Vec<u8>, x: usize, y: usize) {
+fn detect_material(pixels: &mut Vec<u8>, x: usize, y: usize) {
     let offset = 3 * (WND_WIDTH * y + x);
     let r = pixels[offset] as i32;
     let b = pixels[offset + 2] as i32;
     if b - r > 30 {
-        pixels[offset] = 32;
-        pixels[offset + 1] = 32;
-        pixels[offset + 2] = 32;
+        pixels[offset] = COL_MASK_MATERIAL;
+        pixels[offset + 1] = COL_MASK_MATERIAL;
+        pixels[offset + 2] = COL_MASK_MATERIAL;
     } else {
         pixels[offset] = 0;
         pixels[offset + 1] = 0;
@@ -367,36 +371,36 @@ fn detect_border(pixels: &mut Vec<u8>, x: usize, y: usize) {
     }
     if x > 0 {
         let offset_xm = 3 * (WND_WIDTH * y + x - 1);
-        if pixels[offset_xm] == 0 {
-            pixels[offset] = 127;
+        if pixels[offset_xm] & COL_MASK_MATERIAL == 0 {
+            pixels[offset] |= COL_MASK_BORDER;
         }
     }
     if y > 0 {
         let offset_ym = 3 * (WND_WIDTH * (y - 1) + x);
-        if pixels[offset_ym] == 0 {
-            pixels[offset] = 127;
+        if pixels[offset_ym] & COL_MASK_MATERIAL == 0 {
+            pixels[offset] |= COL_MASK_BORDER;
         }
     }
     let offset_xp = 3 * (WND_WIDTH * y + x + 1);
-    if pixels[offset_xp] == 0 {
-        pixels[offset] = 127;
+    if pixels[offset_xp] & COL_MASK_MATERIAL == 0 {
+        pixels[offset] |= COL_MASK_BORDER;
     }
     let offset_yp = 3 * (WND_WIDTH * (y + 1) + x);
-    if pixels[offset_yp] == 0 {
-        pixels[offset] = 127;
+    if pixels[offset_yp] & COL_MASK_MATERIAL == 0 {
+        pixels[offset] |= COL_MASK_BORDER;
     }
 }
 
 // Remove jags from puzzle:
 //          __
-//         /  \			< remove this line
+//         /  \			< removes this line
 //        |    |		< and this
-//        \   /         < and this
-//   ------   ------    < keep this line
+//        \   /         < and this, because they are thinner then width_limit
+//   ------   ------    < keeps this line
 //  /               \   < and this line, because they are above width_limit
 //
-fn unjag(pixels: &mut Vec<u8>, max:usize, plus_min_dst: usize, width_limit: usize, height_limit: usize, col_mask_edge: u8, col_mask_jag: u8) {
-	        
+fn detect_jags(pixels: &mut Vec<u8>, max:usize, plus_min_dst: usize, width_limit: usize, height_limit: usize) {
+
 	        // Foreach row
 	        for y in plus_min_dst..max {
 	        	// Compute left and right coordinate
@@ -404,9 +408,9 @@ fn unjag(pixels: &mut Vec<u8>, max:usize, plus_min_dst: usize, width_limit: usiz
                 let mut right = usize::max_value();
                 for x in 0..max {
                     let offset_up = 3 * (WND_WIDTH * (y - plus_min_dst) + x);
-                    if pixels[offset_up] & col_mask_edge == 0 {
+                    if pixels[offset_up] & COL_MASK_BORDER == 0 {
                         let offset_down = 3 * (WND_WIDTH * (y + plus_min_dst) + x);
-                        if pixels[offset_down] & col_mask_edge == 0 {
+                        if pixels[offset_down] & COL_MASK_BORDER == 0 {
                             continue;
                         }
                     }
@@ -416,26 +420,26 @@ fn unjag(pixels: &mut Vec<u8>, max:usize, plus_min_dst: usize, width_limit: usiz
                     right = x;
                 }
                 // Is the shape wide enough?
-                if right - left < width_limit {
+                if right - left >= width_limit {
                     continue;
                 }
                 for x in 0..max {
                     let offset = 3 * (WND_WIDTH * y + x);
-                    if pixels[offset] & col_mask_edge != 0 {
-                        pixels[offset] |= col_mask_jag;
+                    if pixels[offset] & COL_MASK_MATERIAL != 0 {
+                        pixels[offset] |= COL_MASK_JAG;
                     }
                 }
             }
-            
+
    	        // Same for columns
-	        /*for x in plus_min_dst..max {
+	        for x in plus_min_dst..max {
                 let mut top = usize::max_value();
                 let mut bottom = usize::max_value();
                 for y in 0..max {
                     let offset_left = 3 * (WND_WIDTH * y + x - plus_min_dst);
-                    if pixels[offset_left] & col_mask_edge == 0 {
+                    if pixels[offset_left] & COL_MASK_BORDER == 0 {
                         let offset_right = 3 * (WND_WIDTH * y + x + plus_min_dst);
-                        if pixels[offset_right] & col_mask_edge == 0 {
+                        if pixels[offset_right] & COL_MASK_BORDER == 0 {
                             continue;
                         }
                     }
@@ -444,16 +448,16 @@ fn unjag(pixels: &mut Vec<u8>, max:usize, plus_min_dst: usize, width_limit: usiz
                     }
 					bottom = y;
                 }
-                if bottom - top < height_limit {
+                if bottom - top >= height_limit {
                     continue;
                 }
                 for y in 0..max {
                     let offset = 3 * (WND_WIDTH * y + x);
-                    if pixels[offset] & col_mask_edge != 0 {
-                        pixels[offset] |= col_mask_jag;
+                    if pixels[offset] & COL_MASK_MATERIAL != 0 {
+                        pixels[offset] |= COL_MASK_JAG;
                     }
                 }
-            }*/
+            }
 }
 
 
@@ -508,7 +512,7 @@ fn main() {
             // Detect piece
             for y in 0..max {
                 for x in 0..max {
-                    detect_piece(&mut pixels, x, y);
+                    detect_material(&mut pixels, x, y);
                 }
             }
 
@@ -520,7 +524,7 @@ fn main() {
             }
 
 			// Remove jags so that they dont spoil finding corners
-			unjag(&mut pixels, max, max/32, max/6, max/6, 127, 192);
+			detect_jags(&mut pixels, max, max/32, max/6, max/6);
 
 
             let mut best_x: usize = WND_WIDTH;
@@ -531,11 +535,11 @@ fn main() {
             let mut best_bot_y: usize = 0;
             let mut best_bot_dst = usize::max_value();
 
-
             for y in 0..max {
                 for x in 0..max {
                     let offset = 3 * (WND_WIDTH * y + x);
-                    if pixels[offset] != 127 {
+                    let pix = pixels[offset];
+                    if pix & COL_MASK_BORDER == 0 || pix & COL_MASK_JAG != 0 {
                         continue;
                     }
                     let dx = x;
