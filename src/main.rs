@@ -14,6 +14,8 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::image::LoadTexture;
 use sdl2::render::TextureQuery;
+use sdl2::render::Renderer;
+use sdl2::render::Texture;
 
 // Maximal wifth/height for pieces array
 const MAX_WIDTH: usize = 512;
@@ -460,6 +462,115 @@ fn detect_jags(pixels: &mut Vec<u8>, max:usize, plus_min_dst: usize, width_limit
             }
 }
 
+// Find top-left and bottom-left corners and return delta x between them
+fn find_corners_delta(pixels: &mut Vec<u8>, max:usize) -> usize {
+
+    let mut best_x: usize = WND_WIDTH;
+    let mut best_y: usize = WND_HEIGHT;
+    let mut best_dst = usize::max_value();
+
+    let mut best_bot_x: usize = WND_WIDTH;
+    let mut best_bot_y: usize = 0;
+    let mut best_bot_dst = usize::max_value();
+
+    for y in 0..max {
+        for x in 0..max {
+            let offset = 3 * (WND_WIDTH * y + x);
+            let pix = pixels[offset];
+            if pix & COL_MASK_BORDER == 0 || pix & COL_MASK_JAG != 0 {
+                continue;
+            }
+            let dx = x;
+            let dy = y;
+            let dst = dx * dx + dy * dy;
+
+            if dst < best_dst {
+                best_x = x;
+                best_y = y;
+                best_dst = dst;
+            }
+
+            let bx = x;
+            let by = max - y;
+            let bst = bx * bx + by * by;
+
+            if bst < best_bot_dst {
+                best_bot_x = x;
+                best_bot_y = y;
+                best_bot_dst = bst;
+            }
+        }
+    }
+
+    // Draw them
+    for x in 0..best_x + 1 {
+        let offset = 3 * (WND_WIDTH * best_y + x);
+        pixels[offset] = 0;
+        pixels[offset + 1] = 255;
+        pixels[offset + 2] = 0;
+    }
+    for y in 0..best_y + 1 {
+        let offset = 3 * (WND_WIDTH * y + best_x);
+        pixels[offset] = 0;
+        pixels[offset + 1] = 255;
+        pixels[offset + 2] = 0;
+    }
+    for x in 0..best_bot_x + 1 {
+        let offset = 3 * (WND_WIDTH * best_bot_y + x);
+        pixels[offset] = 255;
+        pixels[offset + 2] = 0;
+    }
+    for y in 0..max as usize {
+        if y >= WND_HEIGHT {
+            break;
+        }
+        let offset = 3 * (WND_WIDTH * y + best_bot_x);
+        pixels[offset] = 255;
+        pixels[offset + 2] = 0;
+    }
+
+    return cmp::max(best_x, best_bot_x) - cmp::min(best_x, best_bot_x);
+}
+
+fn rotate_and_find_corners_delta(renderer: &mut Renderer, texture: &Texture, angle: f64, shift: usize, max:usize, width: u32, height:u32) -> (usize, Vec<u8>) {
+
+    println!("angle={}", angle);
+
+    renderer.clear();
+    renderer.copy_ex(&texture,
+                     None,
+                     Some(Rect::new(shift as i32, shift as i32, width, height)),
+                     angle,
+                     None,
+                     false,
+                     false)
+        .unwrap();
+
+    //renderer.present();
+
+    let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, WND_WIDTH as u32, WND_HEIGHT as u32)),
+                                          PixelFormatEnum::RGB24)
+        .unwrap();
+
+    // Detect piece
+    for y in 0..max {
+        for x in 0..max {
+            detect_material(&mut pixels, x, y);
+        }
+    }
+
+    // Detect borders
+    for y in 0..max - 1 {
+        for x in 0..max - 1 {
+            detect_border(&mut pixels, x, y);
+        }
+    }
+
+    // Find jags that could spoil finding corners
+    detect_jags(&mut pixels, max, max/32, max/6, max/6);
+
+    return (find_corners_delta(&mut pixels, max), pixels);
+}
 
 fn main() {
 
@@ -488,139 +599,30 @@ fn main() {
 
     for side in 0..4 {
 
+        let mut best_corner_delta = usize::max_value();
+        let mut best_corner_delta_r = 0;
+
         'rotating: for r in -10..11 {
 
             let angle = 90 * side + r;
             println!("angle={}", angle);
 
-            renderer.clear();
-            renderer.copy_ex(&texture,
-                             None,
-                             Some(Rect::new(shift as i32, shift as i32, width, height)),
-                             angle as f64,
-                             None,
-                             false,
-                             false)
+            let rv = rotate_and_find_corners_delta(&mut renderer, &texture, angle as f64, shift as usize, max, width, height);
+            let corner_delta = rv.0;
+            let pixels = rv.1;
+
+            println!("corner_delta={}", corner_delta);
+            if corner_delta < best_corner_delta {
+                best_corner_delta = corner_delta;
+                best_corner_delta_r = r;
+            }
+
+            let mut res_texture = renderer.create_texture_streaming(PixelFormatEnum::RGB24, WND_WIDTH as u32, WND_HEIGHT as u32)
                 .unwrap();
 
-            //renderer.present();
-
-            let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, WND_WIDTH as u32, WND_HEIGHT as u32)),
-                                                  PixelFormatEnum::RGB24)
-                .unwrap();
-
-            // Detect piece
-            for y in 0..max {
-                for x in 0..max {
-                    detect_material(&mut pixels, x, y);
-                }
-            }
-
-            // Detect borders
-            for y in 0..max - 1 {
-                for x in 0..max - 1 {
-                    detect_border(&mut pixels, x, y);
-                }
-            }
-
-			// Remove jags so that they dont spoil finding corners
-			detect_jags(&mut pixels, max, max/32, max/6, max/6);
-
-
-            let mut best_x: usize = WND_WIDTH;
-            let mut best_y: usize = WND_HEIGHT;
-            let mut best_dst = usize::max_value();
-
-            let mut best_bot_x: usize = WND_WIDTH;
-            let mut best_bot_y: usize = 0;
-            let mut best_bot_dst = usize::max_value();
-
-            for y in 0..max {
-                for x in 0..max {
-                    let offset = 3 * (WND_WIDTH * y + x);
-                    let pix = pixels[offset];
-                    if pix & COL_MASK_BORDER == 0 || pix & COL_MASK_JAG != 0 {
-                        continue;
-                    }
-                    let dx = x;
-                    let dy = y;
-                    let dst = dx * dx + dy * dy;
-
-                    if dst < best_dst {
-                        best_x = x;
-                        best_y = y;
-                        best_dst = dst;
-                        //println!("best dx={} dy={}", dx, dy);
-                    }
-
-                    let bx = x;
-                    let by = max - y;
-                    let bst = bx * bx + by * by;// + mb * mb;
-
-                    if bst < best_bot_dst {
-                        best_bot_x = x;
-                        best_bot_y = y;
-                        best_bot_dst = bst;
-                        //println!("best bot dx={} dy={}", dx, dy);
-                    }
-
-                }
-            }
-
-
-            //println!("best={},{}", best_x, best_y);
-            for x in 0..best_x + 1 {
-                let offset = 3 * (WND_WIDTH * best_y + x);
-                pixels[offset] = 0;
-                pixels[offset + 1] = 255;
-                pixels[offset + 2] = 0;
-            }
-            for y in 0..best_y + 1 {
-                let offset = 3 * (WND_WIDTH * y + best_x);
-                pixels[offset] = 0;
-                pixels[offset + 1] = 255;
-                pixels[offset + 2] = 0;
-            }
-            for x in 0..best_bot_x + 1 {
-                let offset = 3 * (WND_WIDTH * best_bot_y + x);
-                pixels[offset] = 255;
-                pixels[offset + 2] = 0;
-            }
-            for y in 0..max as usize {
-            	if y >= WND_HEIGHT {
-            		break;
-            	}
-                let offset = 3 * (WND_WIDTH * y + best_bot_x);
-                pixels[offset] = 255;
-                pixels[offset + 2] = 0;
-            }
-
-
-            /*        // Find corner
-        let mut iter = near_iter_begin(0, 0, 1);
-        loop {
-            if iter.0 >= 0 && iter.0 < WND_WIDTH && iter.1 >= 0 && iter.1 < WND_HEIGHT {
-                let offset = 3 * (WND_WIDTH * iter.1 + iter.0) as usize;
-                if pixels[offset] != 0 {
-                    pixels[offset] = 0;
-                    pixels[offset+2] = 0;
-                    println!("{},{}", iter.0, iter.1);
-                    break;
-                }
-                pixels[offset] = 128;
-            }
-            iter = near_iter_next(0, 0, iter.0, iter.1, iter.2);
-        }*/
-
-
-
-
-            let mut texture2 = renderer.create_texture_streaming(PixelFormatEnum::RGB24, WND_WIDTH as u32, WND_HEIGHT as u32)
-                .unwrap();
-
-            // Create a red-green gradient
+            // Create texture with result
             let mut index = 0;
-            texture2.with_lock(None, |buffer: &mut [u8], pitch: usize| for y in 0..WND_HEIGHT {
+            res_texture.with_lock(None, |buffer: &mut [u8], pitch: usize| for y in 0..WND_HEIGHT {
                     for x in 0..WND_WIDTH {
                         let offset = y * pitch + x * 3;
                         buffer[offset + 0] = pixels[offset];
@@ -632,7 +634,7 @@ fn main() {
                 .unwrap();
 
             renderer.clear();
-            renderer.copy(&texture2, None, None).unwrap();
+            renderer.copy(&res_texture, None, None).unwrap();
             renderer.present();
 
 
