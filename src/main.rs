@@ -20,6 +20,7 @@ const COL_MASK_MATERIAL: u8 = 1 << 4;
 const COL_MASK_BORDER: u8 = 1 << 7;
 const COL_MASK_JAG: u8 = 1 << 5;
 
+#[derive(Copy, Clone)]
 struct URect {
     min_x: usize,
     min_y: usize,
@@ -143,17 +144,18 @@ fn detect_border(pixels: &mut Vec<u8>, x: usize, y: usize) {
 //  /               \   < and this line, because they are above width_limit
 //
 fn detect_jags(pixels: &mut Vec<u8>,
-               max: usize,
+               sqr: usize,
+               bounds: URect,
                plus_min_dst: usize,
                width_limit: usize,
                height_limit: usize) {
 
     // Foreach row
-    for y in plus_min_dst..max {
+    for y in bounds.min_y..bounds.max_y {
         // Compute left and right coordinate
         let mut left = usize::max_value();
         let mut right = usize::max_value();
-        for x in 0..max {
+        for x in bounds.min_x..bounds.max_x {
             let offset_up = 3 * (WND_WIDTH * (y - plus_min_dst) + x);
             if pixels[offset_up] & COL_MASK_BORDER == 0 {
                 let offset_down = 3 * (WND_WIDTH * (y + plus_min_dst) + x);
@@ -170,7 +172,7 @@ fn detect_jags(pixels: &mut Vec<u8>,
         if right - left >= width_limit {
             continue;
         }
-        for x in 0..max {
+        for x in bounds.min_x..bounds.max_x {
             let offset = 3 * (WND_WIDTH * y + x);
             if pixels[offset] & COL_MASK_MATERIAL != 0 {
                 pixels[offset] |= COL_MASK_JAG;
@@ -179,10 +181,10 @@ fn detect_jags(pixels: &mut Vec<u8>,
     }
 
     // Same for columns
-    for x in plus_min_dst..max {
+    for x in bounds.min_x..bounds.max_x {
         let mut top = usize::max_value();
         let mut bottom = usize::max_value();
-        for y in 0..max {
+        for y in bounds.min_y..bounds.max_y {
             let offset_left = 3 * (WND_WIDTH * y + x - plus_min_dst);
             if pixels[offset_left] & COL_MASK_BORDER == 0 {
                 let offset_right = 3 * (WND_WIDTH * y + x + plus_min_dst);
@@ -198,7 +200,7 @@ fn detect_jags(pixels: &mut Vec<u8>,
         if bottom - top >= height_limit {
             continue;
         }
-        for y in 0..max {
+        for y in bounds.min_y..bounds.max_y {
             let offset = 3 * (WND_WIDTH * y + x);
             if pixels[offset] & COL_MASK_MATERIAL != 0 {
                 pixels[offset] |= COL_MASK_JAG;
@@ -208,7 +210,7 @@ fn detect_jags(pixels: &mut Vec<u8>,
 }
 
 // Find top-left and bottom-left corners and return delta x between them
-fn find_corners_delta(pixels: &mut Vec<u8>, max: usize) -> usize {
+fn find_corners_delta(pixels: &mut Vec<u8>, sqr:usize, bounds: URect) -> usize {
 
     let mut best_x: usize = WND_WIDTH;
     let mut best_y: usize = WND_HEIGHT;
@@ -218,8 +220,8 @@ fn find_corners_delta(pixels: &mut Vec<u8>, max: usize) -> usize {
     let mut best_bot_y: usize = 0;
     let mut best_bot_dst = usize::max_value();
 
-    for y in 0..max {
-        for x in 0..max {
+    for y in bounds.min_y..bounds.max_y {
+        for x in bounds.min_x..bounds.max_x {
             let offset = 3 * (WND_WIDTH * y + x);
             let pix = pixels[offset];
             if pix & COL_MASK_BORDER == 0 || pix & COL_MASK_JAG != 0 {
@@ -236,7 +238,7 @@ fn find_corners_delta(pixels: &mut Vec<u8>, max: usize) -> usize {
             }
 
             let bx = x;
-            let by = max - y;
+            let by = sqr - y;
             let bst = bx * bx + by * by;
 
             if bst < best_bot_dst {
@@ -265,7 +267,7 @@ fn find_corners_delta(pixels: &mut Vec<u8>, max: usize) -> usize {
         pixels[offset] = 255;
         pixels[offset + 2] = 0;
     }
-    for y in 0..max as usize {
+    for y in 0..sqr as usize {
         if y >= WND_HEIGHT {
             break;
         }
@@ -331,9 +333,9 @@ fn rotate_and_find_corners_delta(renderer: &mut Renderer,
     }
 
     // Find jags that could spoil finding corners
-    detect_jags(&mut pixels, sqr, sqr / 32, sqr / 6, sqr / 6);
+    detect_jags(&mut pixels, sqr, bounds, sqr / 32, sqr / 6, sqr / 6);
 
-    return (find_corners_delta(&mut pixels, sqr), pixels);
+    return (find_corners_delta(&mut pixels, sqr, bounds), pixels);
 }
 
 fn main() {
