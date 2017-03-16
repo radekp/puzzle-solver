@@ -212,7 +212,7 @@ fn detect_jags(pixels: &mut Vec<u8>,
 }
 
 // Find top-left and bottom-left corners and return delta x between them
-fn find_corners_delta(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) -> usize {
+fn find_corners_delta(pixels: &mut Vec<u8>, sqr: usize, bounds: URect, draw_corners: bool) -> usize {
 
     let mut best_x: usize = WND_WIDTH;
     let mut best_y: usize = WND_HEIGHT;
@@ -250,32 +250,34 @@ fn find_corners_delta(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) -> usize 
             }
         }
     }
+    
+    if draw_corners {
 
-    // Draw them
-    for x in 0..best_x + 1 {
-        let offset = 3 * (WND_WIDTH * best_y + x);
-        pixels[offset] = 0;
-        pixels[offset + 1] = 255;
-        pixels[offset + 2] = 0;
-    }
-    for y in 0..best_y + 1 {
-        let offset = 3 * (WND_WIDTH * y + best_x);
-        pixels[offset] = 0;
-        pixels[offset + 1] = 255;
-        pixels[offset + 2] = 0;
-    }
-    for x in 0..best_bot_x + 1 {
-        let offset = 3 * (WND_WIDTH * best_bot_y + x);
-        pixels[offset] = 255;
-        pixels[offset + 2] = 0;
-    }
-    for y in 0..sqr as usize {
-        if y >= WND_HEIGHT {
-            break;
-        }
-        let offset = 3 * (WND_WIDTH * y + best_bot_x);
-        pixels[offset] = 255;
-        pixels[offset + 2] = 0;
+		for x in 0..best_x + 1 {
+		    let offset = 3 * (WND_WIDTH * best_y + x);
+		    pixels[offset] = 0;
+		    pixels[offset + 1] = 255;
+		    pixels[offset + 2] = 0;
+		}
+		for y in 0..best_y + 1 {
+		    let offset = 3 * (WND_WIDTH * y + best_x);
+		    pixels[offset] = 0;
+		    pixels[offset + 1] = 255;
+		    pixels[offset + 2] = 0;
+		}
+		for x in 0..best_bot_x + 1 {
+		    let offset = 3 * (WND_WIDTH * best_bot_y + x);
+		    pixels[offset] = 255;
+		    pixels[offset + 2] = 0;
+		}
+		for y in 0..sqr as usize {
+		    if y >= WND_HEIGHT {
+		        break;
+		    }
+		    let offset = 3 * (WND_WIDTH * y + best_bot_x);
+		    pixels[offset] = 255;
+		    pixels[offset + 2] = 0;
+		}
     }
 
     return cmp::max(best_x, best_bot_x) - cmp::min(best_x, best_bot_x);
@@ -287,7 +289,8 @@ fn rotate_and_find_corners_delta(renderer: &mut Renderer,
                                  shift: usize,
                                  sqr: usize,
                                  width: u32,
-                                 height: u32)
+                                 height: u32,
+                                 draw_corners: bool)
                                  -> (usize, Vec<u8>) {
 
     println!("angle={}", angle);
@@ -342,7 +345,7 @@ fn rotate_and_find_corners_delta(renderer: &mut Renderer,
     // Find jags that could spoil finding corners
     detect_jags(&mut pixels, sqr, bounds, sqr / 32, sqr / 6, sqr / 6);
 
-    return (find_corners_delta(&mut pixels, sqr, bounds), pixels);
+    return (find_corners_delta(&mut pixels, sqr, bounds, draw_corners), pixels);
 }
 
 enum UserAction {
@@ -428,7 +431,8 @@ fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
                                                    shift as usize,
                                                    sqr,
                                                    width,
-                                                   height);
+                                                   height,
+                                                   true);
             let corner_delta = rv.0;
             let pixels = rv.1;
 
@@ -450,7 +454,8 @@ fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
                                                shift as usize,
                                                sqr,
                                                width,
-                                               height);
+                                               height,
+                                               false);
 
         let pixels = rv.1;
         display_pixels(&pixels, sdl_context, &mut renderer);
