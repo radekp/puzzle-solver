@@ -360,7 +360,7 @@ fn fill_edge(pixels: &mut Vec<u8>, x: usize, y: usize) -> bool {
 	return true;
 }
 
-fn fill_edge_rec(pixels: &mut Vec<u8>, edge1: &mut Vec<(usize,usize)>, edge2: &mut Vec<(usize,usize)>, x: usize, y: usize, top_x: usize, top_y: usize, col: &mut u8, dst: usize) {
+fn fill_edge_rec(pixels: &mut Vec<u8>, edge1: &mut Vec<(usize,usize)>, edge2: &mut Vec<(usize,usize)>, x: usize, y: usize, top_x: usize, top_y: usize, col: &mut u8) {
 
     let offset = 3 * (WND_WIDTH * y + x);
 	if pixels[offset] & RED_MASK_BORDER == 0 {     // not border
@@ -379,21 +379,19 @@ fn fill_edge_rec(pixels: &mut Vec<u8>, edge1: &mut Vec<(usize,usize)>, edge2: &m
         edge2.push((x,y));
     }
 
-    let mut res = dst + 1;
-
     if x == top_x && y == top_y {       // reached the second corner
         *col = GREEN_MASK_EDGE_2;       // swap color
-        return dst;
+        return;
     }
 
-    res = fill_edge_rec(pixels, edge1, edge2, x + 1, y, top_x, top_y, col, res);
-	res = fill_edge_rec(pixels, edge1, edge2, x - 1, y, top_x, top_y, col, res);
-	res = fill_edge_rec(pixels, edge1, edge2, x, y + 1, top_x, top_y, col, res);
-	res = fill_edge_rec(pixels, edge1, edge2, x, y - 1, top_x, top_y, col, res);
-	res = fill_edge_rec(pixels, edge1, edge2, x + 1, y + 1, top_x, top_y, col, res);
-	res = fill_edge_rec(pixels, edge1, edge2, x - 1, y + 1, top_x, top_y, col, res);
-	res = fill_edge_rec(pixels, edge1, edge2, x + 1, y - 1, top_x, top_y, col, res);
-	fill_edge_rec(pixels, edge1, edge2, x - 1, y - 1, top_x, top_y, col, res)
+    fill_edge_rec(pixels, edge1, edge2, x + 1, y, top_x, top_y, col);
+	fill_edge_rec(pixels, edge1, edge2, x - 1, y, top_x, top_y, col);
+	fill_edge_rec(pixels, edge1, edge2, x, y + 1, top_x, top_y, col);
+	fill_edge_rec(pixels, edge1, edge2, x, y - 1, top_x, top_y, col);
+	fill_edge_rec(pixels, edge1, edge2, x + 1, y + 1, top_x, top_y, col);
+	fill_edge_rec(pixels, edge1, edge2, x - 1, y + 1, top_x, top_y, col);
+	fill_edge_rec(pixels, edge1, edge2, x + 1, y - 1, top_x, top_y, col);
+	fill_edge_rec(pixels, edge1, edge2, x - 1, y - 1, top_x, top_y, col);
 }
 
 fn find_edge(pixels: &mut Vec<u8>, top_x: usize, top_y: usize, bot_x: usize, bot_y: usize) {
@@ -401,11 +399,8 @@ fn find_edge(pixels: &mut Vec<u8>, top_x: usize, top_y: usize, bot_x: usize, bot
     let mut edge1 = vec![];
     let mut edge2 = vec![];
 
-	let fill_res = fill_edge_rec(pixels, &mut edge1, &mut edge2, bot_x, bot_y, top_x, top_y, &mut GREEN_MASK_EDGE_1, 0);
-    println!("fill_res {} edge1={} edge2={}", edge1.len(), edge2.len(), fill_res);
-
-	return;
-
+	fill_edge_rec(pixels, &mut edge1, &mut edge2, bot_x, bot_y, top_x, top_y, &mut GREEN_MASK_EDGE_1);
+    println!("edge1={} edge2={}", edge1.len(), edge2.len());
 }
 
 enum UserAction {
