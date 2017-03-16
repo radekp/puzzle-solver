@@ -22,7 +22,9 @@ const RED_MASK_MATERIAL: u8 = 1 << 4;
 const RED_MASK_BORDER: u8 = 1 << 7;
 const RED_MASK_JAG: u8 = 1 << 5;
 
-const GREEN_MASK_CORNER: u8 = 1 << 7;
+const GREEN_MASK_TOP_CORNER: u8 = 1 << 7;
+const GREEN_MASK_BOT_CORNER: u8 = 1 << 6;
+const GREEN_MASK_EDGE: u8 = 1 << 5;
 
 #[derive(Copy, Clone)]
 struct URect {
@@ -352,6 +354,55 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
 	return (rv.0,rv.1,rv.2,rv.3,pixels);
 }
 
+fn fill_edge(pixels: &mut Vec<u8>, x: usize, y: usize) -> bool {
+
+	let offset = 3 * (WND_WIDTH * y + x);
+	if pixels[offset] & RED_MASK_BORDER == 0 {
+		return false;
+	}
+	pixels[offset+1] = GREEN_MASK_EDGE;
+	return true;
+}
+
+fn fill_edge_rec(pixels: &mut Vec<u8>, x: usize, y: usize) {
+
+	if !fill_edge(pixels, x, y) {
+		return;
+	}
+	fill_edge_rec(pixels, x + 1, y);
+	fill_edge_rec(pixels, x - 1, y);
+	fill_edge_rec(pixels, x, y + 1);
+	fill_edge_rec(pixels, x, y - 1);
+	fill_edge_rec(pixels, x + 1, y + 1);
+	fill_edge_rec(pixels, x - 1, y + 1);
+	fill_edge_rec(pixels, x + 1, y - 1);
+	fill_edge_rec(pixels, x - 1, y - 1);
+}
+
+fn find_edge(pixels: &mut Vec<u8>, top_x: usize, top_y: usize, bot_x: usize, bot_y: usize) {
+	
+	let offset = 3 * (WND_WIDTH * top_y + top_x);
+	pixels[offset+1] = GREEN_MASK_TOP_CORNER;
+
+	let offset = 3 * (WND_WIDTH * bot_y + bot_x);
+	pixels[offset+1] = GREEN_MASK_BOT_CORNER;
+
+	let ok =
+		fill_edge(pixels, top_x + 1, top_y) ||
+		fill_edge(pixels, top_x - 1, top_y) ||
+		fill_edge(pixels, top_x, top_y + 1) ||
+		fill_edge(pixels, top_x, top_y - 1) ||
+		fill_edge(pixels, top_x + 1, top_y + 1) ||
+		fill_edge(pixels, top_x - 1, top_y + 1) ||
+		fill_edge(pixels, top_x + 1, top_y - 1) ||
+		fill_edge(pixels, top_x - 1, top_y - 1);
+
+	fill_edge_rec(pixels, top_x, top_y);
+	
+	return;
+
+}
+
 enum UserAction {
     Rotate,
     Quit,
@@ -473,12 +524,8 @@ fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
 		let bot_y = rv.3;
         let mut pixels = rv.4;
 
-	    let offset = 3 * (WND_WIDTH * top_y + top_x);
-	    pixels[offset+1] = GREEN_MASK_CORNER;
-
-	    let offset = 3 * (WND_WIDTH * bot_y + bot_x);
-	    pixels[offset+1] = GREEN_MASK_CORNER;
-
+	 	find_edge(&mut pixels, top_x, top_y, bot_x, bot_y);
+	 
         display_pixels(&pixels, sdl_context, &mut renderer);
     }
 }
