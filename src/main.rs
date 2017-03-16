@@ -22,9 +22,10 @@ const RED_MASK_MATERIAL: u8 = 1 << 4;
 const RED_MASK_BORDER: u8 = 1 << 7;
 const RED_MASK_JAG: u8 = 1 << 5;
 
-const GREEN_MASK_TOP_CORNER: u8 = 1 << 7;
+const GREEN_MASK_TOP_CORNER: u8 = 1 << 5;
 const GREEN_MASK_BOT_CORNER: u8 = 1 << 6;
-const GREEN_MASK_EDGE: u8 = 1 << 5;
+const GREEN_MASK_EDGE_1: u8 = 1 << 5;
+const GREEN_MASK_EDGE_2: u8 = 1 << 7;
 
 #[derive(Copy, Clone)]
 struct URect {
@@ -254,7 +255,7 @@ fn find_corners(pixels: &mut Vec<u8>, sqr: usize, bounds: URect, draw_corners: b
             }
         }
     }
-    
+
     if draw_corners {
 
 		for x in 0..best_x + 1 {
@@ -350,55 +351,59 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     detect_jags(&mut pixels, sqr, bounds, sqr / 32, sqr / 6, sqr / 6);
 
 	let rv = find_corners(&mut pixels, sqr, bounds, draw_corners);
-	
+
 	return (rv.0,rv.1,rv.2,rv.3,pixels);
 }
 
 fn fill_edge(pixels: &mut Vec<u8>, x: usize, y: usize) -> bool {
 
-	let offset = 3 * (WND_WIDTH * y + x);
-	if pixels[offset] & RED_MASK_BORDER == 0 {
-		return false;
-	}
-	pixels[offset+1] = GREEN_MASK_EDGE;
 	return true;
 }
 
-fn fill_edge_rec(pixels: &mut Vec<u8>, x: usize, y: usize) {
+fn fill_edge_rec(pixels: &mut Vec<u8>, edge1: &mut Vec<(usize,usize)>, edge2: &mut Vec<(usize,usize)>, x: usize, y: usize, top_x: usize, top_y: usize, col: &mut u8, dst: usize) {
 
-	if !fill_edge(pixels, x, y) {
+    let offset = 3 * (WND_WIDTH * y + x);
+	if pixels[offset] & RED_MASK_BORDER == 0 {     // not border
 		return;
 	}
-	fill_edge_rec(pixels, x + 1, y);
-	fill_edge_rec(pixels, x - 1, y);
-	fill_edge_rec(pixels, x, y + 1);
-	fill_edge_rec(pixels, x, y - 1);
-	fill_edge_rec(pixels, x + 1, y + 1);
-	fill_edge_rec(pixels, x - 1, y + 1);
-	fill_edge_rec(pixels, x + 1, y - 1);
-	fill_edge_rec(pixels, x - 1, y - 1);
+    if pixels[offset + 1] & GREEN_MASK_EDGE_1 != 0 {        // already filled
+        return;
+    }
+    if pixels[offset + 1] & GREEN_MASK_EDGE_2 != 0 {        // already filled
+        return;
+    }
+	pixels[offset+1] |= *col;
+    if *col == GREEN_MASK_EDGE_1 {
+        edge1.push((x,y));
+    } else {
+        edge2.push((x,y));
+    }
+
+    let mut res = dst + 1;
+
+    if x == top_x && y == top_y {       // reached the second corner
+        *col = GREEN_MASK_EDGE_2;       // swap color
+        return dst;
+    }
+
+    res = fill_edge_rec(pixels, edge1, edge2, x + 1, y, top_x, top_y, col, res);
+	res = fill_edge_rec(pixels, edge1, edge2, x - 1, y, top_x, top_y, col, res);
+	res = fill_edge_rec(pixels, edge1, edge2, x, y + 1, top_x, top_y, col, res);
+	res = fill_edge_rec(pixels, edge1, edge2, x, y - 1, top_x, top_y, col, res);
+	res = fill_edge_rec(pixels, edge1, edge2, x + 1, y + 1, top_x, top_y, col, res);
+	res = fill_edge_rec(pixels, edge1, edge2, x - 1, y + 1, top_x, top_y, col, res);
+	res = fill_edge_rec(pixels, edge1, edge2, x + 1, y - 1, top_x, top_y, col, res);
+	fill_edge_rec(pixels, edge1, edge2, x - 1, y - 1, top_x, top_y, col, res)
 }
 
 fn find_edge(pixels: &mut Vec<u8>, top_x: usize, top_y: usize, bot_x: usize, bot_y: usize) {
-	
-	let offset = 3 * (WND_WIDTH * top_y + top_x);
-	pixels[offset+1] = GREEN_MASK_TOP_CORNER;
 
-	let offset = 3 * (WND_WIDTH * bot_y + bot_x);
-	pixels[offset+1] = GREEN_MASK_BOT_CORNER;
+    let mut edge1 = vec![];
+    let mut edge2 = vec![];
 
-	let ok =
-		fill_edge(pixels, top_x + 1, top_y) ||
-		fill_edge(pixels, top_x - 1, top_y) ||
-		fill_edge(pixels, top_x, top_y + 1) ||
-		fill_edge(pixels, top_x, top_y - 1) ||
-		fill_edge(pixels, top_x + 1, top_y + 1) ||
-		fill_edge(pixels, top_x - 1, top_y + 1) ||
-		fill_edge(pixels, top_x + 1, top_y - 1) ||
-		fill_edge(pixels, top_x - 1, top_y - 1);
+	let fill_res = fill_edge_rec(pixels, &mut edge1, &mut edge2, bot_x, bot_y, top_x, top_y, &mut GREEN_MASK_EDGE_1, 0);
+    println!("fill_res {} edge1={} edge2={}", edge1.len(), edge2.len(), fill_res);
 
-	fill_edge_rec(pixels, top_x, top_y);
-	
 	return;
 
 }
@@ -494,9 +499,9 @@ fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
 			let bot_x = rv.2;
 			let bot_y = rv.3;
             let pixels = rv.4;
-                                                   
+
             let corner_delta =  cmp::max(top_x, bot_x) - cmp::min(top_x, bot_x);;
-            
+
             println!("corner_delta={}", corner_delta);
             if corner_delta < best_corner_delta {
                 best_corner_delta = corner_delta;
@@ -525,7 +530,7 @@ fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
         let mut pixels = rv.4;
 
 	 	find_edge(&mut pixels, top_x, top_y, bot_x, bot_y);
-	 
+
         display_pixels(&pixels, sdl_context, &mut renderer);
     }
 }
