@@ -18,9 +18,11 @@ use sdl2::video::Window;
 const WND_WIDTH: usize = 1024;
 const WND_HEIGHT: usize = 1024;
 
-const COL_MASK_MATERIAL: u8 = 1 << 4;
-const COL_MASK_BORDER: u8 = 1 << 7;
-const COL_MASK_JAG: u8 = 1 << 5;
+const RED_MASK_MATERIAL: u8 = 1 << 4;
+const RED_MASK_BORDER: u8 = 1 << 7;
+const RED_MASK_JAG: u8 = 1 << 5;
+
+const GREEN_MASK_CORNER: u8 = 1 << 7;
 
 #[derive(Copy, Clone)]
 struct URect {
@@ -98,9 +100,9 @@ fn detect_material(pixels: &mut Vec<u8>, x: usize, y: usize) -> bool {
     let r = pixels[offset] as i32;
     let b = pixels[offset + 2] as i32;
     if b - r > 30 {
-        pixels[offset] = COL_MASK_MATERIAL;
-        pixels[offset + 1] = COL_MASK_MATERIAL;
-        pixels[offset + 2] = COL_MASK_MATERIAL;
+        pixels[offset] = RED_MASK_MATERIAL;
+        pixels[offset + 1] = RED_MASK_MATERIAL;
+        pixels[offset + 2] = RED_MASK_MATERIAL;
         return true;
     }
     pixels[offset] = 0;
@@ -117,23 +119,23 @@ fn detect_border(pixels: &mut Vec<u8>, x: usize, y: usize) {
     }
     if x > 0 {
         let offset_xm = 3 * (WND_WIDTH * y + x - 1);
-        if pixels[offset_xm] & COL_MASK_MATERIAL == 0 {
-            pixels[offset] |= COL_MASK_BORDER;
+        if pixels[offset_xm] & RED_MASK_MATERIAL == 0 {
+            pixels[offset] |= RED_MASK_BORDER;
         }
     }
     if y > 0 {
         let offset_ym = 3 * (WND_WIDTH * (y - 1) + x);
-        if pixels[offset_ym] & COL_MASK_MATERIAL == 0 {
-            pixels[offset] |= COL_MASK_BORDER;
+        if pixels[offset_ym] & RED_MASK_MATERIAL == 0 {
+            pixels[offset] |= RED_MASK_BORDER;
         }
     }
     let offset_xp = 3 * (WND_WIDTH * y + x + 1);
-    if pixels[offset_xp] & COL_MASK_MATERIAL == 0 {
-        pixels[offset] |= COL_MASK_BORDER;
+    if pixels[offset_xp] & RED_MASK_MATERIAL == 0 {
+        pixels[offset] |= RED_MASK_BORDER;
     }
     let offset_yp = 3 * (WND_WIDTH * (y + 1) + x);
-    if pixels[offset_yp] & COL_MASK_MATERIAL == 0 {
-        pixels[offset] |= COL_MASK_BORDER;
+    if pixels[offset_yp] & RED_MASK_MATERIAL == 0 {
+        pixels[offset] |= RED_MASK_BORDER;
     }
 }
 
@@ -159,9 +161,9 @@ fn detect_jags(pixels: &mut Vec<u8>,
         let mut right = usize::max_value();
         for x in bounds.min_x..bounds.max_x {
             let offset_up = 3 * (WND_WIDTH * (y - plus_min_dst) + x);
-            if pixels[offset_up] & COL_MASK_BORDER == 0 {
+            if pixels[offset_up] & RED_MASK_BORDER == 0 {
                 let offset_down = 3 * (WND_WIDTH * (y + plus_min_dst) + x);
-                if pixels[offset_down] & COL_MASK_BORDER == 0 {
+                if pixels[offset_down] & RED_MASK_BORDER == 0 {
                     continue;
                 }
             }
@@ -176,8 +178,8 @@ fn detect_jags(pixels: &mut Vec<u8>,
         }
         for x in bounds.min_x..bounds.max_x {
             let offset = 3 * (WND_WIDTH * y + x);
-            if pixels[offset] & COL_MASK_MATERIAL != 0 {
-                pixels[offset] |= COL_MASK_JAG;
+            if pixels[offset] & RED_MASK_MATERIAL != 0 {
+                pixels[offset] |= RED_MASK_JAG;
             }
         }
     }
@@ -188,9 +190,9 @@ fn detect_jags(pixels: &mut Vec<u8>,
         let mut bottom = usize::max_value();
         for y in bounds.min_y..bounds.max_y {
             let offset_left = 3 * (WND_WIDTH * y + x - plus_min_dst);
-            if pixels[offset_left] & COL_MASK_BORDER == 0 {
+            if pixels[offset_left] & RED_MASK_BORDER == 0 {
                 let offset_right = 3 * (WND_WIDTH * y + x + plus_min_dst);
-                if pixels[offset_right] & COL_MASK_BORDER == 0 {
+                if pixels[offset_right] & RED_MASK_BORDER == 0 {
                     continue;
                 }
             }
@@ -204,8 +206,8 @@ fn detect_jags(pixels: &mut Vec<u8>,
         }
         for y in bounds.min_y..bounds.max_y {
             let offset = 3 * (WND_WIDTH * y + x);
-            if pixels[offset] & COL_MASK_MATERIAL != 0 {
-                pixels[offset] |= COL_MASK_JAG;
+            if pixels[offset] & RED_MASK_MATERIAL != 0 {
+                pixels[offset] |= RED_MASK_JAG;
             }
         }
     }
@@ -226,7 +228,7 @@ fn find_corners(pixels: &mut Vec<u8>, sqr: usize, bounds: URect, draw_corners: b
         for x in bounds.min_x..bounds.max_x {
             let offset = 3 * (WND_WIDTH * y + x);
             let pix = pixels[offset];
-            if pix & COL_MASK_BORDER == 0 || pix & COL_MASK_JAG != 0 {
+            if pix & RED_MASK_BORDER == 0 || pix & RED_MASK_JAG != 0 {
                 continue;
             }
             let dx = x;
@@ -469,7 +471,14 @@ fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
 		let top_y = rv.1;
 		let bot_x = rv.2;
 		let bot_y = rv.3;
-        let pixels = rv.4;
+        let mut pixels = rv.4;
+
+	    let offset = 3 * (WND_WIDTH * top_y + top_x);
+	    pixels[offset+1] = GREEN_MASK_CORNER;
+
+	    let offset = 3 * (WND_WIDTH * bot_y + bot_x);
+	    pixels[offset+1] = GREEN_MASK_CORNER;
+
         display_pixels(&pixels, sdl_context, &mut renderer);
     }
 }
