@@ -217,7 +217,11 @@ fn detect_jags(pixels: &mut Vec<u8>,
 }
 
 // Find top-left and bottom-left corners and return delta x between them
-fn find_corners(pixels: &mut Vec<u8>, sqr: usize, bounds: URect, draw_corners: bool) -> (usize,usize,usize,usize) {
+fn find_corners(pixels: &mut Vec<u8>,
+                sqr: usize,
+                bounds: URect,
+                draw_corners: bool)
+                -> (usize, usize, usize, usize) {
 
     let mut best_x: usize = WND_WIDTH;
     let mut best_y: usize = WND_HEIGHT;
@@ -258,63 +262,63 @@ fn find_corners(pixels: &mut Vec<u8>, sqr: usize, bounds: URect, draw_corners: b
 
     if draw_corners {
 
-		for x in 0..best_x + 1 {
-		    let offset = 3 * (WND_WIDTH * best_y + x);
-		    pixels[offset] = 0;
-		    pixels[offset + 1] = 255;
-		    pixels[offset + 2] = 0;
-		}
-		for y in 0..best_y + 1 {
-		    let offset = 3 * (WND_WIDTH * y + best_x);
-		    pixels[offset] = 0;
-		    pixels[offset + 1] = 255;
-		    pixels[offset + 2] = 0;
-		}
-		for x in 0..best_bot_x + 1 {
-		    let offset = 3 * (WND_WIDTH * best_bot_y + x);
-		    pixels[offset] = 255;
-		    pixels[offset + 2] = 0;
-		}
-		for y in 0..sqr as usize {
-		    if y >= WND_HEIGHT {
-		        break;
-		    }
-		    let offset = 3 * (WND_WIDTH * y + best_bot_x);
-		    pixels[offset] = 255;
-		    pixels[offset + 2] = 0;
-		}
+        for x in 0..best_x + 1 {
+            let offset = 3 * (WND_WIDTH * best_y + x);
+            pixels[offset] = 0;
+            pixels[offset + 1] = 255;
+            pixels[offset + 2] = 0;
+        }
+        for y in 0..best_y + 1 {
+            let offset = 3 * (WND_WIDTH * y + best_x);
+            pixels[offset] = 0;
+            pixels[offset + 1] = 255;
+            pixels[offset + 2] = 0;
+        }
+        for x in 0..best_bot_x + 1 {
+            let offset = 3 * (WND_WIDTH * best_bot_y + x);
+            pixels[offset] = 255;
+            pixels[offset + 2] = 0;
+        }
+        for y in 0..sqr as usize {
+            if y >= WND_HEIGHT {
+                break;
+            }
+            let offset = 3 * (WND_WIDTH * y + best_bot_x);
+            pixels[offset] = 255;
+            pixels[offset + 2] = 0;
+        }
     }
 
     return (best_x, best_y, best_bot_x, best_bot_y);
 }
 
 fn rotate_and_find_corners(renderer: &mut Renderer,
-                                 texture: &Texture,
-                                 angle: f64,
-                                 shift: usize,
-                                 sqr: usize,
-                                 width: u32,
-                                 height: u32,
-                                 draw_corners: bool)
-                                 -> (usize,usize,usize,usize,Vec<u8>) {
+                           texture: &Texture,
+                           angle: f64,
+                           shift: usize,
+                           sqr: usize,
+                           width: u32,
+                           height: u32,
+                           draw_corners: bool)
+                           -> (usize, usize, usize, usize, Vec<u8>) {
 
     println!("angle={}", angle);
 
     renderer.clear();
     renderer.copy_ex(&texture,
-                 None,
-                 Some(Rect::new(shift as i32, shift as i32, width, height)),
-                 angle,
-                 None,
-                 false,
-                 false)
+                     None,
+                     Some(Rect::new(shift as i32, shift as i32, width, height)),
+                     angle,
+                     None,
+                     false,
+                     false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels =
         renderer.read_pixels(Some(Rect::new(0, 0, WND_WIDTH as u32, WND_HEIGHT as u32)),
-                         PixelFormatEnum::RGB24)
+                             PixelFormatEnum::RGB24)
             .unwrap();
 
     // Detect piece and bounds
@@ -350,43 +354,54 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     // Find jags that could spoil finding corners
     detect_jags(&mut pixels, bounds, sqr / 32, sqr / 6, sqr / 6);
 
-	let rv = find_corners(&mut pixels, sqr, bounds, draw_corners);
+    let rv = find_corners(&mut pixels, sqr, bounds, draw_corners);
 
-	return (rv.0,rv.1,rv.2,rv.3,pixels);
+    return (rv.0, rv.1, rv.2, rv.3, pixels);
 }
 
-fn fill_edge_rec(pixels: &mut Vec<u8>, edge1: &mut Vec<(usize,usize)>, edge2: &mut Vec<(usize,usize)>, x: usize, y: usize, top_x: usize, top_y: usize, col: &mut u8) {
+fn fill_edge_rec(pixels: &mut Vec<u8>,
+                 edge1: &mut Vec<(usize, usize)>,
+                 edge2: &mut Vec<(usize, usize)>,
+                 x: usize,
+                 y: usize,
+                 top_x: usize,
+                 top_y: usize,
+                 col: &mut u8) {
 
     let offset = 3 * (WND_WIDTH * y + x);
-	if pixels[offset] & RED_MASK_BORDER == 0 {     // not border
-		return;
-	}
-    if pixels[offset + 1] & GREEN_MASK_EDGE_1 != 0 {        // already filled
+    if pixels[offset] & RED_MASK_BORDER == 0 {
+        // not border
         return;
     }
-    if pixels[offset + 1] & GREEN_MASK_EDGE_2 != 0 {        // already filled
+    if pixels[offset + 1] & GREEN_MASK_EDGE_1 != 0 {
+        // already filled
         return;
     }
-	pixels[offset+1] |= *col;
+    if pixels[offset + 1] & GREEN_MASK_EDGE_2 != 0 {
+        // already filled
+        return;
+    }
+    pixels[offset + 1] |= *col;
     if *col == GREEN_MASK_EDGE_1 {
-        edge1.push((x,y));
+        edge1.push((x, y));
     } else {
-        edge2.push((x,y));
+        edge2.push((x, y));
     }
 
-    if x == top_x && y == top_y {       // reached the second corner
-        *col = GREEN_MASK_EDGE_2;       // swap color
+    if x == top_x && y == top_y {
+        // reached the second corner
+        *col = GREEN_MASK_EDGE_2; // swap color
         return;
     }
 
     fill_edge_rec(pixels, edge1, edge2, x + 1, y, top_x, top_y, col);
-	fill_edge_rec(pixels, edge1, edge2, x - 1, y, top_x, top_y, col);
-	fill_edge_rec(pixels, edge1, edge2, x, y + 1, top_x, top_y, col);
-	fill_edge_rec(pixels, edge1, edge2, x, y - 1, top_x, top_y, col);
-	fill_edge_rec(pixels, edge1, edge2, x + 1, y + 1, top_x, top_y, col);
-	fill_edge_rec(pixels, edge1, edge2, x - 1, y + 1, top_x, top_y, col);
-	fill_edge_rec(pixels, edge1, edge2, x + 1, y - 1, top_x, top_y, col);
-	fill_edge_rec(pixels, edge1, edge2, x - 1, y - 1, top_x, top_y, col);
+    fill_edge_rec(pixels, edge1, edge2, x - 1, y, top_x, top_y, col);
+    fill_edge_rec(pixels, edge1, edge2, x, y + 1, top_x, top_y, col);
+    fill_edge_rec(pixels, edge1, edge2, x, y - 1, top_x, top_y, col);
+    fill_edge_rec(pixels, edge1, edge2, x + 1, y + 1, top_x, top_y, col);
+    fill_edge_rec(pixels, edge1, edge2, x - 1, y + 1, top_x, top_y, col);
+    fill_edge_rec(pixels, edge1, edge2, x + 1, y - 1, top_x, top_y, col);
+    fill_edge_rec(pixels, edge1, edge2, x - 1, y - 1, top_x, top_y, col);
 }
 
 fn find_edge(pixels: &mut Vec<u8>, top_x: usize, top_y: usize, bot_x: usize, bot_y: usize) {
@@ -394,7 +409,14 @@ fn find_edge(pixels: &mut Vec<u8>, top_x: usize, top_y: usize, bot_x: usize, bot
     let mut edge1 = vec![];
     let mut edge2 = vec![];
 
-	fill_edge_rec(pixels, &mut edge1, &mut edge2, bot_x, bot_y, top_x, top_y, &mut GREEN_MASK_EDGE_1);
+    fill_edge_rec(pixels,
+                  &mut edge1,
+                  &mut edge2,
+                  bot_x,
+                  bot_y,
+                  top_x,
+                  top_y,
+                  &mut GREEN_MASK_EDGE_1);
     println!("edge1={} edge2={}", edge1.len(), edge2.len());
 }
 
@@ -409,22 +431,22 @@ fn display_pixels(pixels: &Vec<u8>,
                   -> UserAction {
 
     let mut res_texture = renderer.create_texture_streaming(PixelFormatEnum::RGB24,
-                                  WND_WIDTH as u32,
-                                  WND_HEIGHT as u32)
+                                                            WND_WIDTH as u32,
+                                                            WND_HEIGHT as u32)
         .unwrap();
 
     // Create texture with result
     let mut index = 0;
     res_texture.with_lock(None,
-                   |buffer: &mut [u8], pitch: usize| for y in 0..WND_HEIGHT {
-                       for x in 0..WND_WIDTH {
-                           let offset = y * pitch + x * 3;
-                           buffer[offset + 0] = pixels[offset];
-                           buffer[offset + 1] = pixels[offset + 1];
-                           buffer[offset + 2] = pixels[offset + 2];
-                           index += 1;
-                       }
-                   })
+                          |buffer: &mut [u8], pitch: usize| for y in 0..WND_HEIGHT {
+                              for x in 0..WND_WIDTH {
+                                  let offset = y * pitch + x * 3;
+                                  buffer[offset + 0] = pixels[offset];
+                                  buffer[offset + 1] = pixels[offset + 1];
+                                  buffer[offset + 2] = pixels[offset + 2];
+                                  index += 1;
+                              }
+                          })
         .unwrap();
 
     renderer.clear();
@@ -476,19 +498,19 @@ fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
             println!("angle={}", angle);
 
             let rv = rotate_and_find_corners(&mut renderer,
-                                                   &texture,
-                                                   angle as f64,
-                                                   shift as usize,
-                                                   sqr,
-                                                   width,
-                                                   height,
-                                                   true);
+                                             &texture,
+                                             angle as f64,
+                                             shift as usize,
+                                             sqr,
+                                             width,
+                                             height,
+                                             true);
 
-			let top_x = rv.0;
-			let bot_x = rv.2;
+            let top_x = rv.0;
+            let bot_x = rv.2;
             let pixels = rv.4;
 
-            let corner_delta =  cmp::max(top_x, bot_x) - cmp::min(top_x, bot_x);;
+            let corner_delta = cmp::max(top_x, bot_x) - cmp::min(top_x, bot_x);
 
             println!("corner_delta={}", corner_delta);
             if corner_delta < best_corner_delta {
@@ -503,21 +525,21 @@ fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
         }
 
         let rv = rotate_and_find_corners(&mut renderer,
-                                               &texture,
-                                               best_corner_angle as f64,
-                                               shift as usize,
-                                               sqr,
-                                               width,
-                                               height,
-                                               false);
+                                         &texture,
+                                         best_corner_angle as f64,
+                                         shift as usize,
+                                         sqr,
+                                         width,
+                                         height,
+                                         false);
 
-		let top_x = rv.0;
-		let top_y = rv.1;
-		let bot_x = rv.2;
-		let bot_y = rv.3;
+        let top_x = rv.0;
+        let top_y = rv.1;
+        let bot_x = rv.2;
+        let bot_y = rv.3;
         let mut pixels = rv.4;
 
-	 	find_edge(&mut pixels, top_x, top_y, bot_x, bot_y);
+        find_edge(&mut pixels, top_x, top_y, bot_x, bot_y);
 
         display_pixels(&pixels, sdl_context, &mut renderer);
     }
