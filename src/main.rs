@@ -5,6 +5,7 @@ use std::fs;
 use std::cmp;
 use std::fs::File;
 use std::path::Path;
+use std::str::FromStr;
 use std::error::Error;
 use std::io::prelude::*;
 
@@ -409,8 +410,6 @@ fn display_pixels(pixels: &Vec<u8>,
     renderer.copy(&res_texture, None, None).unwrap();
     renderer.present();
 
-    return UserAction::Rotate;
-
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     loop {
@@ -529,6 +528,7 @@ fn main() {
 
     let sdl_context = sdl2::init().unwrap();
 
+/*
     let paths = fs::read_dir("./").unwrap();
     for path in paths {
         //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
@@ -538,4 +538,54 @@ fn main() {
         }
         process_jpg(&path_str, &sdl_context);
     }
+*/
+
+// Create a path to the desired file
+let path = Path::new("1.0.txt");
+let display = path.display();
+
+// Open the path in read-only mode, returns `io::Result<File>`
+let mut file = match File::open(&path) {
+// The `description` method of `io::Error` returns a string that
+// describes the error
+Err(why) => panic!("couldn't open {}: {}", display,
+                                           why.description()),
+Ok(file) => file,
+};
+
+// Read the file contents into a string, returns `io::Result<usize>`
+let mut content = String::new();
+match file.read_to_string(&mut content) {
+Err(why) => panic!("couldn't read {}: {}", display,
+                                           why.description()),
+Ok(_) => println!("{} loaded", display),
+}
+
+    let mut coords = vec![];
+    for line in content.split('\n') {
+        let v: Vec<&str> = line.split(',').collect();
+        coords.push((usize::from_str(v[0]).unwrap(), usize::from_str(v[1]).unwrap()));
+    }
+
+    let mut pixels:Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
+    for p in coords {
+        let x = p.0;
+        let y = p.1;
+        println!("{},{}", x, y);
+        let offset = 3 * (WND_WIDTH * y + x);
+        pixels[offset] = RED_MASK_BORDER;
+    }
+
+    let video_subsystem = sdl_context.video().unwrap();
+
+    let window =
+        video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
+            .position_centered()
+            .opengl()
+            .build()
+            .unwrap();
+
+    let mut renderer = window.renderer().build().unwrap();
+
+    display_pixels(&pixels, &sdl_context, &mut renderer);
 }
