@@ -369,7 +369,7 @@ fn find_edge(pixels: &mut Vec<u8>,
     let mut res: String = "".to_string();
     for p in edge1.iter() {
         if res.len() > 0 {
-            res += " ";
+            res += "\n";
         }
         res = res + &format!("{},{}", p.0, p.1);
     }
