@@ -243,19 +243,19 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
 
     renderer.clear();
     renderer.copy_ex(&texture,
-                     None,
-                     Some(Rect::new(shift as i32, shift as i32, width, height)),
-                     angle,
-                     None,
-                     false,
-                     false)
+                 None,
+                 Some(Rect::new(shift as i32, shift as i32, width, height)),
+                 angle,
+                 None,
+                 false,
+                 false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels =
         renderer.read_pixels(Some(Rect::new(0, 0, WND_WIDTH as u32, WND_HEIGHT as u32)),
-                             PixelFormatEnum::RGB24)
+                         PixelFormatEnum::RGB24)
             .unwrap();
 
     // Detect piece and bounds
@@ -394,15 +394,15 @@ fn display_pixels(pixels: &Vec<u8>,
     // Create texture with result
     let mut index = 0;
     res_texture.with_lock(None,
-                          |buffer: &mut [u8], pitch: usize| for y in 0..WND_HEIGHT {
-                              for x in 0..WND_WIDTH {
-                                  let offset = y * pitch + x * 3;
-                                  buffer[offset + 0] = pixels[offset];
-                                  buffer[offset + 1] = pixels[offset + 1];
-                                  buffer[offset + 2] = pixels[offset + 2];
-                                  index += 1;
-                              }
-                          })
+                   |buffer: &mut [u8], pitch: usize| for y in 0..WND_HEIGHT {
+                       for x in 0..WND_WIDTH {
+                           let offset = y * pitch + x * 3;
+                           buffer[offset + 0] = pixels[offset];
+                           buffer[offset + 1] = pixels[offset + 1];
+                           buffer[offset + 2] = pixels[offset + 2];
+                           index += 1;
+                       }
+                   })
         .unwrap();
 
     renderer.clear();
@@ -531,11 +531,11 @@ fn main() {
 
     let paths = fs::read_dir("./").unwrap();
     for path in paths {
-                //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
-            let path_str = path.unwrap().path().into_os_string().into_string().unwrap();
-            if !path_str.ends_with(".jpg") {
-                continue;
-            }
+        //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
+        let path_str = path.unwrap().path().into_os_string().into_string().unwrap();
+        if !path_str.ends_with(".jpg") {
+            continue;
+        }
         process_jpg(&path_str, &sdl_context);
     }
 }
