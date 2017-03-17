@@ -1,6 +1,7 @@
 extern crate sdl2;
 extern crate image;
 
+use std::fs;
 use std::cmp;
 use std::fs::File;
 use std::path::Path;
@@ -426,7 +427,16 @@ fn display_pixels(pixels: &Vec<u8>,
     }
 }
 
-fn process_jpg(img_file: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
+fn process_jpg(img_file: &'static str, sdl_context: &sdl2::Sdl) {
+
+    let video_subsystem = sdl_context.video().unwrap();
+
+    let window =
+        video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
+            .position_centered()
+            .opengl()
+            .build()
+            .unwrap();
 
     let mut renderer = window.renderer().build().unwrap();
 
@@ -526,14 +536,9 @@ fn main() {
 
     let sdl_context = sdl2::init().unwrap();
 
-    let video_subsystem = sdl_context.video().unwrap();
-
-    let window =
-        video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
-            .position_centered()
-            .opengl()
-            .build()
-            .unwrap();
-
-    process_jpg("4.jpg", &sdl_context, window);
+    let paths = fs::read_dir("./").unwrap();
+    for path in paths {
+        println!("Name: {}", path.unwrap().path().display());
+            process_jpg("1.jpg", &sdl_context);
+    }
 }
