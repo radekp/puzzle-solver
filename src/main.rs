@@ -528,7 +528,7 @@ fn main() {
 
     let sdl_context = sdl2::init().unwrap();
 
-/*
+    /*
     let paths = fs::read_dir("./").unwrap();
     for path in paths {
         //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
@@ -540,26 +540,24 @@ fn main() {
     }
 */
 
-// Create a path to the desired file
-let path = Path::new("1.0.txt");
-let display = path.display();
+    // Create a path to the desired file
+    let path = Path::new("1.0.txt");
+    let display = path.display();
 
-// Open the path in read-only mode, returns `io::Result<File>`
-let mut file = match File::open(&path) {
-// The `description` method of `io::Error` returns a string that
-// describes the error
-Err(why) => panic!("couldn't open {}: {}", display,
-                                           why.description()),
-Ok(file) => file,
-};
+    // Open the path in read-only mode, returns `io::Result<File>`
+    let mut file = match File::open(&path) {
+        // The `description` method of `io::Error` returns a string that
+        // describes the error
+        Err(why) => panic!("couldn't open {}: {}", display, why.description()),
+        Ok(file) => file,
+    };
 
-// Read the file contents into a string, returns `io::Result<usize>`
-let mut content = String::new();
-match file.read_to_string(&mut content) {
-Err(why) => panic!("couldn't read {}: {}", display,
-                                           why.description()),
-Ok(_) => println!("{} loaded", display),
-}
+    // Read the file contents into a string, returns `io::Result<usize>`
+    let mut content = String::new();
+    match file.read_to_string(&mut content) {
+        Err(why) => panic!("couldn't read {}: {}", display, why.description()),
+        Ok(_) => println!("{} loaded", display),
+    }
 
     let mut coords = vec![];
     for line in content.split('\n') {
@@ -567,7 +565,7 @@ Ok(_) => println!("{} loaded", display),
         coords.push((usize::from_str(v[0]).unwrap(), usize::from_str(v[1]).unwrap()));
     }
 
-    let mut pixels:Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
+    let mut pixels: Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
     for p in coords {
         let x = p.0;
         let y = p.1;
