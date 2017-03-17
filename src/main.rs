@@ -241,8 +241,6 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
                            draw_corners: bool)
                            -> (usize, usize, usize, usize, Vec<u8>) {
 
-    println!("angle={}", angle);
-
     renderer.clear();
     renderer.copy_ex(&texture,
                      None,
@@ -411,6 +409,7 @@ fn display_pixels(pixels: &Vec<u8>,
     renderer.copy(&res_texture, None, None).unwrap();
     renderer.present();
 
+    return UserAction::Rotate;
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
@@ -427,7 +426,7 @@ fn display_pixels(pixels: &Vec<u8>,
     }
 }
 
-fn process_jpg(img_file: &'static str, sdl_context: &sdl2::Sdl) {
+fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
 
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -444,15 +443,13 @@ fn process_jpg(img_file: &'static str, sdl_context: &sdl2::Sdl) {
 
     let TextureQuery { width, height, .. } = texture.query();
 
-    println!("{}x{}", width, height);
+    println!("{} {}x{}", img_file, width, height);
 
     // Some space so that rotation does not crop image
     let shift = cmp::max(width, height) / 3 + 1;
 
     // Squate that the puzzle always fits
     let sqr = (5 * shift) as usize; // 1xleft shift, 3/3 texture, 1xright shift
-
-    let mut content: String = "".to_string();
 
     for side in 0..4 {
 
@@ -462,9 +459,7 @@ fn process_jpg(img_file: &'static str, sdl_context: &sdl2::Sdl) {
         'rotating: for r in -10..11 {
 
             let angle = 90 * side + r;
-
-
-            println!("angle={}", angle);
+            //println!("angle={}", angle);
 
             let rv = rotate_and_find_corners(&mut renderer,
                                              &texture,
@@ -481,7 +476,7 @@ fn process_jpg(img_file: &'static str, sdl_context: &sdl2::Sdl) {
 
             let corner_delta = cmp::max(top_x, bot_x) - cmp::min(top_x, bot_x);
 
-            println!("corner_delta={}", corner_delta);
+            //println!("corner_delta={}", corner_delta);
             if corner_delta < best_corner_delta {
                 best_corner_delta = corner_delta;
                 best_corner_angle = angle;
@@ -492,6 +487,8 @@ fn process_jpg(img_file: &'static str, sdl_context: &sdl2::Sdl) {
                 _ => {}
             }
         }
+
+        println!("best_corner_angle={}", best_corner_angle);
 
         let rv = rotate_and_find_corners(&mut renderer,
                                          &texture,
@@ -508,28 +505,24 @@ fn process_jpg(img_file: &'static str, sdl_context: &sdl2::Sdl) {
         let bot_y = rv.3;
         let mut pixels = rv.4;
 
-        content = content + &find_edge(&mut pixels, top_x, top_y, bot_x, bot_y);
-        content.push('\n');
+        // Save left edge coordinates to file
+        let content = find_edge(&mut pixels, top_x, top_y, bot_x, bot_y);
+        let ext = format!("{}.txt", side);
+        let txt_path = Path::new(img_file).with_extension(ext);
+        let display = txt_path.display();
+
+        let mut file = match File::create(&txt_path) {
+            Err(why) => panic!("couldn't create {}: {}", display, why.description()),
+            Ok(file) => file,
+        };
+
+        match file.write_all(content.as_bytes()) {
+            Err(why) => panic!("couldn't write to {}: {}", display, why.description()),
+            Ok(_) => println!("successfully wrote to {}", display),
+        }
 
         display_pixels(&pixels, sdl_context, &mut renderer);
     }
-
-    let txt_path = Path::new(img_file).with_extension("txt");
-    let display = txt_path.display();
-
-    // Open a file in write-only mode, returns `io::Result<File>`
-    let mut file = match File::create(&txt_path) {
-        Err(why) => panic!("couldn't create {}: {}", display, why.description()),
-        Ok(file) => file,
-    };
-
-    // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
-    match file.write_all(content.as_bytes()) {
-        Err(why) => panic!("couldn't write to {}: {}", display, why.description()),
-        Ok(_) => println!("successfully wrote to {}", display),
-    }
-
-
 }
 
 fn main() {
@@ -538,7 +531,11 @@ fn main() {
 
     let paths = fs::read_dir("./").unwrap();
     for path in paths {
-        println!("Name: {}", path.unwrap().path().display());
-            process_jpg("1.jpg", &sdl_context);
+                //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
+            let path_str = path.unwrap().path().into_os_string().into_string().unwrap();
+            if !path_str.ends_with(".jpg") {
+                continue;
+            }
+        process_jpg(&path_str, &sdl_context);
     }
 }
