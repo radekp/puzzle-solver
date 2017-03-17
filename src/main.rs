@@ -2,7 +2,10 @@ extern crate sdl2;
 extern crate image;
 
 use std::cmp;
+use std::fs::File;
 use std::path::Path;
+use std::error::Error;
+use std::io::prelude::*;
 
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
@@ -22,8 +25,6 @@ const RED_MASK_MATERIAL: u8 = 1 << 4;
 const RED_MASK_BORDER: u8 = 1 << 7;
 const RED_MASK_JAG: u8 = 1 << 5;
 
-const GREEN_MASK_TOP_CORNER: u8 = 1 << 5;
-const GREEN_MASK_BOT_CORNER: u8 = 1 << 6;
 const GREEN_MASK_EDGE_1: u8 = 1 << 5;
 const GREEN_MASK_EDGE_2: u8 = 1 << 7;
 
@@ -151,7 +152,6 @@ fn detect_border(pixels: &mut Vec<u8>, x: usize, y: usize) {
 //  /               \   < and this line, because they are above width_limit
 //
 fn detect_jags(pixels: &mut Vec<u8>,
-               sqr: usize,
                bounds: URect,
                plus_min_dst: usize,
                width_limit: usize,
@@ -348,16 +348,11 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     }
 
     // Find jags that could spoil finding corners
-    detect_jags(&mut pixels, sqr, bounds, sqr / 32, sqr / 6, sqr / 6);
+    detect_jags(&mut pixels, bounds, sqr / 32, sqr / 6, sqr / 6);
 
 	let rv = find_corners(&mut pixels, sqr, bounds, draw_corners);
 
 	return (rv.0,rv.1,rv.2,rv.3,pixels);
-}
-
-fn fill_edge(pixels: &mut Vec<u8>, x: usize, y: usize) -> bool {
-
-	return true;
 }
 
 fn fill_edge_rec(pixels: &mut Vec<u8>, edge1: &mut Vec<(usize,usize)>, edge2: &mut Vec<(usize,usize)>, x: usize, y: usize, top_x: usize, top_y: usize, col: &mut u8) {
@@ -475,7 +470,7 @@ fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
 
         'rotating: for r in -10..11 {
 
-            let mut angle = 90 * side + r;
+            let angle = 90 * side + r;
 
 
             println!("angle={}", angle);
@@ -490,9 +485,7 @@ fn process_jpg(path: &'static str, sdl_context: &sdl2::Sdl, window: Window) {
                                                    true);
 
 			let top_x = rv.0;
-			let top_y = rv.1;
 			let bot_x = rv.2;
-			let bot_y = rv.3;
             let pixels = rv.4;
 
             let corner_delta =  cmp::max(top_x, bot_x) - cmp::min(top_x, bot_x);;
