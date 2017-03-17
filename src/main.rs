@@ -342,7 +342,12 @@ fn fill_edge_rec(pixels: &mut Vec<u8>,
     fill_edge_rec(pixels, edge1, edge2, x - 1, y - 1, top_x, top_y, col);
 }
 
-fn find_edge(pixels: &mut Vec<u8>, top_x: usize, top_y: usize, bot_x: usize, bot_y: usize) -> String {
+fn find_edge(pixels: &mut Vec<u8>,
+             top_x: usize,
+             top_y: usize,
+             bot_x: usize,
+             bot_y: usize)
+             -> String {
 
     let mut edge1 = vec![];
     let mut edge2 = vec![];
@@ -358,16 +363,16 @@ fn find_edge(pixels: &mut Vec<u8>, top_x: usize, top_y: usize, bot_x: usize, bot
 
     println!("edge1={} edge2={}", edge1.len(), edge2.len());
 
-	if edge1.len() > edge2.len() {
-		edge1 = edge2;
-	}
-    
-    let mut res : String = "".to_string();
+    if edge1.len() > edge2.len() {
+        edge1 = edge2;
+    }
+
+    let mut res: String = "".to_string();
     for p in edge1.iter() {
-    	if res.len() > 0 {
-    		res += " ";
-    	}
-    	res = res + &format!("{},{}", p.0, p.1);
+        if res.len() > 0 {
+            res += " ";
+        }
+        res = res + &format!("{},{}", p.0, p.1);
     }
     res
 }
@@ -437,7 +442,7 @@ fn process_jpg(img_file: &'static str, sdl_context: &sdl2::Sdl, window: Window) 
     // Squate that the puzzle always fits
     let sqr = (5 * shift) as usize; // 1xleft shift, 3/3 texture, 1xright shift
 
-    let mut content : String = "".to_string();
+    let mut content: String = "".to_string();
 
     for side in 0..4 {
 
@@ -500,26 +505,21 @@ fn process_jpg(img_file: &'static str, sdl_context: &sdl2::Sdl, window: Window) 
     }
 
     let txt_path = Path::new(img_file).with_extension("txt");
-		let display = txt_path.display();
+    let display = txt_path.display();
 
-		// Open a file in write-only mode, returns `io::Result<File>`
-		let mut file = match File::create(&txt_path) {
-		    Err(why) => panic!("couldn't create {}: {}",
-		                       display,
-		                       why.description()),
-		    Ok(file) => file,
-		};
+    // Open a file in write-only mode, returns `io::Result<File>`
+    let mut file = match File::create(&txt_path) {
+        Err(why) => panic!("couldn't create {}: {}", display, why.description()),
+        Ok(file) => file,
+    };
 
-		// Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
-		match file.write_all(content.as_bytes()) {
-		    Err(why) => {
-		        panic!("couldn't write to {}: {}", display,
-		                                           why.description())
-		    },
-		    Ok(_) => println!("successfully wrote to {}", display),
-		}
+    // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
+    match file.write_all(content.as_bytes()) {
+        Err(why) => panic!("couldn't write to {}: {}", display, why.description()),
+        Ok(_) => println!("successfully wrote to {}", display),
+    }
 
-    
+
 }
 
 fn main() {
