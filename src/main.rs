@@ -36,68 +36,6 @@ struct URect {
     max_y: usize,
 }
 
-// Near point iterator
-// Iterates points in spiral centered at cx,cy
-//
-//     9 ....
-//       1 2 3
-//       8   4
-//       7 6 5
-//
-// If a==0 it will start in cx,cy orherwise a is square side on start
-fn near_iter_begin(cx: i32, cy: i32, start_a: i32) -> (i32, i32, i32) {
-    return (cx - start_a, cy - start_a, start_a);
-}
-
-// Return next point in spiral
-fn near_iter_next(cx: i32, cy: i32, prev_x: i32, prev_y: i32, prev_a: i32) -> (i32, i32, i32) {
-
-    let mut x = prev_x;
-    let mut y = prev_y;
-    let mut a = prev_a;
-
-    if x == cx && y == cy {
-        return (cx - 1, cy - 1, a);
-    }
-
-    if y == cy - a {
-        x += 1;
-        if x - cx <= a {
-            return (x, y, a);
-        }
-        x = cx + a;
-        y = cy - a + 1;
-        return (x, y, a);
-    }
-
-    if x == cx + a {
-        y += 1;
-        if y - cy <= a {
-            return (x, y, a);
-        }
-        x = cx + a - 1;
-        y = cy + a;
-        return (x, y, a);
-    }
-
-    if y == cy + a {
-        x -= 1;
-        if cx - x <= a {
-            return (x, y, a);
-        }
-        x = cx - a;
-        y = cy + a - 1;
-        return (x, y, a);
-    }
-
-    y -= 1;
-    if y > cy - a {
-        return (x, y, a);
-    }
-    a += 1;
-    return (cx - a, cy - a, a);
-}
-
 // Detect piece color - in my case they are dark blue
 fn detect_material(pixels: &mut Vec<u8>, x: usize, y: usize) -> bool {
     let offset = 3 * (WND_WIDTH * y + x);
