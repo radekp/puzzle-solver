@@ -534,23 +534,10 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
     }
 }
 
-fn main() {
-
-    let sdl_context = sdl2::init().unwrap();
-
-
-    let paths = fs::read_dir("./").unwrap();
-    for path in paths {
-        //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
-        let path_str = path.unwrap().path().into_os_string().into_string().unwrap();
-        if !path_str.ends_with(".jpg") {
-            continue;
-        }
-        process_jpg(&path_str, &sdl_context);
-    }
+fn read_txt(txt_file: &str) -> Vec<(usize,usize)> {
 
     // Create a path to the desired file
-    let path = Path::new("1.0.txt");
+    let path = Path::new(txt_file);
     let display = path.display();
 
     // Open the path in read-only mode, returns `io::Result<File>`
@@ -574,14 +561,38 @@ fn main() {
         coords.push((usize::from_str(v[0]).unwrap(), usize::from_str(v[1]).unwrap()));
     }
 
-    let mut pixels: Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
+    return coords;
+}
+
+fn draw_coords(pixels: &mut Vec<u8>, coords: &Vec<(usize,usize)>, left: usize, top: usize) {
     for p in coords {
-        let x = p.0;
-        let y = p.1;
-        println!("{},{}", x, y);
+        let x = p.0 + left;
+        let y = p.1 + top;
         let offset = 3 * (WND_WIDTH * y + x);
         pixels[offset] = RED_MASK_BORDER;
     }
+}
+
+fn main() {
+
+    let sdl_context = sdl2::init().unwrap();
+
+
+    /*let paths = fs::read_dir("./").unwrap();
+    for path in paths {
+        //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
+        let path_str = path.unwrap().path().into_os_string().into_string().unwrap();
+        if !path_str.ends_with(".jpg") {
+            continue;
+        }
+        process_jpg(&path_str, &sdl_context);
+    }*/
+
+
+    let mut pixels: Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
+
+    draw_coords(&mut pixels, &read_txt("1.0.txt"), 0, 0);
+    draw_coords(&mut pixels, &read_txt("2.2.txt"), 100, 0);
 
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -593,6 +604,7 @@ fn main() {
             .unwrap();
 
     let mut renderer = window.renderer().build().unwrap();
+
 
     display_pixels(&pixels, &sdl_context, &mut renderer);
 }
