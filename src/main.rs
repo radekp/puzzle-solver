@@ -607,12 +607,13 @@ fn main() {
         process_jpg(&path_str, &sdl_context);
     }*/
 
+    //process_jpg("9.jpg", &sdl_context);
 
     let mut pixels: Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
 
     //draw_coords(&mut pixels, &read_txt("2.0.txt"), 0, 0);
-    draw_coords(&mut pixels, &read_txt("2.0.txt"), 0, 0);
-    draw_coords(&mut pixels, &flip_coords(&read_txt("2.0.txt")), 0, 0);
+    draw_coords(&mut pixels, &read_txt("8.0.txt"), 0, 0);
+    draw_coords(&mut pixels, &flip_coords(&read_txt("9.2.txt")), 0, 0);
 
     let video_subsystem = sdl_context.video().unwrap();
 
