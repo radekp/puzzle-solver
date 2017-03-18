@@ -573,6 +573,25 @@ fn draw_coords(pixels: &mut Vec<u8>, coords: &Vec<(usize,usize)>, left: usize, t
     }
 }
 
+fn flip_coords(coords: &Vec<(usize,usize)>) -> Vec<(usize,usize)> {
+
+    let mut max_x = 0;
+    let mut max_y = 0;
+
+    for p in coords {
+        max_x = cmp::max(p.0, max_x);
+        max_y = cmp::max(p.1, max_y);
+    }
+
+    println!("max={} {}", max_x, max_y);
+
+    let mut res = vec![];
+    for p in coords {
+        res.push((max_x - p.0, max_y - p.1));
+    }
+    return res;
+}
+
 fn main() {
 
     let sdl_context = sdl2::init().unwrap();
@@ -591,8 +610,9 @@ fn main() {
 
     let mut pixels: Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
 
-    draw_coords(&mut pixels, &read_txt("1.0.txt"), 0, 0);
-    draw_coords(&mut pixels, &read_txt("2.2.txt"), 100, 0);
+    //draw_coords(&mut pixels, &read_txt("2.0.txt"), 0, 0);
+    draw_coords(&mut pixels, &read_txt("2.0.txt"), 0, 0);
+    draw_coords(&mut pixels, &flip_coords(&read_txt("2.0.txt")), 0, 0);
 
     let video_subsystem = sdl_context.video().unwrap();
 
