@@ -367,12 +367,20 @@ fn find_edge(pixels: &mut Vec<u8>,
         edge1 = edge2;
     }
 
+    // Find min
+    let mut min_x = usize::max_value();
+    let mut min_y = usize::max_value();
+    for p in edge1.iter() {
+        min_x = cmp::min(p.0, min_x);
+        min_y = cmp::min(p.1, min_y);
+    }
+
     let mut res: String = "".to_string();
     for p in edge1.iter() {
         if res.len() > 0 {
             res += "\n";
         }
-        res = res + &format!("{},{}", p.0, p.1);
+        res = res + &format!("{},{}", p.0 - min_x, p.1 - min_y);
     }
     res
 }
@@ -409,6 +417,8 @@ fn display_pixels(pixels: &Vec<u8>,
     renderer.clear();
     renderer.copy(&res_texture, None, None).unwrap();
     renderer.present();
+
+    //return UserAction::Rotate;
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
@@ -528,7 +538,7 @@ fn main() {
 
     let sdl_context = sdl2::init().unwrap();
 
-    /*
+
     let paths = fs::read_dir("./").unwrap();
     for path in paths {
         //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
@@ -538,7 +548,6 @@ fn main() {
         }
         process_jpg(&path_str, &sdl_context);
     }
-*/
 
     // Create a path to the desired file
     let path = Path::new("1.0.txt");
