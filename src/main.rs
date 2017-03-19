@@ -20,8 +20,8 @@ use sdl2::render::Texture;
 use sdl2::video::Window;
 
 // SDL window size - puzzle pieces bitmap must fit even with rotation
-const WND_WIDTH: usize = 1024;
-const WND_HEIGHT: usize = 1024;
+const WND_WIDTH: usize = 2000;
+const WND_HEIGHT: usize = 2000;
 
 const RED_MASK_MATERIAL: u8 = 1 << 4;
 const RED_MASK_BORDER: u8 = 1 << 7;
@@ -42,8 +42,9 @@ struct URect {
 fn detect_material(pixels: &mut Vec<u8>, x: usize, y: usize) -> bool {
     let offset = 3 * (WND_WIDTH * y + x);
     let r = pixels[offset] as i32;
+    let g = pixels[offset + 1] as i32;
     let b = pixels[offset + 2] as i32;
-    if b - r > 30 {
+    if r + g + b > 3 * 127 {
         pixels[offset] = RED_MASK_MATERIAL;
         pixels[offset + 1] = RED_MASK_MATERIAL;
         pixels[offset + 2] = RED_MASK_MATERIAL;
@@ -405,10 +406,11 @@ fn display_pixels(pixels: &Vec<u8>,
     res_texture.with_lock(None,
                    |buffer: &mut [u8], pitch: usize| for y in 0..WND_HEIGHT {
                        for x in 0..WND_WIDTH {
-                           let offset = y * pitch + x * 3;
-                           buffer[offset + 0] = pixels[offset];
-                           buffer[offset + 1] = pixels[offset + 1];
-                           buffer[offset + 2] = pixels[offset + 2];
+                           let src_offset = y * pitch + x * 3;
+                           let dst_offset = y * pitch + x * 3;
+                           buffer[dst_offset + 0] |= pixels[src_offset];
+                           buffer[dst_offset + 1] |= pixels[src_offset + 1];
+                           buffer[dst_offset + 2] |= pixels[src_offset + 2];
                            index += 1;
                        }
                    })
@@ -441,7 +443,7 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
 
     let window =
         video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
-            .position_centered()
+            .position(100,0)
             .opengl()
             .build()
             .unwrap();
@@ -564,12 +566,13 @@ fn read_txt(txt_file: &str) -> Vec<(usize,usize)> {
     return coords;
 }
 
-fn draw_coords(pixels: &mut Vec<u8>, coords: &Vec<(usize,usize)>, left: usize, top: usize) {
+fn draw_coords(pixels: &mut Vec<u8>, coords: &Vec<(usize,usize)>, left: usize, top: usize, r:u8, g:u8) {
     for p in coords {
         let x = p.0 + left;
         let y = p.1 + top;
         let offset = 3 * (WND_WIDTH * y + x);
-        pixels[offset] = RED_MASK_BORDER;
+        pixels[offset] = r;
+        pixels[offset+1] = g;
     }
 }
 
@@ -597,7 +600,7 @@ fn main() {
     let sdl_context = sdl2::init().unwrap();
 
 
-    /*let paths = fs::read_dir("./").unwrap();
+    let paths = fs::read_dir("./").unwrap();
     for path in paths {
         //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
         let path_str = path.unwrap().path().into_os_string().into_string().unwrap();
@@ -605,21 +608,21 @@ fn main() {
             continue;
         }
         process_jpg(&path_str, &sdl_context);
-    }*/
+    }
 
     //process_jpg("9.jpg", &sdl_context);
 
     let mut pixels: Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
 
     //draw_coords(&mut pixels, &read_txt("2.0.txt"), 0, 0);
-    draw_coords(&mut pixels, &read_txt("8.0.txt"), 0, 0);
-    draw_coords(&mut pixels, &flip_coords(&read_txt("9.2.txt")), 0, 0);
+    draw_coords(&mut pixels, &read_txt("9.0.txt"), 100, 100, 255, 0);
+    draw_coords(&mut pixels, &flip_coords(&read_txt("10.2.txt")), 100, 100, 0, 255);
 
     let video_subsystem = sdl_context.video().unwrap();
 
     let window =
         video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
-            .position_centered()
+            .position(100,0)
             .opengl()
             .build()
             .unwrap();
