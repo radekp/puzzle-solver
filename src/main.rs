@@ -267,6 +267,7 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
         max_x: 0,
         max_y: 0,
     };
+    
     for y in 0..sqr {
         for x in 0..sqr {
             if !detect_material(&mut pixels, x, y) {
@@ -279,6 +280,9 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
         }
     }
 
+        return (0,10,20,30, pixels);
+
+    
     // Add one more so that we dont have to write ..max+1 everywhere
     bounds.max_x += 1;
     bounds.max_y += 1;
@@ -289,7 +293,7 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
             detect_border(&mut pixels, x, y);
         }
     }
-
+    
     // Find jags that could spoil finding corners
     detect_jags(&mut pixels, bounds, sqr / 32, sqr / 6, sqr / 6);
 
@@ -455,6 +459,10 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
     let TextureQuery { width, height, .. } = texture.query();
 
     println!("{} {}x{}", img_file, width, height);
+    
+    if width >= WND_WIDTH as u32 || height >= WND_HEIGHT as u32 {
+	panic!("{} too large, max is {}x{}", img_file, WND_WIDTH, WND_HEIGHT);
+    }
 
     // Some space so that rotation does not crop image
     let shift = cmp::max(width, height) / 3 + 1;
