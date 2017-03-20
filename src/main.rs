@@ -25,6 +25,7 @@ const WND_HEIGHT: usize = 2000;
 
 const RED_MASK_MATERIAL: u8 = 1 << 4;
 const RED_MASK_BORDER: u8 = 1 << 7;
+const RED_MASK_NO_BORDER: u8 = 1 << 1;
 const RED_MASK_JAG: u8 = 1 << 5;
 
 const GREEN_MASK_EDGE_1: u8 = 1 << 5;
@@ -56,32 +57,49 @@ fn detect_material(pixels: &mut Vec<u8>, x: usize, y: usize) -> bool {
     return false;
 }
 
-// Draw border pixels with red=127
-fn detect_border(pixels: &mut Vec<u8>, x: usize, y: usize) {
+// Draw border pixels with RED_MASK_BORDER
+fn detect_border(pixels: &mut Vec<u8>, x: usize, y: usize) -> bool {
+
     let offset = 3 * (WND_WIDTH * y + x);
-    if pixels[offset] == 0 {
-        return;
+    let pix = pixels[offset];
+    
+    if pix & RED_MASK_NO_BORDER != 0 || pix & RED_MASK_BORDER != 0 {		// already processed this pixel?
+        return false;
     }
+    
+    let mut near = false;
     if x > 0 {
         let offset_xm = 3 * (WND_WIDTH * y + x - 1);
-        if pixels[offset_xm] & RED_MASK_MATERIAL == 0 {
-            pixels[offset] |= RED_MASK_BORDER;
+        if pixels[offset_xm] & RED_MASK_NO_BORDER != 0 {
+            near = true;
         }
     }
     if y > 0 {
         let offset_ym = 3 * (WND_WIDTH * (y - 1) + x);
-        if pixels[offset_ym] & RED_MASK_MATERIAL == 0 {
-            pixels[offset] |= RED_MASK_BORDER;
+        if pixels[offset_ym] & RED_MASK_NO_BORDER != 0 {
+            near = true;
         }
     }
     let offset_xp = 3 * (WND_WIDTH * y + x + 1);
-    if pixels[offset_xp] & RED_MASK_MATERIAL == 0 {
-        pixels[offset] |= RED_MASK_BORDER;
+    if pixels[offset_xp] & RED_MASK_NO_BORDER != 0 {
+        near = true;
     }
     let offset_yp = 3 * (WND_WIDTH * (y + 1) + x);
-    if pixels[offset_yp] & RED_MASK_MATERIAL == 0 {
-        pixels[offset] |= RED_MASK_BORDER;
+    if pixels[offset_yp] & RED_MASK_NO_BORDER != 0 {
+        near = true;
     }
+    
+    // Nothing near where border is detected
+    if !near {
+      return false;
+    }
+    
+    if pix & RED_MASK_MATERIAL == 0 {    
+      pixels[offset] |= RED_MASK_NO_BORDER;
+    } else {
+      pixels[offset] |= RED_MASK_BORDER;
+    }
+    return true;
 }
 
 // Remove jags from puzzle:
@@ -279,20 +297,30 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
             bounds.max_y = cmp::max(y, bounds.max_y);
         }
     }
-
-        return (0,10,20,30, pixels);
-
     
     // Add one more so that we dont have to write ..max+1 everywhere
     bounds.max_x += 1;
     bounds.max_y += 1;
 
     // Detect borders
-    for y in bounds.min_y..bounds.max_y {
-        for x in bounds.min_x..bounds.max_x {
-            detect_border(&mut pixels, x, y);
-        }
+    let offset = 3 * (WND_WIDTH * bounds.min_y + bounds.min_x);
+    pixels[offset] |= RED_MASK_NO_BORDER;
+    loop {
+      let mut detected = false;
+      for y in bounds.min_y..bounds.max_y {
+	  for x in bounds.min_x..bounds.max_x {
+	      detected |= detect_border(&mut pixels, x, y);
+	  }
+      }
+      println!("detected={}", detected);
+      if !detected {
+	break;
+      }
     }
+    
+            return (0,10,20,30, pixels);
+
+
     
     // Find jags that could spoil finding corners
     detect_jags(&mut pixels, bounds, sqr / 32, sqr / 6, sqr / 6);
