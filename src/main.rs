@@ -46,12 +46,12 @@ struct URect {
 //       7 6 5
 //
 // If a==0 it will start in cx,cy orherwise a is square side on start
-fn near_iter_begin(cx: i32, cy: i32, start_a: i32) -> (i32, i32, i32) {
-    return (cx - start_a, cy - start_a, start_a);
+fn near_iter_begin(cx: usize, cy: usize, start_a: usize) -> (usize, usize, usize) {
+    return (cx - start_a as usize, cy - start_a as usize, start_a);
 }
 
 // Return next point in spiral
-fn near_iter_next(cx: i32, cy: i32, prev_x: i32, prev_y: i32, prev_a: i32) -> (i32, i32, i32) {
+fn near_iter_next(cx: usize, cy: usize, prev_x: usize, prev_y: usize, prev_a: usize) -> (usize, usize, usize) {
 
     let mut x = prev_x;
     let mut y = prev_y;
