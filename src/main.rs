@@ -19,10 +19,12 @@ use sdl2::render::Renderer;
 use sdl2::render::Texture;
 
 // SDL window size - puzzle pieces bitmap must fit even with rotation
+const RED_MASK_NO_MATERIAL: u8 = 1;
 const RED_MASK_MATERIAL: u8 = 1 << 4;
 const RED_MASK_BORDER: u8 = 1 << 7;
 const RED_MASK_NO_BORDER: u8 = 1 << 1;
 const RED_MASK_JAG: u8 = 1 << 5;
+const RED_MASK_FLOOD_FILLED: u8 = 1 << 1;
 
 const GREEN_MASK_EDGE_1: u8 = 1 << 5;
 const GREEN_MASK_EDGE_2: u8 = 1 << 7;
@@ -33,6 +35,54 @@ struct URect {
     min_y: usize,
     max_x: usize,
     max_y: usize,
+}
+
+fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize, compare_red_mask: u8) {
+
+    let mut src = vec![(x,y)];
+    let mut dst = vec![];
+    loop {
+
+        for p in src.iter() {
+            let offset = 3 * (sqr * p.1 + p.0);
+            let pix = pixels[offset];
+            if pix & compare_red_mask == 0 {
+                continue;
+            }
+            if pix & RED_MASK_FLOOD_FILLED != 0 {
+                continue;
+            }
+            pixels[offset] |= RED_MASK_FLOOD_FILLED;
+
+            if p.0 > bounds.min_x {
+                dst.push((p.0 - 1, p.1));
+            }
+            if p.0 < bounds.max_x {
+                dst.push((p.0 + 1, p.1));
+            }
+            if p.1 > bounds.min_y {
+                dst.push((p.0, p.1 - 1));
+            }
+            if p.1 < bounds.max_y {
+                dst.push((p.0, p.1 + 1));
+            }
+        }
+        if dst.len() == 0 {
+            return;
+        }
+        src.clear();
+        let tmp = src;
+        src = dst;
+        dst = tmp;
+    }
+}
+
+fn flood_unfill(pixels: &mut Vec<u8>, sqr: usize, bounds: URect, x: usize, y:usize, compare_red_mask: u8) {
+    for y in bounds.min_y..bounds.max_y {
+        for x in bounds.min_x..bounds.max_x {
+            pixels[3 * (sqr * y + x)] &= !RED_MASK_FLOOD_FILLED;
+        }
+    }
 }
 
 // Detect piece color - in my case they are dark blue
@@ -47,55 +97,32 @@ fn detect_material(pixels: &mut Vec<u8>, sqr: usize, x: usize, y: usize) -> bool
         pixels[offset + 2] = RED_MASK_MATERIAL;
         return true;
     }
-    pixels[offset] = 0;
+    pixels[offset] = RED_MASK_NO_MATERIAL;
     pixels[offset + 1] = 0;
     pixels[offset + 2] = 0;
     return false;
 }
 
 // Draw border pixels with RED_MASK_BORDER
-fn detect_border(pixels: &mut Vec<u8>, sqr: usize, x: usize, y: usize) -> bool {
+fn detect_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
 
-    let offset = 3 * (sqr * y + x);
-    let pix = pixels[offset];
-    
-    if pix & RED_MASK_NO_BORDER != 0 || pix & RED_MASK_BORDER != 0 {		// already processed this pixel?
-        return false;
-    }
-    
-    let mut near = false;
-    if x > 0 {
-        let offset_xm = 3 * (sqr * y + x - 1);
-        if pixels[offset_xm] & RED_MASK_NO_BORDER != 0 {
-            near = true;
+    flood_fill(pixels, sqr, bounds, 0, 0, RED_MASK_NO_MATERIAL);
+
+    for y in bounds.min_y..bounds.max_y {
+        for x in bounds.min_x..bounds.max_x {
+            let offset = 3 * (sqr * y + x);
+            if pixels[offset] & RED_MASK_MATERIAL == 0 {        // not material, skip
+                continue;
+            }
+            if pixels[offset-3] & RED_MASK_FLOOD_FILLED == 0        // skip poins in the middles
+                && pixels[offset+3] & RED_MASK_FLOOD_FILLED == 0
+                && pixels[offset + 3 * sqr] & RED_MASK_FLOOD_FILLED == 0
+                && pixels[offset - 3 * sqr] & RED_MASK_FLOOD_FILLED == 0 {
+                continue;
+            }
+            pixels[offset] |= RED_MASK_BORDER;
         }
     }
-    if y > 0 {
-        let offset_ym = 3 * (sqr * (y - 1) + x);
-        if pixels[offset_ym] & RED_MASK_NO_BORDER != 0 {
-            near = true;
-        }
-    }
-    let offset_xp = 3 * (sqr * y + x + 1);
-    if pixels[offset_xp] & RED_MASK_NO_BORDER != 0 {
-        near = true;
-    }
-    let offset_yp = 3 * (sqr * (y + 1) + x);
-    if pixels[offset_yp] & RED_MASK_NO_BORDER != 0 {
-        near = true;
-    }
-    
-    // Nothing near where border is detected
-    if !near {
-      return false;
-    }
-    
-    if pix & RED_MASK_MATERIAL == 0 {    
-      pixels[offset] |= RED_MASK_NO_BORDER;
-    } else {
-      pixels[offset] |= RED_MASK_BORDER;
-    }
-    return true;
 }
 
 // Remove jags from puzzle:
@@ -299,19 +326,7 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     bounds.max_y += 1;
 
     // Detect borders
-    let offset = 3 * (sqr * bounds.min_y + bounds.min_x);
-    pixels[offset] |= RED_MASK_NO_BORDER;
-    loop {
-        let mut detected = false;
-        for y in bounds.min_y-1..bounds.max_y+1 {
-            for x in bounds.min_x-1..bounds.max_x+1 {
-                detected |= detect_border(&mut pixels, sqr, x, y);
-            }
-        }
-        if !detected {
-            break;
-        }
-    }
+    detect_border(&mut pixels, sqr, bounds);
 
     // Find jags that could spoil finding corners
     detect_jags(&mut pixels, sqr, bounds, sqr / 32, sqr / 6, sqr / 6);
