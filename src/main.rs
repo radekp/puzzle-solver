@@ -36,7 +36,7 @@ struct URect {
 }
 
 // Detect piece color - in my case they are dark blue
-fn detect_material(pixels: &mut Vec<u8>, sqr:usize, x: usize, y: usize) -> bool {
+fn detect_material(pixels: &mut Vec<u8>, sqr: usize, x: usize, y: usize) -> bool {
     let offset = 3 * (sqr * y + x);
     let r = pixels[offset] as i32;
     let g = pixels[offset + 1] as i32;
@@ -92,7 +92,7 @@ fn detect_border(pixels: &mut Vec<u8>, sqr: usize, x: usize, y: usize) -> bool {
 //  /               \   < and this line, because they are above width_limit
 //
 fn detect_jags(pixels: &mut Vec<u8>,
-	      sqr: usize,
+               sqr: usize,
                bounds: URect,
                plus_min_dst: usize,
                width_limit: usize,
@@ -182,7 +182,7 @@ fn find_corners(pixels: &mut Vec<u8>,
             let dx = x;
             let dy = y;
             let dst = dx * dx + dy * dy;
-          
+
             if dst < best_dst {
                 best_x = x;
                 best_y = y;
@@ -245,20 +245,19 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
 
     renderer.clear();
     renderer.copy_ex(&texture,
-                 None,
-                 Some(Rect::new(shift as i32, shift as i32, width, height)),
-                 angle,
-                 None,
-                 false,
-                 false)
+                     None,
+                     Some(Rect::new(shift as i32, shift as i32, width, height)),
+                     angle,
+                     None,
+                     false,
+                     false)
         .unwrap();
 
     //renderer.present();
 
-    let mut pixels =
-        renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                         PixelFormatEnum::RGB24)
-            .unwrap();
+    let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
+                                          PixelFormatEnum::RGB24)
+        .unwrap();
 
     // Detect piece and bounds
     let mut bounds = URect {
@@ -267,7 +266,7 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
         max_x: 0,
         max_y: 0,
     };
-    
+
     for y in 0..sqr {
         for x in 0..sqr {
             if !detect_material(&mut pixels, sqr, x, y) {
@@ -279,7 +278,7 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
             bounds.max_y = cmp::max(y, bounds.max_y);
         }
     }
-    
+
     // Add one more so that we dont have to write ..max+1 everywhere
     bounds.max_x += 1;
     bounds.max_y += 1;
@@ -288,18 +287,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     let offset = 3 * (sqr * bounds.min_y + bounds.min_x);
     pixels[offset] |= RED_MASK_NO_BORDER;
     loop {
-      let mut detected = false;
-      for y in bounds.min_y..bounds.max_y {
-	  for x in bounds.min_x..bounds.max_x {
-	      detected |= detect_border(&mut pixels, sqr, x, y);
-	  }
-      }
-      println!("detected={}", detected);
-      if !detected {
-	break;
-      }
+        let mut detected = false;
+        for y in bounds.min_y..bounds.max_y {
+            for x in bounds.min_x..bounds.max_x {
+                detected |= detect_border(&mut pixels, sqr, x, y);
+            }
+        }
+        println!("detected={}", detected);
+        if !detected {
+            break;
+        }
     }
-    
+
     // Find jags that could spoil finding corners
     detect_jags(&mut pixels, sqr, bounds, sqr / 32, sqr / 6, sqr / 6);
 
@@ -309,7 +308,7 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
 }
 
 fn fill_edge_rec(pixels: &mut Vec<u8>,
-		sqr: usize,
+                 sqr: usize,
                  edge1: &mut Vec<(usize, usize)>,
                  edge2: &mut Vec<(usize, usize)>,
                  x: usize,
@@ -355,7 +354,7 @@ fn fill_edge_rec(pixels: &mut Vec<u8>,
 }
 
 fn find_edge(pixels: &mut Vec<u8>,
-	    sqr:usize,
+             sqr: usize,
              top_x: usize,
              top_y: usize,
              bot_x: usize,
@@ -366,7 +365,7 @@ fn find_edge(pixels: &mut Vec<u8>,
     let mut edge2 = vec![];
 
     fill_edge_rec(pixels,
-		  sqr,
+                  sqr,
                   &mut edge1,
                   &mut edge2,
                   bot_x,
@@ -405,29 +404,26 @@ enum UserAction {
 }
 
 fn display_pixels(pixels: &Vec<u8>,
-		  sqr: usize,
+                  sqr: usize,
                   sdl_context: &sdl2::Sdl,
                   renderer: &mut Renderer)
                   -> UserAction {
 
-    let mut res_texture = renderer.create_texture_streaming(PixelFormatEnum::RGB24,
-                                                            sqr as u32,
-                                                            sqr as u32)
-        .unwrap();
+    let mut res_texture =
+        renderer.create_texture_streaming(PixelFormatEnum::RGB24, sqr as u32, sqr as u32).unwrap();
 
     // Create texture with result
     let mut index = 0;
-    res_texture.with_lock(None,
-                   |buffer: &mut [u8], pitch: usize| for y in 0..sqr {
-                       for x in 0..sqr {
-                           let src_offset = y * pitch + x * 3;
-                           let dst_offset = y * pitch + x * 3;
-                           buffer[dst_offset + 0] |= pixels[src_offset];
-                           buffer[dst_offset + 1] |= pixels[src_offset + 1];
-                           buffer[dst_offset + 2] |= pixels[src_offset + 2];
-                           index += 1;
-                       }
-                   })
+    res_texture.with_lock(None, |buffer: &mut [u8], pitch: usize| for y in 0..sqr {
+            for x in 0..sqr {
+                let src_offset = y * pitch + x * 3;
+                let dst_offset = y * pitch + x * 3;
+                buffer[dst_offset + 0] |= pixels[src_offset];
+                buffer[dst_offset + 1] |= pixels[src_offset + 1];
+                buffer[dst_offset + 2] |= pixels[src_offset + 2];
+                index += 1;
+            }
+        })
         .unwrap();
 
     renderer.clear();
@@ -455,35 +451,48 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
 
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window =
-        video_subsystem.window(img_file, 800, 800)
-            .position(100,0)
-            .opengl()
-            .build()
-            .unwrap();
+    let window = video_subsystem.window(img_file, 800, 800)
+        .position(100, 0)
+        .opengl()
+        .build()
+        .unwrap();
 
     let mut renderer = window.renderer().build().unwrap();
 
     let texture = renderer.load_texture(img_file).unwrap();
 
     let TextureQuery { width, height, .. } = texture.query();
-    
+
     let wnd_size = renderer.window().unwrap().size();
     if width >= wnd_size.0 || height >= wnd_size.1 {
-      panic!("{} too big {}x{} window is just {}x{}", img_file, width, height, wnd_size.0, wnd_size.1);
+        panic!("{} too big {}x{} window is just {}x{}",
+               img_file,
+               width,
+               height,
+               wnd_size.0,
+               wnd_size.1);
     }
-    
-    // Some space so that rotation does not crop image
-    let shift = ((cmp::max(width, height) as usize) / 3 + 5) & !3usize;	// <- must be multiple of 4 to play well with texture pitch
+
+    // Some space so that rotation does not crop image. Must be multiple of 4
+    // to play well with texture pitch.
+    let shift = ((cmp::max(width, height) as usize) / 3 + 5) & !3usize;
 
     // Squate that the shifted puzzle always fits
     let sqr = (5 * shift) as usize; // 1xleft shift, 3/3 texture, 1xright shift
 
-    println!("{} {}x{} shift={} sqr={}", img_file, width, height, shift, sqr);
-    
+    println!("{} {}x{} shift={} sqr={}",
+             img_file,
+             width,
+             height,
+             shift,
+             sqr);
+
     // Resize window
-    renderer.window_mut().unwrap().set_size(sqr as u32, sqr as u32).unwrap();
-  
+    renderer.window_mut()
+        .unwrap()
+        .set_size(sqr as u32, sqr as u32)
+        .unwrap();
+
     for side in 0..4 {
 
         let mut best_corner_delta = usize::max_value();
@@ -558,7 +567,7 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
     }
 }
 
-fn read_txt(txt_file: &str) -> Vec<(usize,usize)> {
+fn read_txt(txt_file: &str) -> Vec<(usize, usize)> {
 
     // Create a path to the desired file
     let path = Path::new(txt_file);
@@ -588,17 +597,23 @@ fn read_txt(txt_file: &str) -> Vec<(usize,usize)> {
     return coords;
 }
 
-fn draw_coords(pixels: &mut Vec<u8>, sqr:usize, coords: &Vec<(usize,usize)>, left: usize, top: usize, r:u8, g:u8) {
+fn draw_coords(pixels: &mut Vec<u8>,
+               sqr: usize,
+               coords: &Vec<(usize, usize)>,
+               left: usize,
+               top: usize,
+               r: u8,
+               g: u8) {
     for p in coords {
         let x = p.0 + left;
         let y = p.1 + top;
         let offset = 3 * (sqr * y + x);
         pixels[offset] = r;
-        pixels[offset+1] = g;
+        pixels[offset + 1] = g;
     }
 }
 
-fn flip_coords(coords: &Vec<(usize,usize)>) -> Vec<(usize,usize)> {
+fn flip_coords(coords: &Vec<(usize, usize)>) -> Vec<(usize, usize)> {
 
     let mut max_x = 0;
     let mut max_y = 0;
@@ -625,7 +640,11 @@ fn main() {
     let paths = fs::read_dir("./").unwrap();
     for path in paths {
         //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
-        let path_str = path.unwrap().path().into_os_string().into_string().unwrap();
+        let path_str = path.unwrap()
+            .path()
+            .into_os_string()
+            .into_string()
+            .unwrap();
         if !path_str.ends_with(".jpg") {
             continue;
         }
