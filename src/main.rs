@@ -107,6 +107,9 @@ fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize,
     loop {
 
         for p in src.iter() {
+            if p.0 < bounds.min_x || p.0 > bounds.max_x || p.1 < bounds.min_y || p.1 > bounds.max_y {
+                continue;
+            }
             let offset = 3 * (sqr * p.1 + p.0);
             let pix = pixels[offset];
             if pix & compare_red_mask == 0 {
@@ -118,18 +121,14 @@ fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize,
             pixels[offset] |= RED_MASK_FLOOD_FILLED;
             res += 1;
 
-            if p.0 > bounds.min_x {
-                dst.push((p.0 - 1, p.1));
-            }
-            if p.0 < bounds.max_x {
-                dst.push((p.0 + 1, p.1));
-            }
-            if p.1 > bounds.min_y {
-                dst.push((p.0, p.1 - 1));
-            }
-            if p.1 < bounds.max_y {
-                dst.push((p.0, p.1 + 1));
-            }
+            dst.push((p.0 - 1, p.1));
+            dst.push((p.0 + 1, p.1));
+            dst.push((p.0, p.1 - 1));
+            dst.push((p.0, p.1 + 1));
+            dst.push((p.0 - 1, p.1 - 1));
+            dst.push((p.0 + 1, p.1 - 1));
+            dst.push((p.0 - 1, p.1 + 1));
+            dst.push((p.0 + 1, p.1 + 1));
         }
         if dst.len() == 0 {
             return res;
@@ -145,6 +144,17 @@ fn flood_unfill(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
     for y in bounds.min_y..bounds.max_y {
         for x in bounds.min_x..bounds.max_x {
             pixels[3 * (sqr * y + x)] &= !RED_MASK_FLOOD_FILLED;
+        }
+    }
+}
+
+fn flood_mk_green(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
+    for y in bounds.min_y..bounds.max_y {
+        for x in bounds.min_x..bounds.max_x {
+            let offset = 3 * (sqr * y + x);
+            if pixels[offset] & RED_MASK_FLOOD_FILLED != 0 {
+                pixels[offset+1] = 255;
+            }
         }
     }
 }
@@ -182,7 +192,7 @@ fn detect_material(pixels: &mut Vec<u8>, sqr: usize, x: usize, y: usize) -> bool
 // Draw border pixels with RED_MASK_BORDER
 fn detect_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
 
-    flood_fill(pixels, sqr, bounds, 0, 0, RED_MASK_NO_MATERIAL);
+    flood_fill(pixels, sqr, bounds, bounds.min_x, bounds.min_y, RED_MASK_NO_MATERIAL);
 
     for y in bounds.min_y..bounds.max_y {
         for x in bounds.min_x..bounds.max_x {
@@ -197,6 +207,49 @@ fn detect_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
                 continue;
             }
             pixels[offset] |= RED_MASK_BORDER;
+        }
+    }
+}
+
+fn count_no_border_mat(pixels: &mut Vec<u8>, sqr: usize, x: usize, y: usize) -> usize {
+    let pix = pixels[3 * (sqr * y + x)];
+    if pix & RED_MASK_MATERIAL == 0 || pix & RED_MASK_BORDER != 0 {
+        return 0;
+    }
+    return 1;
+}
+
+// Removes dead end nipples from border
+//
+//    X     <- removes this
+//    X     <- and this
+// XXXXXXXX <- border
+// MMMMMMMM <- material
+fn remove_dead_end_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
+    loop {
+        let mut count = 0;
+        for y in bounds.min_y..bounds.max_y {
+            for x in bounds.min_x..bounds.max_x {
+                let offset = 3 * (sqr * y + x);
+                if pixels[offset] & RED_MASK_BORDER == 0 {
+                    continue;
+                }
+                // Check point left, right, up and down
+                let near_count =
+                    count_no_border_mat(pixels, sqr, x + 1, y)+
+                    count_no_border_mat(pixels, sqr, x - 1, y)+
+                    count_no_border_mat(pixels, sqr, x, y + 1)+
+                    count_no_border_mat(pixels, sqr, x, y - 1);
+
+                if near_count == 0 {
+                    pixels[offset] = 0;         // not border and not material now
+                    count += 1;
+                }
+            }
+        }
+        println!("remove_dead_end_border count={}", count);
+        if count == 0 {
+            return;
         }
     }
 }
@@ -397,12 +450,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
         }
     }
 
-    // Add one more so that we dont have to write ..max+1 everywhere
-    bounds.max_x += 1;
-    bounds.max_y += 1;
+    // Add one more so that we dont have to write ..max+1 everywhere and 1pixel so that flood fill
+    // works.
+    bounds.min_x -= 1;
+    bounds.min_y -= 1;
+    bounds.max_x += 2;
+    bounds.max_y += 2;
 
     // Detect borders
     detect_border(&mut pixels, sqr, bounds);
+
+    // Remove dead end points on border
+    remove_dead_end_border(&mut pixels, sqr, bounds);
 
     // Find jags that could spoil finding corners
     detect_jags(&mut pixels, sqr, bounds, sqr / 32, sqr / 6, sqr / 6);
@@ -468,50 +527,53 @@ fn find_edge(pixels: &mut Vec<u8>,
              -> String {
 
     // Split border in top and bot points into 2 parts
-    /*pixels[3 * (sqr * top_y + top_x)] &= !RED_MASK_BORDER;
+    pixels[3 * (sqr * top_y + top_x)] &= !RED_MASK_BORDER;
     pixels[3 * (sqr * bot_y + bot_x)] &= !RED_MASK_BORDER;
 
+    let mut edges = vec![];
     let mut p = near_iter_begin(top_x, top_y, 1);
     loop {
+
+        flood_unfill(pixels, sqr, bounds);
         let count = flood_fill(pixels, sqr, bounds, p.0, p.1, RED_MASK_BORDER);
         let edge = flood_points(pixels, sqr, bounds);
-        println!("edge {}{}={}", p.0, p.1, edge.len());
+        //flood_mk_green(pixels, sqr, bounds);
+
+        println!("edge {},{} len={} pix={}", p.0, p.1, edge.len(), pixels[3 * (sqr * p.1 + p.0)]);
+        edges.push(edge);
 
         p = near_iter_next(top_x, top_y, p.0, p.1, p.2);
         if p.2 > 1 {
             break;
         }
-    }*/
-
-    let mut edge1 = vec![];
-    let mut edge2 = vec![];
-
-    fill_edge_rec(pixels,
-                  sqr,
-                  &mut edge1,
-                  &mut edge2,
-                  bot_x,
-                  bot_y,
-                  top_x,
-                  top_y,
-                  &mut GREEN_MASK_EDGE_1);
-
-    println!("edge1={} edge2={}", edge1.len(), edge2.len());
-
-    if edge1.len() > edge2.len() {
-        edge1 = edge2;
     }
+
+    // Find second longest edge
+    let mut longest = vec![];
+    let mut edge2 = vec![];           // second longest
+    for v in edges {
+        if v.len() > longest.len() {
+            edge2 = longest;
+            longest = v;
+        }
+        else if v.len() > edge2.len() {
+            edge2 = v;
+        }
+    }
+
+    println!("return edge {}", edge2.len());
+    draw_coords(pixels, sqr, &edge2, 0, 0, 0, 255);
 
     // Find min
     let mut min_x = usize::max_value();
     let mut min_y = usize::max_value();
-    for p in edge1.iter() {
+    for p in edge2.iter() {
         min_x = cmp::min(p.0, min_x);
         min_y = cmp::min(p.1, min_y);
     }
 
     let mut res: String = "".to_string();
-    for p in edge1.iter() {
+    for p in edge2.iter() {
         if res.len() > 0 {
             res += "\n";
         }
@@ -776,11 +838,11 @@ fn main() {
 
     //process_jpg("9.jpg", &sdl_context);
 
-    /*let mut pixels: Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
+    let mut pixels: Vec<u8> = vec![0;3*800*800];
 
     //draw_coords(&mut pixels, &read_txt("2.0.txt"), 0, 0);
-    draw_coords(&mut pixels, &read_txt("9.0.txt"), 100, 100, 255, 0);
-    draw_coords(&mut pixels, &flip_coords(&read_txt("10.2.txt")), 100, 100, 0, 255);
+    draw_coords(&mut pixels, 800, &read_txt("8.0.txt"), 100, 100, 255, 0);
+    draw_coords(&mut pixels, 800, &flip_coords(&read_txt("9.2.txt")), 100, 100, 0, 255);
 
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -794,5 +856,5 @@ fn main() {
     let mut renderer = window.renderer().build().unwrap();
 
 
-    display_pixels(&pixels, 800, &sdl_context, &mut renderer);*/
+    display_pixels(&pixels, 800, &sdl_context, &mut renderer);
 }
