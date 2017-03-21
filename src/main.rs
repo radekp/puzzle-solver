@@ -57,30 +57,45 @@ fn detect_material(pixels: &mut Vec<u8>, sqr: usize, x: usize, y: usize) -> bool
 fn detect_border(pixels: &mut Vec<u8>, sqr: usize, x: usize, y: usize) -> bool {
 
     let offset = 3 * (sqr * y + x);
-    if pixels[offset] == 0 {
+    let pix = pixels[offset];
+    
+    if pix & RED_MASK_NO_BORDER != 0 || pix & RED_MASK_BORDER != 0 {		// already processed this pixel?
         return false;
     }
+    
+    let mut near = false;
     if x > 0 {
         let offset_xm = 3 * (sqr * y + x - 1);
-        if pixels[offset_xm] & RED_MASK_MATERIAL == 0 {
-            pixels[offset] |= RED_MASK_BORDER;
+        if pixels[offset_xm] & RED_MASK_NO_BORDER != 0 {
+            near = true;
         }
     }
     if y > 0 {
         let offset_ym = 3 * (sqr * (y - 1) + x);
-        if pixels[offset_ym] & RED_MASK_MATERIAL == 0 {
-            pixels[offset] |= RED_MASK_BORDER;
+        if pixels[offset_ym] & RED_MASK_NO_BORDER != 0 {
+            near = true;
         }
     }
     let offset_xp = 3 * (sqr * y + x + 1);
-    if pixels[offset_xp] & RED_MASK_MATERIAL == 0 {
-        pixels[offset] |= RED_MASK_BORDER;
+    if pixels[offset_xp] & RED_MASK_NO_BORDER != 0 {
+        near = true;
     }
     let offset_yp = 3 * (sqr * (y + 1) + x);
-    if pixels[offset_yp] & RED_MASK_MATERIAL == 0 {
-        pixels[offset] |= RED_MASK_BORDER;
+    if pixels[offset_yp] & RED_MASK_NO_BORDER != 0 {
+        near = true;
     }
-    return false;
+    
+    // Nothing near where border is detected
+    if !near {
+      return false;
+    }
+    
+    if pix & RED_MASK_MATERIAL == 0 {    
+      pixels[offset] |= RED_MASK_NO_BORDER;
+    } else {
+      pixels[offset] |= RED_MASK_BORDER;
+    }
+    return true;
 }
 
 // Remove jags from puzzle:
@@ -288,12 +303,11 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     pixels[offset] |= RED_MASK_NO_BORDER;
     loop {
         let mut detected = false;
-        for y in bounds.min_y..bounds.max_y {
-            for x in bounds.min_x..bounds.max_x {
+        for y in bounds.min_y-1..bounds.max_y+1 {
+            for x in bounds.min_x-1..bounds.max_x+1 {
                 detected |= detect_border(&mut pixels, sqr, x, y);
             }
         }
-        println!("detected={}", detected);
         if !detected {
             break;
         }
