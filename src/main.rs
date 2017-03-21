@@ -37,6 +37,68 @@ struct URect {
     max_y: usize,
 }
 
+// Near point iterator
+// Iterates points in spiral centered at cx,cy
+//
+//     9 ....
+//       1 2 3
+//       8   4
+//       7 6 5
+//
+// If a==0 it will start in cx,cy orherwise a is square side on start
+fn near_iter_begin(cx: i32, cy: i32, start_a: i32) -> (i32, i32, i32) {
+    return (cx - start_a, cy - start_a, start_a);
+}
+
+// Return next point in spiral
+fn near_iter_next(cx: i32, cy: i32, prev_x: i32, prev_y: i32, prev_a: i32) -> (i32, i32, i32) {
+
+    let mut x = prev_x;
+    let mut y = prev_y;
+    let mut a = prev_a;
+
+    if x == cx && y == cy {
+        return (cx - 1, cy - 1, a);
+    }
+
+    if y == cy - a {
+        x += 1;
+        if x - cx <= a {
+            return (x, y, a);
+        }
+        x = cx + a;
+        y = cy - a + 1;
+        return (x, y, a);
+    }
+
+    if x == cx + a {
+        y += 1;
+        if y - cy <= a {
+            return (x, y, a);
+        }
+        x = cx + a - 1;
+        y = cy + a;
+        return (x, y, a);
+    }
+
+    if y == cy + a {
+        x -= 1;
+        if cx - x <= a {
+            return (x, y, a);
+        }
+        x = cx - a;
+        y = cy + a - 1;
+        return (x, y, a);
+    }
+
+    y -= 1;
+    if y > cy - a {
+        return (x, y, a);
+    }
+    a += 1;
+    return (cx - a, cy - a, a);
+}
+
 fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize, compare_red_mask: u8) -> usize {
 
     let mut src = vec![(x,y)];
@@ -79,12 +141,24 @@ fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize,
     }
 }
 
-fn flood_unfill(pixels: &mut Vec<u8>, sqr: usize, bounds: URect, x: usize, y:usize, compare_red_mask: u8) {
+fn flood_unfill(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
     for y in bounds.min_y..bounds.max_y {
         for x in bounds.min_x..bounds.max_x {
             pixels[3 * (sqr * y + x)] &= !RED_MASK_FLOOD_FILLED;
         }
     }
+}
+
+fn flood_points(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) -> Vec<(usize,usize)> {
+    let mut res = vec![];
+    for y in bounds.min_y..bounds.max_y {
+        for x in bounds.min_x..bounds.max_x {
+            if pixels[3 * (sqr * y + x)] & RED_MASK_FLOOD_FILLED != 0 {
+                res.push((x,y));
+            }
+        }
+    }
+    return res;
 }
 
 // Detect piece color - in my case they are dark blue
@@ -285,7 +359,7 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
                            width: u32,
                            height: u32,
                            draw_corners: bool)
-                           -> (usize, usize, usize, usize, Vec<u8>) {
+                           -> (usize, usize, usize, usize, Vec<u8>, URect) {
 
     renderer.clear();
     renderer.copy_ex(&texture,
@@ -335,7 +409,7 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
 
     let rv = find_corners(&mut pixels, sqr, bounds, draw_corners);
 
-    return (rv.0, rv.1, rv.2, rv.3, pixels);
+    return (rv.0, rv.1, rv.2, rv.3, pixels, bounds);
 }
 
 fn fill_edge_rec(pixels: &mut Vec<u8>,
@@ -386,6 +460,7 @@ fn fill_edge_rec(pixels: &mut Vec<u8>,
 
 fn find_edge(pixels: &mut Vec<u8>,
              sqr: usize,
+             bounds: URect,
              top_x: usize,
              top_y: usize,
              bot_x: usize,
@@ -393,8 +468,20 @@ fn find_edge(pixels: &mut Vec<u8>,
              -> String {
 
     // Split border in top and bot points into 2 parts
-    //pixels[3 * (sqr * top_y + top_x)] &= !RED_MASK_BORDER;
-    //pixels[3 * (sqr * bot_y + bot_x)] &= !RED_MASK_BORDER;
+    /*pixels[3 * (sqr * top_y + top_x)] &= !RED_MASK_BORDER;
+    pixels[3 * (sqr * bot_y + bot_x)] &= !RED_MASK_BORDER;
+
+    let mut p = near_iter_begin(top_x, top_y, 1);
+    loop {
+        let count = flood_fill(pixels, sqr, bounds, p.0, p.1, RED_MASK_BORDER);
+        let edge = flood_points(pixels, sqr, bounds);
+        println!("edge {}{}={}", p.0, p.1, edge.len());
+
+        p = near_iter_next(top_x, top_y, p.0, p.1, p.2);
+        if p.2 > 1 {
+            break;
+        }
+    }*/
 
     let mut edge1 = vec![];
     let mut edge2 = vec![];
@@ -581,9 +668,10 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
         let bot_x = rv.2;
         let bot_y = rv.3;
         let mut pixels = rv.4;
+        let bounds = rv.5;
 
         // Save left edge coordinates to file
-        let content = find_edge(&mut pixels, sqr, top_x, top_y, bot_x, bot_y);
+        let content = find_edge(&mut pixels, sqr, bounds, top_x, top_y, bot_x, bot_y);
         let ext = format!("{}.txt", side);
         let txt_path = Path::new(img_file).with_extension(ext);
         let display = txt_path.display();
