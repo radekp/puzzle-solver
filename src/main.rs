@@ -37,10 +37,11 @@ struct URect {
     max_y: usize,
 }
 
-fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize, compare_red_mask: u8) {
+fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize, compare_red_mask: u8) -> usize {
 
     let mut src = vec![(x,y)];
     let mut dst = vec![];
+    let mut res = 0;
     loop {
 
         for p in src.iter() {
@@ -53,6 +54,7 @@ fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize,
                 continue;
             }
             pixels[offset] |= RED_MASK_FLOOD_FILLED;
+            res += 1;
 
             if p.0 > bounds.min_x {
                 dst.push((p.0 - 1, p.1));
@@ -68,7 +70,7 @@ fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize,
             }
         }
         if dst.len() == 0 {
-            return;
+            return res;
         }
         src.clear();
         let tmp = src;
@@ -389,6 +391,10 @@ fn find_edge(pixels: &mut Vec<u8>,
              bot_x: usize,
              bot_y: usize)
              -> String {
+
+    // Split border in top and bot points into 2 parts
+    //pixels[3 * (sqr * top_y + top_x)] &= !RED_MASK_BORDER;
+    //pixels[3 * (sqr * bot_y + bot_x)] &= !RED_MASK_BORDER;
 
     let mut edge1 = vec![];
     let mut edge2 = vec![];
