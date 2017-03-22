@@ -661,6 +661,8 @@ fn display_pixels(pixels: &Vec<u8>,
                 Event::KeyDown { keycode: Some(Keycode::M), .. } => {
 		  let w = dst_rect.width();
 		  let h = dst_rect.height();
+          dst_rect.set_x(0);
+          dst_rect.set_y(0);
 		  dst_rect.set_width(w / 2);
 		  dst_rect.set_height(h / 2);
                 },
