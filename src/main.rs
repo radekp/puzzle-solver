@@ -51,7 +51,12 @@ fn near_iter_begin(cx: usize, cy: usize, start_a: usize) -> (usize, usize, usize
 }
 
 // Return next point in spiral
-fn near_iter_next(cx: usize, cy: usize, prev_x: usize, prev_y: usize, prev_a: usize) -> (usize, usize, usize) {
+fn near_iter_next(cx: usize,
+                  cy: usize,
+                  prev_x: usize,
+                  prev_y: usize,
+                  prev_a: usize)
+                  -> (usize, usize, usize) {
 
     let mut x = prev_x;
     let mut y = prev_y;
@@ -104,15 +109,23 @@ enum FFMode {
     EightWay,
 }
 
-fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize, ff_mode: FFMode, compare_red_mask: u8) -> usize {
+fn flood_fill(pixels: &mut Vec<u8>,
+              sqr: usize,
+              bounds: URect,
+              x: usize,
+              y: usize,
+              ff_mode: FFMode,
+              compare_red_mask: u8)
+              -> usize {
 
-    let mut src = vec![(x,y)];
+    let mut src = vec![(x, y)];
     let mut dst = vec![];
     let mut res = 0;
     loop {
 
         for p in src.iter() {
-            if p.0 < bounds.min_x || p.0 > bounds.max_x || p.1 < bounds.min_y || p.1 > bounds.max_y {
+            if p.0 < bounds.min_x || p.0 > bounds.max_x || p.1 < bounds.min_y ||
+               p.1 > bounds.max_y {
                 continue;
             }
             let offset = 3 * (sqr * p.1 + p.0);
@@ -132,12 +145,11 @@ fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize,
             dst.push((p.0, p.1 + 1));
 
             match ff_mode {
-                FFMode::EightWay =>
-                {
-                  dst.push((p.0 - 1, p.1 - 1));
-		  dst.push((p.0 + 1, p.1 - 1));
-		  dst.push((p.0 - 1, p.1 + 1));
-		  dst.push((p.0 + 1, p.1 + 1));
+                FFMode::EightWay => {
+                    dst.push((p.0 - 1, p.1 - 1));
+                    dst.push((p.0 + 1, p.1 - 1));
+                    dst.push((p.0 - 1, p.1 + 1));
+                    dst.push((p.0 + 1, p.1 + 1));
                 }
                 _ => {}
             }
@@ -165,18 +177,18 @@ fn flood_mk_green(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
         for x in bounds.min_x..bounds.max_x {
             let offset = 3 * (sqr * y + x);
             if pixels[offset] & RED_MASK_FLOOD_FILLED != 0 {
-                pixels[offset+1] = 255;
+                pixels[offset + 1] = 255;
             }
         }
     }
 }
 
-fn flood_points(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) -> Vec<(usize,usize)> {
+fn flood_points(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) -> Vec<(usize, usize)> {
     let mut res = vec![];
     for y in bounds.min_y..bounds.max_y {
         for x in bounds.min_x..bounds.max_x {
             if pixels[3 * (sqr * y + x)] & RED_MASK_FLOOD_FILLED != 0 {
-                res.push((x,y));
+                res.push((x, y));
             }
         }
     }
@@ -225,7 +237,13 @@ fn detect_material(pixels: &mut Vec<u8>, sqr: usize) -> URect {
     bounds.max_y += 2;
 
     // Flood fill from top-left corner - no material should be there
-    flood_fill(pixels, sqr, bounds, bounds.min_x, bounds.min_y, FFMode::FourWay, RED_MASK_NO_MATERIAL);
+    flood_fill(pixels,
+               sqr,
+               bounds,
+               bounds.min_x,
+               bounds.min_y,
+               FFMode::FourWay,
+               RED_MASK_NO_MATERIAL);
 
     // Paint not filled pixels with material color. This fills holes inside of shapes.
     for y in bounds.min_y..bounds.max_y {
@@ -247,13 +265,14 @@ fn detect_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
     for y in bounds.min_y..bounds.max_y {
         for x in bounds.min_x..bounds.max_x {
             let offset = 3 * (sqr * y + x);
-            if pixels[offset] & RED_MASK_MATERIAL == 0 {        // not material, skip
+            if pixels[offset] & RED_MASK_MATERIAL == 0 {
+                // not material, skip
                 continue;
             }
             if pixels[offset-3] & RED_MASK_NO_MATERIAL == 0     // no materi must be near
-                && pixels[offset+3] & RED_MASK_NO_MATERIAL == 0
-                && pixels[offset + 3 * sqr] & RED_MASK_NO_MATERIAL == 0
-                && pixels[offset - 3 * sqr] & RED_MASK_NO_MATERIAL == 0 {
+                && pixels[offset+3] & RED_MASK_NO_MATERIAL == 0 &&
+               pixels[offset + 3 * sqr] & RED_MASK_NO_MATERIAL == 0 &&
+               pixels[offset - 3 * sqr] & RED_MASK_NO_MATERIAL == 0 {
                 continue;
             }
             pixels[offset] |= RED_MASK_BORDER;
@@ -285,14 +304,13 @@ fn remove_dead_end_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
                     continue;
                 }
                 // Check point left, right, up and down
-                let near_count =
-                    count_no_border_mat(pixels, sqr, x + 1, y)+
-                    count_no_border_mat(pixels, sqr, x - 1, y)+
-                    count_no_border_mat(pixels, sqr, x, y + 1)+
-                    count_no_border_mat(pixels, sqr, x, y - 1);
+                let near_count = count_no_border_mat(pixels, sqr, x + 1, y) +
+                                 count_no_border_mat(pixels, sqr, x - 1, y) +
+                                 count_no_border_mat(pixels, sqr, x, y + 1) +
+                                 count_no_border_mat(pixels, sqr, x, y - 1);
 
                 if near_count == 0 {
-                    pixels[offset] = 0;         // not border and not material now
+                    pixels[offset] = 0; // not border and not material now
                     count += 1;
                 }
             }
@@ -466,18 +484,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
 
     renderer.clear();
     renderer.copy_ex(&texture,
-                     None,
-                     Some(Rect::new(shift as i32, shift as i32, width, height)),
-                     angle,
-                     None,
-                     false,
-                     false)
+                 None,
+                 Some(Rect::new(shift as i32, shift as i32, width, height)),
+                 angle,
+                 None,
+                 false,
+                 false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                                          PixelFormatEnum::RGB24)
+                     PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect piece and bounds
@@ -564,11 +582,21 @@ fn find_edge(pixels: &mut Vec<u8>,
     loop {
 
         flood_unfill(pixels, sqr, bounds);
-        let count = flood_fill(pixels, sqr, bounds, p.0, p.1, FFMode::EightWay, RED_MASK_BORDER);
+        let count = flood_fill(pixels,
+                               sqr,
+                               bounds,
+                               p.0,
+                               p.1,
+                               FFMode::EightWay,
+                               RED_MASK_BORDER);
         let edge = flood_points(pixels, sqr, bounds);
         //flood_mk_green(pixels, sqr, bounds);
 
-        println!("edge {},{} len={} pix={}", p.0, p.1, edge.len(), pixels[3 * (sqr * p.1 + p.0)]);
+        println!("edge {},{} len={} pix={}",
+                 p.0,
+                 p.1,
+                 edge.len(),
+                 pixels[3 * (sqr * p.1 + p.0)]);
         edges.push(edge);
 
         p = near_iter_next(top_x, top_y, p.0, p.1, p.2);
@@ -579,13 +607,12 @@ fn find_edge(pixels: &mut Vec<u8>,
 
     // Find second longest edge
     let mut longest = vec![];
-    let mut edge2 = vec![];           // second longest
+    let mut edge2 = vec![]; // second longest
     for v in edges {
         if v.len() > longest.len() {
             edge2 = longest;
             longest = v;
-        }
-        else if v.len() > edge2.len() {
+        } else if v.len() > edge2.len() {
             edge2 = v;
         }
     }
@@ -648,44 +675,44 @@ fn display_pixels(pixels: &Vec<u8>,
     loop {
         for event in event_pump.poll_iter() {
             renderer.clear();
-	    renderer.copy(&res_texture, None, Some(dst_rect)).unwrap();
+            renderer.copy(&res_texture, None, Some(dst_rect)).unwrap();
             renderer.present();
             match event {
                 Event::KeyDown { keycode: Some(Keycode::R), .. } => return UserAction::Rotate,
                 Event::KeyDown { keycode: Some(Keycode::P), .. } => {
-		  let w = dst_rect.width();
-		  let h = dst_rect.height();
-		  dst_rect.set_width(w * 2);
-		  dst_rect.set_height(h * 2);
-                },
+                    let w = dst_rect.width();
+                    let h = dst_rect.height();
+                    dst_rect.set_width(w * 2);
+                    dst_rect.set_height(h * 2);
+                }
                 Event::KeyDown { keycode: Some(Keycode::M), .. } => {
-		  let w = dst_rect.width();
-		  let h = dst_rect.height();
-          dst_rect.set_x(0);
-          dst_rect.set_y(0);
-		  dst_rect.set_width(w / 2);
-		  dst_rect.set_height(h / 2);
-                },
+                    let w = dst_rect.width();
+                    let h = dst_rect.height();
+                    dst_rect.set_x(0);
+                    dst_rect.set_y(0);
+                    dst_rect.set_width(w / 2);
+                    dst_rect.set_height(h / 2);
+                }
                 Event::KeyDown { keycode: Some(Keycode::Right), .. } => {
-		  let x = dst_rect.x();
-		  let step = (dst_rect.width() / 10) as i32;
-		  dst_rect.set_x(x - step);
-                },
+                    let x = dst_rect.x();
+                    let step = (dst_rect.width() / 10) as i32;
+                    dst_rect.set_x(x - step);
+                }
                 Event::KeyDown { keycode: Some(Keycode::Left), .. } => {
-		  let x = dst_rect.x();
-		  let step = (dst_rect.width() / 10) as i32;
-		  dst_rect.set_x(x + step);
-                },
+                    let x = dst_rect.x();
+                    let step = (dst_rect.width() / 10) as i32;
+                    dst_rect.set_x(x + step);
+                }
                 Event::KeyDown { keycode: Some(Keycode::Down), .. } => {
-		  let y = dst_rect.y();
-		  let step = (dst_rect.height() / 10) as i32;
-		  dst_rect.set_y(y - step);
-                },
+                    let y = dst_rect.y();
+                    let step = (dst_rect.height() / 10) as i32;
+                    dst_rect.set_y(y - step);
+                }
                 Event::KeyDown { keycode: Some(Keycode::Up), .. } => {
-		  let y = dst_rect.y();
-		  let step = (dst_rect.height() / 10) as i32;
-		  dst_rect.set_y(y + step);
-                },
+                    let y = dst_rect.y();
+                    let step = (dst_rect.height() / 10) as i32;
+                    dst_rect.set_y(y + step);
+                }
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return UserAction::Quit,
                 _ => {}
@@ -908,16 +935,22 @@ fn main() {
 
     //draw_coords(&mut pixels, &read_txt("2.0.txt"), 0, 0);
     draw_coords(&mut pixels, 800, &read_txt("8.0.txt"), 100, 100, 255, 0, 0);
-    draw_coords(&mut pixels, 800, &flip_coords(&read_txt("9.2.txt")), 100, 100, 0, 255, 0);
+    draw_coords(&mut pixels,
+                800,
+                &flip_coords(&read_txt("9.2.txt")),
+                100,
+                100,
+                0,
+                255,
+                0);
 
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window =
-        video_subsystem.window("rust-sdl2 demo: Video", 800, 600)
-            .position(100,0)
-            .opengl()
-            .build()
-            .unwrap();
+    let window = video_subsystem.window("rust-sdl2 demo: Video", 800, 600)
+        .position(100, 0)
+        .opengl()
+        .build()
+        .unwrap();
 
     let mut renderer = window.renderer().build().unwrap();
 
