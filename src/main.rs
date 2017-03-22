@@ -20,7 +20,7 @@ use sdl2::render::Texture;
 
 // SDL window size - puzzle pieces bitmap must fit even with rotation
 const RED_MASK_NO_MATERIAL: u8 = 1;
-const RED_MASK_MATERIAL: u8 = 1 << 4;
+const RED_MASK_MATERIAL: u8 = 1 << 6;
 const RED_MASK_BORDER: u8 = 1 << 7;
 const RED_MASK_NO_BORDER: u8 = 1 << 1;
 const RED_MASK_JAG: u8 = 1 << 5;
@@ -99,7 +99,12 @@ fn near_iter_next(cx: usize, cy: usize, prev_x: usize, prev_y: usize, prev_a: us
     return (cx - a, cy - a, a);
 }
 
-fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize, compare_red_mask: u8) -> usize {
+enum FFMode {
+    FourWay,
+    EightWay,
+}
+
+fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize, ff_mode: FFMode, compare_red_mask: u8) -> usize {
 
     let mut src = vec![(x,y)];
     let mut dst = vec![];
@@ -125,10 +130,17 @@ fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize,
             dst.push((p.0 + 1, p.1));
             dst.push((p.0, p.1 - 1));
             dst.push((p.0, p.1 + 1));
-            dst.push((p.0 - 1, p.1 - 1));
-            dst.push((p.0 + 1, p.1 - 1));
-            dst.push((p.0 - 1, p.1 + 1));
-            dst.push((p.0 + 1, p.1 + 1));
+            
+            match ff_mode {
+                FFMode::EightWay => 
+                {
+                  dst.push((p.0 - 1, p.1 - 1));
+		  dst.push((p.0 + 1, p.1 - 1));
+		  dst.push((p.0 - 1, p.1 + 1));
+		  dst.push((p.0 + 1, p.1 + 1));
+                }
+                _ => {}
+            }
         }
         if dst.len() == 0 {
             return res;
@@ -192,8 +204,20 @@ fn detect_material(pixels: &mut Vec<u8>, sqr: usize, x: usize, y: usize) -> bool
 // Draw border pixels with RED_MASK_BORDER
 fn detect_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
 
-    flood_fill(pixels, sqr, bounds, bounds.min_x, bounds.min_y, RED_MASK_NO_MATERIAL);
+    // Flood fill from top-left corner - no material should be there
+    flood_fill(pixels, sqr, bounds, bounds.min_x, bounds.min_y, FFMode::FourWay, RED_MASK_NO_MATERIAL);
 
+    // Make not filled pixels to be material. This fills holes inside of shapes.
+    for y in bounds.min_y..bounds.max_y {
+        for x in bounds.min_x..bounds.max_x {
+            let offset = 3 * (sqr * y + x);
+            if pixels[offset] & RED_MASK_FLOOD_FILLED == 0 {
+                pixels[offset] |= RED_MASK_MATERIAL;
+            }
+        }
+    }
+
+    // Border is material that touches flood filled
     for y in bounds.min_y..bounds.max_y {
         for x in bounds.min_x..bounds.max_x {
             let offset = 3 * (sqr * y + x);
@@ -243,6 +267,7 @@ fn remove_dead_end_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
 
                 if near_count == 0 {
                     pixels[offset] = 0;         // not border and not material now
+                    pixels[offset+1] = 255;         // not border and not material now
                     count += 1;
                 }
             }
@@ -460,9 +485,12 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     // Detect borders
     detect_border(&mut pixels, sqr, bounds);
 
+            return (0,0,100,100, pixels, bounds);
+
+    
     // Remove dead end points on border
     remove_dead_end_border(&mut pixels, sqr, bounds);
-
+    
     // Find jags that could spoil finding corners
     detect_jags(&mut pixels, sqr, bounds, sqr / 32, sqr / 6, sqr / 6);
 
@@ -529,13 +557,16 @@ fn find_edge(pixels: &mut Vec<u8>,
     // Split border in top and bot points into 2 parts
     pixels[3 * (sqr * top_y + top_x)] &= !RED_MASK_BORDER;
     pixels[3 * (sqr * bot_y + bot_x)] &= !RED_MASK_BORDER;
+    
+    pixels[3 * (sqr * top_y + top_x) + 1] = 255;
+    pixels[3 * (sqr * bot_y + bot_x) + 1] = 255;
 
     let mut edges = vec![];
     let mut p = near_iter_begin(top_x, top_y, 1);
     loop {
 
         flood_unfill(pixels, sqr, bounds);
-        let count = flood_fill(pixels, sqr, bounds, p.0, p.1, RED_MASK_BORDER);
+        let count = flood_fill(pixels, sqr, bounds, p.0, p.1, FFMode::EightWay, RED_MASK_BORDER);
         let edge = flood_points(pixels, sqr, bounds);
         //flood_mk_green(pixels, sqr, bounds);
 
@@ -562,7 +593,7 @@ fn find_edge(pixels: &mut Vec<u8>,
     }
 
     println!("return edge {}", edge2.len());
-    draw_coords(pixels, sqr, &edge2, 0, 0, 0, 255);
+    draw_coords(pixels, sqr, &edge2, 0, 0, 0, 0, 255);
 
     // Find min
     let mut min_x = usize::max_value();
@@ -610,18 +641,51 @@ fn display_pixels(pixels: &Vec<u8>,
         })
         .unwrap();
 
-    renderer.clear();
-    renderer.copy(&res_texture, None, None).unwrap();
-    renderer.present();
-
     //return UserAction::Rotate;
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
+    let mut dst_rect = Rect::new(0, 0, sqr as u32, sqr as u32);
+    
     loop {
         for event in event_pump.poll_iter() {
+            renderer.clear();
+	    renderer.copy(&res_texture, None, Some(dst_rect)).unwrap();
+            renderer.present();
             match event {
                 Event::KeyDown { keycode: Some(Keycode::R), .. } => return UserAction::Rotate,
+                Event::KeyDown { keycode: Some(Keycode::P), .. } => {
+		  let w = dst_rect.width();
+		  let h = dst_rect.height();
+		  dst_rect.set_width(w * 2);
+		  dst_rect.set_height(h * 2);
+                },
+                Event::KeyDown { keycode: Some(Keycode::M), .. } => {
+		  let w = dst_rect.width();
+		  let h = dst_rect.height();
+		  dst_rect.set_width(w / 2);
+		  dst_rect.set_height(h / 2);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Right), .. } => {
+		  let x = dst_rect.x();
+		  let step = (dst_rect.width() / 10) as i32;
+		  dst_rect.set_x(x - step);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Left), .. } => {
+		  let x = dst_rect.x();
+		  let step = (dst_rect.width() / 10) as i32;
+		  dst_rect.set_x(x + step);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Down), .. } => {
+		  let y = dst_rect.y();
+		  let step = (dst_rect.height() / 10) as i32;
+		  dst_rect.set_y(y - step);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Up), .. } => {
+		  let y = dst_rect.y();
+		  let step = (dst_rect.height() / 10) as i32;
+		  dst_rect.set_y(y + step);
+                },
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return UserAction::Quit,
                 _ => {}
@@ -788,13 +852,15 @@ fn draw_coords(pixels: &mut Vec<u8>,
                left: usize,
                top: usize,
                r: u8,
-               g: u8) {
+               g: u8,
+               b: u8) {
     for p in coords {
         let x = p.0 + left;
         let y = p.1 + top;
         let offset = 3 * (sqr * y + x);
         pixels[offset] = r;
         pixels[offset + 1] = g;
+        pixels[offset + 2] = b;
     }
 }
 
@@ -841,8 +907,8 @@ fn main() {
     let mut pixels: Vec<u8> = vec![0;3*800*800];
 
     //draw_coords(&mut pixels, &read_txt("2.0.txt"), 0, 0);
-    draw_coords(&mut pixels, 800, &read_txt("8.0.txt"), 100, 100, 255, 0);
-    draw_coords(&mut pixels, 800, &flip_coords(&read_txt("9.2.txt")), 100, 100, 0, 255);
+    draw_coords(&mut pixels, 800, &read_txt("8.0.txt"), 100, 100, 255, 0, 0);
+    draw_coords(&mut pixels, 800, &flip_coords(&read_txt("9.2.txt")), 100, 100, 0, 255, 0);
 
     let video_subsystem = sdl_context.video().unwrap();
 
