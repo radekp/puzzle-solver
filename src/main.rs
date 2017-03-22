@@ -837,8 +837,6 @@ fn flip_coords(coords: &Vec<(usize, usize)>) -> Vec<(usize, usize)> {
         max_y = cmp::max(p.1, max_y);
     }
 
-    println!("max={} {}", max_x, max_y);
-
     let mut res = vec![];
     for p in coords {
         res.push((max_x - p.0, max_y - p.1));
@@ -874,10 +872,68 @@ fn main() {
     //process_jpg("9.jpg", &sdl_context);
 
     // Read txt files and find matching edges
+    let mut edges = vec![];
+    let mut filenames = vec![];
+    let paths = fs::read_dir("./").unwrap();
+    for path in paths {
+        //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
+        let path_str = path.unwrap()
+            .path()
+            .into_os_string()
+            .into_string()
+            .unwrap();
+        if !path_str.ends_with(".txt") {
+            continue;
+        }
+        edges.push(read_txt(&path_str));
+        filenames.push(path_str);
+    }
+
+    // SDL window
     const WND_WIDTH: usize = 800;
     const WND_HEIGHT: usize = 800;
 
     let mut pixels: Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
+    let video_subsystem = sdl_context.video().unwrap();
+
+    let window =
+        video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
+            .position(100, 0)
+            .opengl()
+            .build()
+            .unwrap();
+
+    let mut renderer = window.renderer().build().unwrap();
+
+    for i in 0..edges.len() {
+        for j in i + 1..edges.len() {
+
+            println!("comparig {} vs {}", filenames[i], filenames[j]);
+
+            // Normal display
+            draw_coords(&mut pixels, WND_WIDTH, &edges[i], 0, 0, 255, 0, 0);
+            draw_coords(&mut pixels, WND_WIDTH, &edges[j], 0, 0, 0, 0, 255);
+            display_pixels(&pixels, WND_WIDTH, &sdl_context, &mut renderer);
+            for p in pixels.iter_mut() {
+                *p = 0;
+            }
+
+            // Second edge is flipped
+            draw_coords(&mut pixels, WND_WIDTH, &edges[i], 0, 0, 255, 0, 0);
+            draw_coords(&mut pixels,
+                        WND_WIDTH,
+                        &flip_coords(&edges[j]),
+                        0,
+                        0,
+                        0,
+                        255,
+                        0);
+            display_pixels(&pixels, WND_WIDTH, &sdl_context, &mut renderer);
+            for p in pixels.iter_mut() {
+                *p = 0;
+            }
+        }
+    }
 
     //draw_coords(&mut pixels, &read_txt("2.0.txt"), 0, 0);
     draw_coords(&mut pixels,
@@ -896,17 +952,6 @@ fn main() {
                 0,
                 255,
                 0);
-
-    let video_subsystem = sdl_context.video().unwrap();
-
-    let window =
-        video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
-            .position(100, 0)
-            .opengl()
-            .build()
-            .unwrap();
-
-    let mut renderer = window.renderer().build().unwrap();
 
     display_pixels(&pixels, WND_WIDTH, &sdl_context, &mut renderer);
 }
