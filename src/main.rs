@@ -130,9 +130,9 @@ fn flood_fill(pixels: &mut Vec<u8>, sqr: usize, bounds:URect, x: usize, y:usize,
             dst.push((p.0 + 1, p.1));
             dst.push((p.0, p.1 - 1));
             dst.push((p.0, p.1 + 1));
-            
+
             match ff_mode {
-                FFMode::EightWay => 
+                FFMode::EightWay =>
                 {
                   dst.push((p.0 - 1, p.1 - 1));
 		  dst.push((p.0 + 1, p.1 - 1));
@@ -184,30 +184,50 @@ fn flood_points(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) -> Vec<(usize,u
 }
 
 // Detect piece color - in my case they are dark blue
-fn detect_material(pixels: &mut Vec<u8>, sqr: usize, x: usize, y: usize) -> bool {
-    let offset = 3 * (sqr * y + x);
-    let r = pixels[offset] as i32;
-    let g = pixels[offset + 1] as i32;
-    let b = pixels[offset + 2] as i32;
-    if r + g + b > 3 * 127 {
-        pixels[offset] = RED_MASK_MATERIAL;
-        pixels[offset + 1] = RED_MASK_MATERIAL;
-        pixels[offset + 2] = RED_MASK_MATERIAL;
-        return true;
-    }
-    pixels[offset] = RED_MASK_NO_MATERIAL;
-    pixels[offset + 1] = 0;
-    pixels[offset + 2] = 0;
-    return false;
-}
+fn detect_material(pixels: &mut Vec<u8>, sqr: usize) -> URect {
 
-// Draw border pixels with RED_MASK_BORDER
-fn detect_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
+    let mut bounds = URect {
+        min_x: usize::max_value(),
+        min_y: usize::max_value(),
+        max_x: 0,
+        max_y: 0,
+    };
+
+    // Check each pixel color, compare with treshold and repaint wit material/no material color
+    for y in 0..sqr {
+        for x in 0..sqr {
+            let offset = 3 * (sqr * y + x);
+            let r = pixels[offset] as i32;
+            let g = pixels[offset + 1] as i32;
+            let b = pixels[offset + 2] as i32;
+            if r + g + b < 3 * 127 {
+                pixels[offset] = RED_MASK_NO_MATERIAL;
+                pixels[offset + 1] = 0;
+                pixels[offset + 2] = 0;
+                continue;
+            }
+            pixels[offset] = RED_MASK_MATERIAL;
+            pixels[offset + 1] = RED_MASK_MATERIAL;
+            pixels[offset + 2] = RED_MASK_MATERIAL;
+
+            bounds.min_x = cmp::min(x, bounds.min_x);
+            bounds.min_y = cmp::min(y, bounds.min_y);
+            bounds.max_x = cmp::max(x, bounds.max_x);
+            bounds.max_y = cmp::max(y, bounds.max_y);
+        }
+    }
+
+    // More space so that we dont have to write ..max+1 everywhere and 1pixel so that flood fill
+    // works.
+    bounds.min_x -= 1;
+    bounds.min_y -= 1;
+    bounds.max_x += 2;
+    bounds.max_y += 2;
 
     // Flood fill from top-left corner - no material should be there
     flood_fill(pixels, sqr, bounds, bounds.min_x, bounds.min_y, FFMode::FourWay, RED_MASK_NO_MATERIAL);
 
-    // Make not filled pixels to be material. This fills holes inside of shapes.
+    // Paint not filled pixels with material color. This fills holes inside of shapes.
     for y in bounds.min_y..bounds.max_y {
         for x in bounds.min_x..bounds.max_x {
             let offset = 3 * (sqr * y + x);
@@ -217,6 +237,12 @@ fn detect_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
         }
     }
 
+    return bounds;
+}
+
+// Draw border pixels with RED_MASK_BORDER
+fn detect_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
+
     // Border is material that touches flood filled
     for y in bounds.min_y..bounds.max_y {
         for x in bounds.min_x..bounds.max_x {
@@ -224,10 +250,10 @@ fn detect_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
             if pixels[offset] & RED_MASK_MATERIAL == 0 {        // not material, skip
                 continue;
             }
-            if pixels[offset-3] & RED_MASK_FLOOD_FILLED == 0        // skip poins in the middles
-                && pixels[offset+3] & RED_MASK_FLOOD_FILLED == 0
-                && pixels[offset + 3 * sqr] & RED_MASK_FLOOD_FILLED == 0
-                && pixels[offset - 3 * sqr] & RED_MASK_FLOOD_FILLED == 0 {
+            if pixels[offset-3] & RED_MASK_NO_MATERIAL == 0     // no materi must be near
+                && pixels[offset+3] & RED_MASK_NO_MATERIAL == 0
+                && pixels[offset + 3 * sqr] & RED_MASK_NO_MATERIAL == 0
+                && pixels[offset - 3 * sqr] & RED_MASK_NO_MATERIAL == 0 {
                 continue;
             }
             pixels[offset] |= RED_MASK_BORDER;
@@ -267,7 +293,6 @@ fn remove_dead_end_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
 
                 if near_count == 0 {
                     pixels[offset] = 0;         // not border and not material now
-                    pixels[offset+1] = 255;         // not border and not material now
                     count += 1;
                 }
             }
@@ -456,41 +481,14 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
         .unwrap();
 
     // Detect piece and bounds
-    let mut bounds = URect {
-        min_x: usize::max_value(),
-        min_y: usize::max_value(),
-        max_x: 0,
-        max_y: 0,
-    };
-
-    for y in 0..sqr {
-        for x in 0..sqr {
-            if !detect_material(&mut pixels, sqr, x, y) {
-                continue;
-            }
-            bounds.min_x = cmp::min(x, bounds.min_x);
-            bounds.min_y = cmp::min(y, bounds.min_y);
-            bounds.max_x = cmp::max(x, bounds.max_x);
-            bounds.max_y = cmp::max(y, bounds.max_y);
-        }
-    }
-
-    // Add one more so that we dont have to write ..max+1 everywhere and 1pixel so that flood fill
-    // works.
-    bounds.min_x -= 1;
-    bounds.min_y -= 1;
-    bounds.max_x += 2;
-    bounds.max_y += 2;
+    let bounds = detect_material(&mut pixels, sqr);
 
     // Detect borders
     detect_border(&mut pixels, sqr, bounds);
 
-            return (0,0,100,100, pixels, bounds);
-
-    
-    // Remove dead end points on border
+    // Remove dead end points from border
     remove_dead_end_border(&mut pixels, sqr, bounds);
-    
+
     // Find jags that could spoil finding corners
     detect_jags(&mut pixels, sqr, bounds, sqr / 32, sqr / 6, sqr / 6);
 
@@ -557,7 +555,7 @@ fn find_edge(pixels: &mut Vec<u8>,
     // Split border in top and bot points into 2 parts
     pixels[3 * (sqr * top_y + top_x)] &= !RED_MASK_BORDER;
     pixels[3 * (sqr * bot_y + bot_x)] &= !RED_MASK_BORDER;
-    
+
     pixels[3 * (sqr * top_y + top_x) + 1] = 255;
     pixels[3 * (sqr * bot_y + bot_x) + 1] = 255;
 
@@ -646,7 +644,7 @@ fn display_pixels(pixels: &Vec<u8>,
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     let mut dst_rect = Rect::new(0, 0, sqr as u32, sqr as u32);
-    
+
     loop {
         for event in event_pump.poll_iter() {
             renderer.clear();
