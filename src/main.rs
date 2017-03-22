@@ -515,52 +515,6 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     return (rv.0, rv.1, rv.2, rv.3, pixels, bounds);
 }
 
-fn fill_edge_rec(pixels: &mut Vec<u8>,
-                 sqr: usize,
-                 edge1: &mut Vec<(usize, usize)>,
-                 edge2: &mut Vec<(usize, usize)>,
-                 x: usize,
-                 y: usize,
-                 top_x: usize,
-                 top_y: usize,
-                 col: &mut u8) {
-
-    let offset = 3 * (sqr * y + x);
-    if pixels[offset] & RED_MASK_BORDER == 0 {
-        // not border
-        return;
-    }
-    if pixels[offset + 1] & GREEN_MASK_EDGE_1 != 0 {
-        // already filled
-        return;
-    }
-    if pixels[offset + 1] & GREEN_MASK_EDGE_2 != 0 {
-        // already filled
-        return;
-    }
-    pixels[offset + 1] |= *col;
-    if *col == GREEN_MASK_EDGE_1 {
-        edge1.push((x, y));
-    } else {
-        edge2.push((x, y));
-    }
-
-    if x == top_x && y == top_y {
-        // reached the second corner
-        *col = GREEN_MASK_EDGE_2; // swap color
-        return;
-    }
-
-    fill_edge_rec(pixels, sqr, edge1, edge2, x + 1, y, top_x, top_y, col);
-    fill_edge_rec(pixels, sqr, edge1, edge2, x - 1, y, top_x, top_y, col);
-    fill_edge_rec(pixels, sqr, edge1, edge2, x, y + 1, top_x, top_y, col);
-    fill_edge_rec(pixels, sqr, edge1, edge2, x, y - 1, top_x, top_y, col);
-    fill_edge_rec(pixels, sqr, edge1, edge2, x + 1, y + 1, top_x, top_y, col);
-    fill_edge_rec(pixels, sqr, edge1, edge2, x - 1, y + 1, top_x, top_y, col);
-    fill_edge_rec(pixels, sqr, edge1, edge2, x + 1, y - 1, top_x, top_y, col);
-    fill_edge_rec(pixels, sqr, edge1, edge2, x - 1, y - 1, top_x, top_y, col);
-}
-
 fn find_edge(pixels: &mut Vec<u8>,
              sqr: usize,
              bounds: URect,
@@ -571,65 +525,43 @@ fn find_edge(pixels: &mut Vec<u8>,
              -> String {
 
     // Split border in top and bot points into 2 parts
-    pixels[3 * (sqr * top_y + top_x)] &= !RED_MASK_BORDER;
-    pixels[3 * (sqr * bot_y + bot_x)] &= !RED_MASK_BORDER;
+    for i in 0..10 {
+        pixels[3 * (sqr * (top_y - i) + top_x - i)] &= !RED_MASK_BORDER;
+        pixels[3 * (sqr * (top_y + i) + top_x + i)] &= !RED_MASK_BORDER;
+        pixels[3 * (sqr * (bot_y + i) + bot_x - i)] &= !RED_MASK_BORDER;
+        pixels[3 * (sqr * (bot_y - i) + bot_x + i)] &= !RED_MASK_BORDER;
 
-    pixels[3 * (sqr * top_y + top_x) + 1] = 255;
-    pixels[3 * (sqr * bot_y + bot_x) + 1] = 255;
-
-    let mut edges = vec![];
-    let mut p = near_iter_begin(top_x, top_y, 1);
-    loop {
-
-        flood_unfill(pixels, sqr, bounds);
-        let count = flood_fill(pixels,
-                               sqr,
-                               bounds,
-                               p.0,
-                               p.1,
-                               FFMode::EightWay,
-                               RED_MASK_BORDER);
-        let edge = flood_points(pixels, sqr, bounds);
-        //flood_mk_green(pixels, sqr, bounds);
-
-        println!("edge {},{} len={} pix={}",
-                 p.0,
-                 p.1,
-                 edge.len(),
-                 pixels[3 * (sqr * p.1 + p.0)]);
-        edges.push(edge);
-
-        p = near_iter_next(top_x, top_y, p.0, p.1, p.2);
-        if p.2 > 1 {
-            break;
-        }
+        pixels[3 * (sqr * (top_y - i) + top_x - i) + 1] = (255 - 25 * i) as u8;
+        pixels[3 * (sqr * (top_y + i) + top_x + i) + 1] = (255 - 25 * i) as u8;
+        pixels[3 * (sqr * (bot_y + i) + bot_x - i) + 1] = (255 - 25 * i) as u8;
+        pixels[3 * (sqr * (bot_y - i) + bot_x + i) + 1] = (255 - 25 * i) as u8;
     }
 
-    // Find second longest edge
-    let mut longest = vec![];
-    let mut edge2 = vec![]; // second longest
-    for v in edges {
-        if v.len() > longest.len() {
-            edge2 = longest;
-            longest = v;
-        } else if v.len() > edge2.len() {
-            edge2 = v;
+    // Fill the edge in the middle of piece height
+    flood_unfill(pixels, sqr, bounds);
+    let y = (bounds.min_y + bounds.max_y) / 2;
+    for x in bounds.min_x..bounds.max_x {
+        if pixels[3 * (sqr * y + x)] & RED_MASK_BORDER == 0 {
+            continue;
         }
+        flood_fill(pixels, sqr, bounds, x, y, FFMode::EightWay, RED_MASK_BORDER);
+        break;
     }
 
-    println!("return edge {}", edge2.len());
-    draw_coords(pixels, sqr, &edge2, 0, 0, 0, 0, 255);
+    let edge = flood_points(pixels, sqr, bounds);
+
+    draw_coords(pixels, sqr, &edge, 0, 0, 0, 0, 255);
 
     // Find min
     let mut min_x = usize::max_value();
     let mut min_y = usize::max_value();
-    for p in edge2.iter() {
+    for p in edge.iter() {
         min_x = cmp::min(p.0, min_x);
         min_y = cmp::min(p.1, min_y);
     }
 
     let mut res: String = "".to_string();
-    for p in edge2.iter() {
+    for p in edge.iter() {
         if res.len() > 0 {
             res += "\n";
         }
