@@ -598,7 +598,11 @@ fn display_pixels(pixels: &Vec<u8>,
         })
         .unwrap();
 
-    //return UserAction::Rotate;
+
+    /*renderer.clear();
+    renderer.copy(&res_texture, None, None).unwrap();
+    renderer.present();
+    return UserAction::Rotate;*/
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
@@ -846,7 +850,7 @@ fn main() {
 
     let sdl_context = sdl2::init().unwrap();
 
-
+    // Process all .jpg files - this will write 4 txt files for each edge
     let paths = fs::read_dir("./").unwrap();
     for path in paths {
         //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
@@ -858,18 +862,35 @@ fn main() {
         if !path_str.ends_with(".jpg") {
             continue;
         }
+        let txt_path = Path::new(&path_str).with_extension("3.txt");
+        if txt_path.exists() {
+            println!("skipping {} because {} exists",
+                     path_str,
+                     txt_path.display());
+            continue;
+        }
         process_jpg(&path_str, &sdl_context);
     }
-
     //process_jpg("9.jpg", &sdl_context);
 
-    let mut pixels: Vec<u8> = vec![0;3*800*800];
+    // Read txt files and find matching edges
+    const WND_WIDTH: usize = 800;
+    const WND_HEIGHT: usize = 800;
+
+    let mut pixels: Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
 
     //draw_coords(&mut pixels, &read_txt("2.0.txt"), 0, 0);
-    draw_coords(&mut pixels, 800, &read_txt("8.0.txt"), 100, 100, 255, 0, 0);
     draw_coords(&mut pixels,
-                800,
-                &flip_coords(&read_txt("9.2.txt")),
+                WND_WIDTH,
+                &read_txt("9.0.txt"),
+                100,
+                100,
+                255,
+                0,
+                0);
+    draw_coords(&mut pixels,
+                WND_WIDTH,
+                &flip_coords(&read_txt("10.2.txt")),
                 100,
                 100,
                 0,
@@ -878,14 +899,14 @@ fn main() {
 
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("rust-sdl2 demo: Video", 800, 600)
-        .position(100, 0)
-        .opengl()
-        .build()
-        .unwrap();
+    let window =
+        video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
+            .position(100, 0)
+            .opengl()
+            .build()
+            .unwrap();
 
     let mut renderer = window.renderer().build().unwrap();
 
-
-    display_pixels(&pixels, 800, &sdl_context, &mut renderer);
+    display_pixels(&pixels, WND_WIDTH, &sdl_context, &mut renderer);
 }
