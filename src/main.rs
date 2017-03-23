@@ -925,6 +925,7 @@ fn flip_coords(coords: &Vec<(usize, usize)>) -> Vec<(usize, usize)> {
     for p in coords {
         res.push((max_x - p.0, max_y - p.1));
     }
+    res.reverse();
     return res;
 }
 
@@ -932,8 +933,33 @@ fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
     return a.height.cmp(&b.height);
 }
 
-fn compare_edges(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
-    return a.height.cmp(&b.height);
+fn compare_edges(points_a: &Vec<(usize, usize)>, points_b: &Vec<(usize, usize)>) -> usize {
+
+    let mut index_a = 0;
+    let mut index_b = 0;
+
+    let mut a = points_a[0];
+    let mut b = points_b[0];
+
+    let mut res = 0;
+
+    loop {
+        if index_a > points_a.len() || index_b > points_b.len() {
+            return res;
+        }
+        // make sure we compare the same y
+        if a.1 < b.1 {
+            index_a += 1;
+        } else if b.1 < a.1 {
+            index_b += 1;
+        } else {
+            let delta_x = cmp::max(a.0, b.0) - cmp::min(a.0, b.0);
+            res += delta_x * delta_x;
+
+            index_a += 1;
+            index_b += 1;
+        }
+    }
 }
 
 
@@ -1029,12 +1055,19 @@ fn main() {
 
             let ref points_i = edge_i.points;
             let ref points_j = edge_j.points;
+            let ref points_f = flip_coords(&points_j); // flipped j
 
-            println!("comparig {} (red) vs {} height={}/{}",
+
+            let score = compare_edges(points_i, points_j);
+            let score_f = compare_edges(points_i, points_f);
+
+            println!("comparig {} (red) vs {} height={}/{} score={} flipped={}",
                      edge_i.txt_file,
                      edge_j.txt_file,
                      edge_i.height,
-                     edge_j.height);
+                     edge_j.height,
+                     score,
+                     score_f);
 
             // Normal display
             draw_coords(&mut pixels, WND_WIDTH, &points_i, 0, 0, 255, 0, 0);
@@ -1052,14 +1085,7 @@ fn main() {
 
             // Second edge is flipped
             draw_coords(&mut pixels, WND_WIDTH, &points_i, 0, 0, 255, 0, 0);
-            draw_coords(&mut pixels,
-                        WND_WIDTH,
-                        &flip_coords(&points_j),
-                        0,
-                        0,
-                        0,
-                        255,
-                        0);
+            draw_coords(&mut pixels, WND_WIDTH, &points_f, 0, 0, 0, 255, 0);
 
             display_pixels(&pixels,
                            WND_WIDTH,
