@@ -227,7 +227,7 @@ fn detect_material(pixels: &mut Vec<u8>, sqr: usize) -> URect {
             let r = pixels[offset] as i32;
             let g = pixels[offset + 1] as i32;
             let b = pixels[offset + 2] as i32;
-            if r + g + b < 3 * 71 {
+            if r + g + b < 3 * 47 {
                 pixels[offset] = RED_MASK_NO_MATERIAL;
                 pixels[offset + 1] = 0;
                 pixels[offset + 2] = 0;
@@ -746,7 +746,7 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
 
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window(img_file, 2000, 2000)
+    let window = video_subsystem.window(img_file, 4000, 4000)
         .position(100, 0)
         .opengl()
         .build()
@@ -935,31 +935,20 @@ fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
 
 fn compare_edges(points_a: &Vec<(usize, usize)>, points_b: &Vec<(usize, usize)>) -> usize {
 
-    let mut index_a = 0;
-    let mut index_b = 0;
-
-    let mut a = points_a[0];
-    let mut b = points_b[0];
-
     let mut res = 0;
-
-    loop {
-        if index_a > points_a.len() || index_b > points_b.len() {
-            return res;
+    for a in points_a {
+        let mut best_dst = usize::max_value();
+        for b in points_b {
+            let dx = (a.0 as isize) - (b.0 as isize);
+            let dy = (a.1 as isize) - (b.1 as isize);
+            let dst = (dx * dx + dy * dy) as usize;
+            if dst < best_dst {
+                best_dst = dst;
+            }
         }
-        // make sure we compare the same y
-        if a.1 < b.1 {
-            index_a += 1;
-        } else if b.1 < a.1 {
-            index_b += 1;
-        } else {
-            let delta_x = cmp::max(a.0, b.0) - cmp::min(a.0, b.0);
-            res += delta_x * delta_x;
-
-            index_a += 1;
-            index_b += 1;
-        }
+        res += best_dst;
     }
+    return res;
 }
 
 
@@ -1022,8 +1011,8 @@ fn main() {
     }
 
     // SDL window
-    const WND_WIDTH: usize = 800;
-    const WND_HEIGHT: usize = 800;
+    const WND_WIDTH: usize = 4000;
+    const WND_HEIGHT: usize = 4000;
 
     let mut pixels: Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
     let video_subsystem = sdl_context.video().unwrap();
