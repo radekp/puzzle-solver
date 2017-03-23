@@ -614,7 +614,7 @@ fn find_edge(pixels: &mut Vec<u8>,
         break;
     }
 
-    let edge = flood_points(pixels, sqr, bounds);
+    let mut edge = flood_points(pixels, sqr, bounds);
 
     draw_coords(pixels, sqr, &edge, 0, 0, 0, 0, 255);
 
@@ -625,6 +625,10 @@ fn find_edge(pixels: &mut Vec<u8>,
         min_x = cmp::min(p.0, min_x);
         min_y = cmp::min(p.1, min_y);
     }
+
+    // Sort edge by y and then by x, so that max_x,max_y is last so that
+    // compare can be fast
+    edge.sort_by(|a, b| (a.0 * sqr + a.1).cmp(&(b.0 * sqr + b.1)));
 
     let mut res: String = "".to_string();
     for p in edge.iter() {
@@ -731,7 +735,7 @@ fn display_pixels(pixels: &Vec<u8>,
     }
 }
 
-fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
+fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut DisplayPixelState) {
 
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -777,8 +781,6 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
         .set_size(sqr as u32, sqr as u32)
         .unwrap();
 
-    let mut display_state = DisplayPixelState { autorotate: false };
-
     for side in 0..4 {
 
         let mut best_corner_delta = usize::max_value();
@@ -810,7 +812,7 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
                 best_corner_angle = angle;
             }
 
-            match display_pixels(&pixels, sqr, sdl_context, &mut renderer, &mut display_state) {
+            match display_pixels(&pixels, sqr, sdl_context, &mut renderer, display_state) {
                 UserAction::Quit => break 'rotating,
                 _ => {}
             }
@@ -850,7 +852,7 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
             Ok(_) => println!("successfully wrote to {}", display),
         }
 
-        display_pixels(&pixels, sqr, sdl_context, &mut renderer, &mut display_state);
+        display_pixels(&pixels, sqr, sdl_context, &mut renderer, display_state);
     }
 }
 
@@ -923,8 +925,10 @@ fn main() {
 
     let sdl_context = sdl2::init().unwrap();
 
+    let mut display_state = DisplayPixelState { autorotate: false };
+
     // Process all .jpg files - this will write 4 txt files for each edge
-    let paths = fs::read_dir("./").unwrap();
+  /*  let paths = fs::read_dir("./").unwrap();
     for path in paths {
         //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
         let path_str = path.unwrap()
@@ -942,9 +946,9 @@ fn main() {
                      txt_path.display());
             continue;
         }
-        process_jpg(&path_str, &sdl_context);
+        process_jpg(&path_str, &sdl_context, &mut display_state);
     }
-    //process_jpg("9.jpg", &sdl_context);
+    //process_jpg("9.jpg", &sdl_context);*/
 
     // Read txt files and find matching edges
     let mut edges = vec![];
@@ -980,67 +984,56 @@ fn main() {
 
     let mut renderer = window.renderer().build().unwrap();
 
-    let mut display_state = DisplayPixelState { autorotate: false };
+    // Sort edges by max y
+    edges.sort_by(|a, b| (a[a.len() - 1].1).cmp(&b[b.len() - 1].1));
 
-    for i in 0..edges.len() {
-        for j in i + 1..edges.len() {
+    // Compare edges - start with near edges (they have similar height)
+    for d in 1..edges.len() {
+        for i in 0..edges.len() - d {
 
-            println!("comparig {} vs {}", filenames[i], filenames[j]);
+            let j = i + d;
+            let ref edge_i = edges[i];
+            let ref edge_j = edges[i + d];
+
+            println!("comparig {} vs {} height={}/{}",
+                     filenames[i],
+                     filenames[j],
+                     edge_i.len(),
+                     edge_j.len());
 
             // Normal display
-            draw_coords(&mut pixels, WND_WIDTH, &edges[i], 0, 0, 255, 0, 0);
-            draw_coords(&mut pixels, WND_WIDTH, &edges[j], 0, 0, 0, 0, 255);
+            draw_coords(&mut pixels, WND_WIDTH, &edge_i, 0, 0, 255, 0, 0);
+            draw_coords(&mut pixels, WND_WIDTH, &edge_j, 0, 0, 0, 0, 255);
             display_pixels(&pixels,
                            WND_WIDTH,
                            &sdl_context,
                            &mut renderer,
                            &mut display_state);
+
             for p in pixels.iter_mut() {
                 *p = 0;
             }
 
             // Second edge is flipped
-            draw_coords(&mut pixels, WND_WIDTH, &edges[i], 0, 0, 255, 0, 0);
+            draw_coords(&mut pixels, WND_WIDTH, &edge_i, 0, 0, 255, 0, 0);
             draw_coords(&mut pixels,
                         WND_WIDTH,
-                        &flip_coords(&edges[j]),
+                        &flip_coords(&edge_j),
                         0,
                         0,
                         0,
                         255,
                         0);
+
             display_pixels(&pixels,
                            WND_WIDTH,
                            &sdl_context,
                            &mut renderer,
                            &mut display_state);
+
             for p in pixels.iter_mut() {
                 *p = 0;
             }
         }
     }
-
-    //draw_coords(&mut pixels, &read_txt("2.0.txt"), 0, 0);
-    draw_coords(&mut pixels,
-                WND_WIDTH,
-                &read_txt("9.0.txt"),
-                100,
-                100,
-                255,
-                0,
-                0);
-    draw_coords(&mut pixels,
-                WND_WIDTH,
-                &flip_coords(&read_txt("10.2.txt")),
-                100,
-                100,
-                0,
-                255,
-                0);
-
-    display_pixels(&pixels,
-                   WND_WIDTH,
-                   &sdl_context,
-                   &mut renderer,
-                   &mut display_state);
 }
