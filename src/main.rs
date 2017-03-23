@@ -37,6 +37,11 @@ struct URect {
     max_y: usize,
 }
 
+#[derive(Copy, Clone)]
+struct DisplayPixelState {
+    autorotate: bool,
+}
+
 // Near point iterator
 // Iterates points in spiral centered at cx,cy
 //
@@ -484,18 +489,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
 
     renderer.clear();
     renderer.copy_ex(&texture,
-                 None,
-                 Some(Rect::new(shift as i32, shift as i32, width, height)),
-                 angle,
-                 None,
-                 false,
-                 false)
+                     None,
+                     Some(Rect::new(shift as i32, shift as i32, width, height)),
+                     angle,
+                     None,
+                     false,
+                     false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                     PixelFormatEnum::RGB24)
+                                          PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect piece and bounds
@@ -578,7 +583,8 @@ enum UserAction {
 fn display_pixels(pixels: &Vec<u8>,
                   sqr: usize,
                   sdl_context: &sdl2::Sdl,
-                  renderer: &mut Renderer)
+                  renderer: &mut Renderer,
+                  state: &mut DisplayPixelState)
                   -> UserAction {
 
     let mut res_texture =
@@ -599,10 +605,12 @@ fn display_pixels(pixels: &Vec<u8>,
         .unwrap();
 
 
-    /*renderer.clear();
-    renderer.copy(&res_texture, None, None).unwrap();
-    renderer.present();
-    return UserAction::Rotate;*/
+    if state.autorotate {
+        renderer.clear();
+        renderer.copy(&res_texture, None, None).unwrap();
+        renderer.present();
+        return UserAction::Rotate;
+    }
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
@@ -648,6 +656,9 @@ fn display_pixels(pixels: &Vec<u8>,
                     let y = dst_rect.y();
                     let step = (dst_rect.height() / 10) as i32;
                     dst_rect.set_y(y + step);
+                }
+                Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+                    state.autorotate = !state.autorotate;
                 }
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return UserAction::Quit,
@@ -704,6 +715,8 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
         .set_size(sqr as u32, sqr as u32)
         .unwrap();
 
+    let mut display_state = DisplayPixelState { autorotate: false };
+
     for side in 0..4 {
 
         let mut best_corner_delta = usize::max_value();
@@ -735,7 +748,7 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
                 best_corner_angle = angle;
             }
 
-            match display_pixels(&pixels, sqr, sdl_context, &mut renderer) {
+            match display_pixels(&pixels, sqr, sdl_context, &mut renderer, &mut display_state) {
                 UserAction::Quit => break 'rotating,
                 _ => {}
             }
@@ -775,7 +788,7 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
             Ok(_) => println!("successfully wrote to {}", display),
         }
 
-        display_pixels(&pixels, sqr, sdl_context, &mut renderer);
+        display_pixels(&pixels, sqr, sdl_context, &mut renderer, &mut display_state);
     }
 }
 
@@ -905,6 +918,8 @@ fn main() {
 
     let mut renderer = window.renderer().build().unwrap();
 
+    let mut display_state = DisplayPixelState { autorotate: false };
+
     for i in 0..edges.len() {
         for j in i + 1..edges.len() {
 
@@ -913,7 +928,11 @@ fn main() {
             // Normal display
             draw_coords(&mut pixels, WND_WIDTH, &edges[i], 0, 0, 255, 0, 0);
             draw_coords(&mut pixels, WND_WIDTH, &edges[j], 0, 0, 0, 0, 255);
-            display_pixels(&pixels, WND_WIDTH, &sdl_context, &mut renderer);
+            display_pixels(&pixels,
+                           WND_WIDTH,
+                           &sdl_context,
+                           &mut renderer,
+                           &mut display_state);
             for p in pixels.iter_mut() {
                 *p = 0;
             }
@@ -928,7 +947,11 @@ fn main() {
                         0,
                         255,
                         0);
-            display_pixels(&pixels, WND_WIDTH, &sdl_context, &mut renderer);
+            display_pixels(&pixels,
+                           WND_WIDTH,
+                           &sdl_context,
+                           &mut renderer,
+                           &mut display_state);
             for p in pixels.iter_mut() {
                 *p = 0;
             }
@@ -953,5 +976,9 @@ fn main() {
                 255,
                 0);
 
-    display_pixels(&pixels, WND_WIDTH, &sdl_context, &mut renderer);
+    display_pixels(&pixels,
+                   WND_WIDTH,
+                   &sdl_context,
+                   &mut renderer,
+                   &mut display_state);
 }
