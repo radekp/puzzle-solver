@@ -635,7 +635,7 @@ fn find_edge(pixels: &mut Vec<u8>,
 
     // Sort edge by y and then by x, so that max_x,max_y is last so that
     // compare can be fast
-    edge.sort_by(|a, b| (a.0 * sqr + a.1).cmp(&(b.0 * sqr + b.1)));
+    edge.sort_by(|a, b| (a.1 * sqr + a.0).cmp(&(b.1 * sqr + b.0)));
 
     let mut res: String = "".to_string();
     for p in edge.iter() {
@@ -928,9 +928,14 @@ fn flip_coords(coords: &Vec<(usize, usize)>) -> Vec<(usize, usize)> {
     return res;
 }
 
-fn compare_edge(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
+fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
     return a.height.cmp(&b.height);
 }
+
+fn compare_edges(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
+    return a.height.cmp(&b.height);
+}
+
 
 fn main() {
 
@@ -1007,7 +1012,7 @@ fn main() {
     let mut renderer = window.renderer().build().unwrap();
 
     // Sort edges by max y
-    edges.sort_by(|a, b| compare_edge(a, b));
+    edges.sort_by(|a, b| compare_edge_info(a, b));
 
     for e in edges.iter() {
 
