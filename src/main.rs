@@ -177,13 +177,16 @@ fn flood_unfill(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
     }
 }
 
-fn flood_mk_green(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
+fn flood_col(pixels: &mut Vec<u8>, sqr: usize, bounds: URect, r: u8, g: u8, b: u8) {
     for y in bounds.min_y..bounds.max_y {
         for x in bounds.min_x..bounds.max_x {
             let offset = 3 * (sqr * y + x);
-            if pixels[offset] & RED_MASK_FLOOD_FILLED != 0 {
-                pixels[offset + 1] = 255;
+            if pixels[offset] & RED_MASK_FLOOD_FILLED == 0 {
+                continue;
             }
+            pixels[offset] = r;
+            pixels[offset + 1] = g;
+            pixels[offset + 2] = b;
         }
     }
 }
@@ -261,6 +264,61 @@ fn detect_material(pixels: &mut Vec<u8>, sqr: usize) -> URect {
     }
 
     return bounds;
+}
+
+// Picks the biggest piece, removing small ones
+fn detect_piece(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
+
+    flood_unfill(pixels, sqr, bounds);
+
+    let mut best_x = bounds.min_x;
+    let mut best_y = bounds.min_y;
+    let mut best_count = 0;
+
+    // Flood fill all material and count number of filled
+    for y in 0..sqr {
+        for x in 0..sqr {
+            let pix = pixels[3 * (sqr * y + x)];
+            if pix & RED_MASK_MATERIAL == 0 || pix & RED_MASK_FLOOD_FILLED != 0 {
+                continue;
+            }
+            let count = flood_fill(pixels,
+                                   sqr,
+                                   bounds,
+                                   x,
+                                   y,
+                                   FFMode::FourWay,
+                                   RED_MASK_MATERIAL);
+
+            if count < best_count {
+                continue;
+            }
+            best_count = count;
+            best_x = x;
+            best_y = y;
+        }
+    }
+
+    // Fill the largest material
+    flood_unfill(pixels, sqr, bounds);
+    flood_fill(pixels,
+               sqr,
+               bounds,
+               best_x,
+               best_y,
+               FFMode::FourWay,
+               RED_MASK_MATERIAL);
+
+    // And remove the rest
+    for y in 0..sqr {
+        for x in 0..sqr {
+            let offset = 3 * (sqr * y + x);
+            let pix = pixels[offset];
+            if pix & RED_MASK_MATERIAL != 0 && pix & RED_MASK_FLOOD_FILLED == 0 {
+                pixels[offset] &= !RED_MASK_MATERIAL;
+            }
+        }
+    }
 }
 
 // Draw border pixels with RED_MASK_BORDER
@@ -503,8 +561,11 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
                                           PixelFormatEnum::RGB24)
         .unwrap();
 
-    // Detect piece and bounds
+    // Detect material and bounds
     let bounds = detect_material(&mut pixels, sqr);
+
+    // Detect pieces (the biggest pieces of material)
+    detect_piece(&mut pixels, sqr, bounds);
 
     // Detect borders
     detect_border(&mut pixels, sqr, bounds);
@@ -709,7 +770,7 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
                wnd_size.0,
                wnd_size.1);
     }
-             
+
     // Resize window
     renderer.window_mut()
         .unwrap()
