@@ -217,7 +217,7 @@ fn detect_material(pixels: &mut Vec<u8>, sqr: usize) -> URect {
             let r = pixels[offset] as i32;
             let g = pixels[offset + 1] as i32;
             let b = pixels[offset + 2] as i32;
-            if r + g + b < 3 * 127 {
+            if r + g + b < 3 * 71 {
                 pixels[offset] = RED_MASK_NO_MATERIAL;
                 pixels[offset + 1] = 0;
                 pixels[offset + 2] = 0;
@@ -659,6 +659,7 @@ fn display_pixels(pixels: &Vec<u8>,
                 }
                 Event::KeyDown { keycode: Some(Keycode::A), .. } => {
                     state.autorotate = !state.autorotate;
+                    return UserAction::Rotate;
                 }
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return UserAction::Quit,
@@ -673,7 +674,7 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
 
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window(img_file, 800, 800)
+    let window = video_subsystem.window(img_file, 2000, 2000)
         .position(100, 0)
         .opengl()
         .build()
@@ -684,16 +685,6 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
     let texture = renderer.load_texture(img_file).unwrap();
 
     let TextureQuery { width, height, .. } = texture.query();
-
-    let wnd_size = renderer.window().unwrap().size();
-    if width >= wnd_size.0 || height >= wnd_size.1 {
-        panic!("{} too big {}x{} window is just {}x{}",
-               img_file,
-               width,
-               height,
-               wnd_size.0,
-               wnd_size.1);
-    }
 
     // Some space so that rotation does not crop image. Must be multiple of 4
     // to play well with texture pitch.
@@ -709,6 +700,16 @@ fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl) {
              shift,
              sqr);
 
+    let wnd_size = renderer.window().unwrap().size();
+    if sqr >= wnd_size.0 as usize || sqr >= wnd_size.1 as usize {
+        panic!("{} too big {}x{} window is just {}x{}",
+               img_file,
+               sqr,
+               sqr,
+               wnd_size.0,
+               wnd_size.1);
+    }
+             
     // Resize window
     renderer.window_mut()
         .unwrap()
