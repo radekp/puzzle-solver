@@ -42,6 +42,11 @@ struct DisplayPixelState {
     autorotate: bool,
 }
 
+struct EdgeInfo {
+    points: Vec<(usize, usize)>,
+    txt_file: String,
+}
+
 // Near point iterator
 // Iterates points in spiral centered at cx,cy
 //
@@ -928,7 +933,7 @@ fn main() {
     let mut display_state = DisplayPixelState { autorotate: false };
 
     // Process all .jpg files - this will write 4 txt files for each edge
-  /*  let paths = fs::read_dir("./").unwrap();
+    let paths = fs::read_dir("./").unwrap();
     for path in paths {
         //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
         let path_str = path.unwrap()
@@ -948,11 +953,10 @@ fn main() {
         }
         process_jpg(&path_str, &sdl_context, &mut display_state);
     }
-    //process_jpg("9.jpg", &sdl_context);*/
+    //process_jpg("9.jpg", &sdl_context);
 
     // Read txt files and find matching edges
     let mut edges = vec![];
-    let mut filenames = vec![];
     let paths = fs::read_dir("./").unwrap();
     for path in paths {
         //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
@@ -964,8 +968,12 @@ fn main() {
         if !path_str.ends_with(".txt") {
             continue;
         }
-        edges.push(read_txt(&path_str));
-        filenames.push(path_str);
+        let points = read_txt(&path_str);
+        let edge_info = EdgeInfo {
+            points: points,
+            txt_file: path_str,
+        };
+        edges.push(edge_info);
     }
 
     // SDL window
@@ -985,7 +993,7 @@ fn main() {
     let mut renderer = window.renderer().build().unwrap();
 
     // Sort edges by max y
-    edges.sort_by(|a, b| (a[a.len() - 1].1).cmp(&b[b.len() - 1].1));
+    edges.sort_by(|a, b| (a.points[a.points.len() - 1].1).cmp(&b.points[b.points.len() - 1].1));
 
     // Compare edges - start with near edges (they have similar height)
     for d in 1..edges.len() {
@@ -995,15 +1003,19 @@ fn main() {
             let ref edge_i = edges[i];
             let ref edge_j = edges[i + d];
 
-            println!("comparig {} vs {} height={}/{}",
-                     filenames[i],
-                     filenames[j],
-                     edge_i.len(),
-                     edge_j.len());
+            let ref points_i = edge_i.points;
+            let ref points_j = edge_j.points;
+
+            println!("comparig {} (red) vs {} height={}/{}",
+                     edge_i.txt_file,
+                     edge_j.txt_file,
+                     points_i.len(),
+                     points_j.len());
 
             // Normal display
-            draw_coords(&mut pixels, WND_WIDTH, &edge_i, 0, 0, 255, 0, 0);
-            draw_coords(&mut pixels, WND_WIDTH, &edge_j, 0, 0, 0, 0, 255);
+            draw_coords(&mut pixels, WND_WIDTH, &points_i, 0, 0, 255, 0, 0);
+            draw_coords(&mut pixels, WND_WIDTH, &points_j, 0, 0, 0, 0, 255);
+
             display_pixels(&pixels,
                            WND_WIDTH,
                            &sdl_context,
@@ -1015,10 +1027,10 @@ fn main() {
             }
 
             // Second edge is flipped
-            draw_coords(&mut pixels, WND_WIDTH, &edge_i, 0, 0, 255, 0, 0);
+            draw_coords(&mut pixels, WND_WIDTH, &points_i, 0, 0, 255, 0, 0);
             draw_coords(&mut pixels,
                         WND_WIDTH,
-                        &flip_coords(&edge_j),
+                        &flip_coords(&points_j),
                         0,
                         0,
                         0,
