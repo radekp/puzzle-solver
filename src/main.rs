@@ -7,6 +7,7 @@ use std::fs::File;
 use std::path::Path;
 use std::str::FromStr;
 use std::error::Error;
+use std::cmp::Ordering;
 use std::io::prelude::*;
 
 use sdl2::pixels::PixelFormatEnum;
@@ -45,6 +46,7 @@ struct DisplayPixelState {
 struct EdgeInfo {
     points: Vec<(usize, usize)>,
     txt_file: String,
+    height: usize,
 }
 
 // Near point iterator
@@ -926,6 +928,10 @@ fn flip_coords(coords: &Vec<(usize, usize)>) -> Vec<(usize, usize)> {
     return res;
 }
 
+fn compare_edge(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
+    return a.height.cmp(&b.height);
+}
+
 fn main() {
 
     let sdl_context = sdl2::init().unwrap();
@@ -969,9 +975,17 @@ fn main() {
             continue;
         }
         let points = read_txt(&path_str);
+
+        // Compute height
+        let mut height = 0;
+        for p in points.iter() {
+            height = cmp::max(height, p.1);
+        }
+
         let edge_info = EdgeInfo {
             points: points,
             txt_file: path_str,
+            height: height,
         };
         edges.push(edge_info);
     }
@@ -993,7 +1007,12 @@ fn main() {
     let mut renderer = window.renderer().build().unwrap();
 
     // Sort edges by max y
-    edges.sort_by(|a, b| (a.points[a.points.len() - 1].1).cmp(&b.points[b.points.len() - 1].1));
+    edges.sort_by(|a, b| compare_edge(a, b));
+
+    for e in edges.iter() {
+
+        println!("{} height={}", e.txt_file, e.height);
+    }
 
     // Compare edges - start with near edges (they have similar height)
     for d in 1..edges.len() {
@@ -1009,8 +1028,8 @@ fn main() {
             println!("comparig {} (red) vs {} height={}/{}",
                      edge_i.txt_file,
                      edge_j.txt_file,
-                     points_i.len(),
-                     points_j.len());
+                     edge_i.height,
+                     edge_j.height);
 
             // Normal display
             draw_coords(&mut pixels, WND_WIDTH, &points_i, 0, 0, 255, 0, 0);
