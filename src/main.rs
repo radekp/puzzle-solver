@@ -10,6 +10,7 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::cmp::Ordering;
 use std::io::prelude::*;
+use std::collections::BTreeMap;
 
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
@@ -934,7 +935,10 @@ fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
     return a.height.cmp(&b.height);
 }
 
-fn compare_edges(points_a: &Vec<(usize, usize)>, points_b: &Vec<(usize, usize)>, rec: bool) -> usize {
+fn compare_edges(points_a: &Vec<(usize, usize)>,
+                 points_b: &Vec<(usize, usize)>,
+                 rec: bool)
+                 -> usize {
 
     let mut res = 0;
     for a in points_a {
@@ -950,7 +954,7 @@ fn compare_edges(points_a: &Vec<(usize, usize)>, points_b: &Vec<(usize, usize)>,
         res += best_dst;
     }
     if rec {
-	res += compare_edges(points_b, points_a, false);	// the same but compute dst from b to a
+        res += compare_edges(points_b, points_a, false); // the same but compute dst from b to a
     }
     return res;
 }
@@ -990,7 +994,7 @@ fn main() {
     let entries = fs::read_dir("./").unwrap();
     for entry in entries {
         //println!("Name: {}", path.unwrap().path().file_name().unwrap().to_str().unwrap());
-        
+
         let path_str = entry.unwrap()
             .path()		// PathBuf
             .file_name()
@@ -1036,14 +1040,10 @@ fn main() {
     // Sort edges by max y
     edges.sort_by(|a, b| compare_edge_info(a, b));
 
-    for e in edges.iter() {
-
-        println!("{} height={}", e.txt_file, e.height);
-    }
-
     // Compare edges - start with near edges (they have similar height)
+    let mut cmp_results = vec![];
     for d in 1..edges.len() {
-        for i in 0..edges.len() - d {
+        for i in 0..cmp::min(edges.len() - d, 1000) {
 
             let j = i + d;
             let ref edge_i = edges[i];
@@ -1053,16 +1053,23 @@ fn main() {
             let ref points_j = edge_j.points;
             let ref points_f = flip_coords(&points_j); // flipped j
 
-
             let score = compare_edges(points_i, points_j, true);
             let score_f = compare_edges(points_i, points_f, true);
+
+            cmp_results.push((score, i, j, false)); // flipped=false
+            cmp_results.push((score_f, i, j, true)); // flipped=false
 
             println!("red {:<10} vs blue {:10}=> {:>12} flipped => {:>12} (green), todo {} for d={}",
                      edge_i.txt_file,
                      edge_j.txt_file,
                      score,
                      score_f,
-                     edges.len() - d - i, d);
+                     edges.len() - d - i,
+                     edges.len() - d);
+
+            if display_state.autorotate {
+                continue;
+            }
 
             // Normal display
             draw_coords(&mut pixels, WND_WIDTH, &points_i, 0, 0, 255, 0, 0);
@@ -1092,5 +1099,48 @@ fn main() {
                 *p = 0;
             }
         }
+    }
+
+    // Sort results by best score
+    cmp_results.sort_by(|a, b| a.cmp(&b));
+
+    println!("Compared edges:");
+
+    display_state.autorotate = false;
+    for r in cmp_results {
+        let ref edge_i = edges[r.1];
+        let ref edge_j = edges[r.2];
+
+        let ref points_i = edge_i.points;
+        let ref points_j = edge_j.points;
+
+        println!("red {:<10} vs green {:10}=> {:>12} flipped={}",
+                 edge_i.txt_file,
+                 edge_j.txt_file,
+                 r.0,
+                 r.3);
+
+        for p in pixels.iter_mut() {
+            *p = 0;
+        }
+        draw_coords(&mut pixels, WND_WIDTH, &points_i, 0, 0, 255, 0, 0);
+        if r.3 {
+            draw_coords(&mut pixels,
+                        WND_WIDTH,
+                        &flip_coords(&points_j),
+                        0,
+                        0,
+                        0,
+                        255,
+                        0);
+        } else {
+            draw_coords(&mut pixels, WND_WIDTH, &points_j, 0, 0, 0, 0, 255);
+        }
+
+        display_pixels(&pixels,
+                       WND_WIDTH,
+                       &sdl_context,
+                       &mut renderer,
+                       &mut display_state);
     }
 }
