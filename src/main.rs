@@ -7,6 +7,7 @@ use std::fs::File;
 use std::path::Path;
 use std::str::FromStr;
 use std::error::Error;
+use std::path::PathBuf;
 use std::cmp::Ordering;
 use std::io::prelude::*;
 
@@ -983,14 +984,17 @@ fn main() {
 
     // Read txt files and find matching edges
     let mut edges = vec![];
-    let paths = fs::read_dir("./").unwrap();
-    for path in paths {
-        //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
-        let path_str = path.unwrap()
-            .path()
-            .into_os_string()
-            .into_string()
-            .unwrap();
+    let entries = fs::read_dir("./").unwrap();
+    for entry in entries {
+        //println!("Name: {}", path.unwrap().path().file_name().unwrap().to_str().unwrap());
+
+        let path_str = entry.unwrap()
+            .path()		// PathBuf
+            .file_name()
+            .unwrap()		// OsStr
+            .to_str()
+            .unwrap()
+            .to_string();
         if !path_str.ends_with(".txt") {
             continue;
         }
@@ -1019,7 +1023,7 @@ fn main() {
 
     let window =
         video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
-            .position(100, 0)
+            .position(600, 0)
             .opengl()
             .build()
             .unwrap();
@@ -1050,11 +1054,9 @@ fn main() {
             let score = compare_edges(points_i, points_j);
             let score_f = compare_edges(points_i, points_f);
 
-            println!("comparig {} (red) vs {} height={}/{} score={} flipped={}",
+            println!("red {:<10} vs blue {:10}=> {:>12} flipped => {:>12} (green)",
                      edge_i.txt_file,
                      edge_j.txt_file,
-                     edge_i.height,
-                     edge_j.height,
                      score,
                      score_f);
 
