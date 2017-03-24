@@ -934,7 +934,7 @@ fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
     return a.height.cmp(&b.height);
 }
 
-fn compare_edges(points_a: &Vec<(usize, usize)>, points_b: &Vec<(usize, usize)>) -> usize {
+fn compare_edges(points_a: &Vec<(usize, usize)>, points_b: &Vec<(usize, usize)>, rec: bool) -> usize {
 
     let mut res = 0;
     for a in points_a {
@@ -948,6 +948,9 @@ fn compare_edges(points_a: &Vec<(usize, usize)>, points_b: &Vec<(usize, usize)>)
             }
         }
         res += best_dst;
+    }
+    if rec {
+	res += compare_edges(points_b, points_a, false);	// the same but compute dst from b to a
     }
     return res;
 }
@@ -987,7 +990,7 @@ fn main() {
     let entries = fs::read_dir("./").unwrap();
     for entry in entries {
         //println!("Name: {}", path.unwrap().path().file_name().unwrap().to_str().unwrap());
-
+        
         let path_str = entry.unwrap()
             .path()		// PathBuf
             .file_name()
@@ -1023,7 +1026,7 @@ fn main() {
 
     let window =
         video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
-            .position(600, 0)
+            .position(800, 0)
             .opengl()
             .build()
             .unwrap();
@@ -1051,8 +1054,8 @@ fn main() {
             let ref points_f = flip_coords(&points_j); // flipped j
 
 
-            let score = compare_edges(points_i, points_j);
-            let score_f = compare_edges(points_i, points_f);
+            let score = compare_edges(points_i, points_j, true);
+            let score_f = compare_edges(points_i, points_f, true);
 
             println!("red {:<10} vs blue {:10}=> {:>12} flipped => {:>12} (green)",
                      edge_i.txt_file,
