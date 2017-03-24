@@ -1057,11 +1057,12 @@ fn main() {
             let score = compare_edges(points_i, points_j, true);
             let score_f = compare_edges(points_i, points_f, true);
 
-            println!("red {:<10} vs blue {:10}=> {:>12} flipped => {:>12} (green)",
+            println!("red {:<10} vs blue {:10}=> {:>12} flipped => {:>12} (green), todo {} for d={}",
                      edge_i.txt_file,
                      edge_j.txt_file,
                      score,
-                     score_f);
+                     score_f,
+                     edges.len() - d - i, d);
 
             // Normal display
             draw_coords(&mut pixels, WND_WIDTH, &points_i, 0, 0, 255, 0, 0);
