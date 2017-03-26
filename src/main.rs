@@ -1036,6 +1036,15 @@ fn main() {
         if !path_str.ends_with(".txt") {
             continue;
         }
+        // Skip edges that are already solved
+        let done_path = Path::new(&path_str).with_extension("done");
+        if done_path.exists() {
+            println!("skipping {} because {} exists",
+                     path_str,
+                     done_path.display());
+            continue;
+        }
+
         let points = read_txt(&path_str);
 
         // Compute height
@@ -1046,7 +1055,7 @@ fn main() {
 
         let edge_info = EdgeInfo {
             points: points,
-            txt_file: path_str,
+            txt_file: path_str.replace("./data/", ""),
             height: height,
         };
         edges.push(edge_info);
@@ -1142,11 +1151,13 @@ fn main() {
         let ref points_i = edge_i.points;
         let ref points_j = edge_j.points;
 
-        println!("red {:<10} vs green {:10}=> {:>12} flipped={}",
+        println!("red {:<10} vs green {:10}=> {:>12} flipped={} to solve: touch {}; touch {}",
                  edge_i.txt_file,
                  edge_j.txt_file,
                  r.0,
-                 r.3);
+                 r.3,
+                 edge_i.txt_file.replace(".txt", ".done"),
+                 edge_j.txt_file.replace(".txt", ".done"));
 
         for p in pixels.iter_mut() {
             *p = 0;
