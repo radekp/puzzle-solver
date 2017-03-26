@@ -15,6 +15,7 @@ use std::collections::BTreeMap;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use sdl2::event::Event;
+use sdl2::pixels::Color;
 use sdl2::keyboard::Keycode;
 use sdl2::image::LoadTexture;
 use sdl2::render::TextureQuery;
@@ -233,7 +234,7 @@ fn detect_material(pixels: &mut Vec<u8>, sqr: usize) -> URect {
             let r = pixels[offset] as i32;
             let g = pixels[offset + 1] as i32;
             let b = pixels[offset + 2] as i32;
-            if r + g + b < 3 * 127 {
+            if r + g + b > 3 * 127 {
                 pixels[offset] = RED_MASK_NO_MATERIAL;
                 pixels[offset + 1] = 0;
                 pixels[offset + 2] = 0;
@@ -558,7 +559,9 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
                            draw_corners: bool)
                            -> (usize, usize, usize, usize, Vec<u8>, URect) {
 
-    renderer.clear();
+    renderer.set_draw_color(Color::RGB(255, 255, 255));
+    renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32));
+
     renderer.copy_ex(&texture,
                      None,
                      Some(Rect::new(shift as i32, shift as i32, width, height)),
