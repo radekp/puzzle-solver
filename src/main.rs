@@ -756,7 +756,7 @@ fn process_png(img_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
     let video_subsystem = sdl_context.video().unwrap();
 
     let window = video_subsystem.window(img_file, WND_WIDTH as u32, WND_HEIGHT as u32)
-        .position(0, 0)
+        .position(200, 0)
         .opengl()
         .build()
         .unwrap();
@@ -792,24 +792,25 @@ fn process_png(img_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
     }
 
     // Resize window
-    renderer.window_mut()
+    /*renderer.window_mut()
         .unwrap()
         .set_size(sqr as u32, sqr as u32)
-        .unwrap();
+        .unwrap();*/
 
     for side in 0..4 {
 
         let mut best_corner_delta = usize::max_value();
-        let mut best_corner_angle = 0;
+        let mut best_corner_angle = 0f64;
 
-        'rotating: for r in -10..11 {
+        let mut r = -10f64;
+        'rotating: loop {
 
-            let angle = 90 * side + r;
+            let angle = (90 * side) as f64 + r;
             //println!("angle={}", angle);
 
             let rv = rotate_and_find_corners(&mut renderer,
                                              &texture,
-                                             angle as f64,
+                                             angle,
                                              shift as usize,
                                              sqr,
                                              width,
@@ -831,6 +832,11 @@ fn process_png(img_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
             match display_pixels(&pixels, sqr, sdl_context, &mut renderer, display_state) {
                 UserAction::Quit => break 'rotating,
                 _ => {}
+            }
+
+            r += 0.2f64;
+            if r > 10f64 {
+                break;
             }
         }
 
