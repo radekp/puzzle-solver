@@ -392,7 +392,7 @@ fn remove_dead_end_border(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
                 }
             }
         }
-        println!("remove_dead_end_border count={}", count);
+        //println!("remove_dead_end_border count={}", count);
         if count == 0 {
             return;
         }
@@ -874,6 +874,17 @@ fn process_png(img_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
             Ok(_) => println!("successfully wrote to {}", display),
         }
 
+        // Make .done file so that we can detect processed pngs
+        if side == 3 {
+            let done_path = Path::new(img_file).with_extension("done");
+            let display = done_path.display();
+
+            let mut file = match File::create(&done_path) {
+                Err(why) => panic!("couldn't create {}: {}", display, why.description()),
+                Ok(file) => file,
+            };
+        }
+
         display_pixels(&pixels, sqr, sdl_context, &mut renderer, display_state);
     }
 }
@@ -991,7 +1002,7 @@ fn main() {
         if !path_str.ends_with(".png") {
             continue;
         }
-        let txt_path = Path::new(&path_str).with_extension("3.txt");
+        let txt_path = Path::new(&path_str).with_extension("done");
         if txt_path.exists() {
             println!("skipping {} because {} exists",
                      path_str,
