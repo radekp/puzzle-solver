@@ -53,6 +53,7 @@ struct DisplayPixelState {
 struct EdgeInfo {
     points: Vec<(usize, usize)>,
     txt_file: String,
+    txt_filename: String,
     height: usize,
 }
 
@@ -659,6 +660,7 @@ fn find_edge(pixels: &mut Vec<u8>,
 enum UserAction {
     Rotate,
     Quit,
+    Solve,
 }
 
 fn display_pixels(pixels: &Vec<u8>,
@@ -741,6 +743,9 @@ fn display_pixels(pixels: &Vec<u8>,
                 Event::KeyDown { keycode: Some(Keycode::A), .. } => {
                     state.autorotate = !state.autorotate;
                     return UserAction::Rotate;
+                }
+                Event::KeyDown { keycode: Some(Keycode::S), .. } => {
+                    return UserAction::Solve;
                 }
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return UserAction::Quit,
@@ -876,13 +881,7 @@ fn process_png(img_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
 
         // Make .done file so that we can detect processed pngs
         if side == 3 {
-            let done_path = Path::new(img_file).with_extension("done");
-            let display = done_path.display();
-
-            let mut file = match File::create(&done_path) {
-                Err(why) => panic!("couldn't create {}: {}", display, why.description()),
-                Ok(file) => file,
-            };
+            write_done_file(img_file);
         }
 
         display_pixels(&pixels, sqr, sdl_context, &mut renderer, display_state);
@@ -983,6 +982,27 @@ fn compare_edges(points_a: &Vec<(usize, usize)>,
     return res;
 }
 
+// Make file processed
+fn write_done_file(path: &str) {
+    let done_path = Path::new(path).with_extension("done");
+    let mut file = match File::create(&done_path) {
+        Err(why) => panic!("couldn't create {}: {}", done_path.display(), why.description()),
+        Ok(file) => file,
+    };
+}
+
+// Is file already processed?
+fn is_done(path: &str) -> bool {
+    let done_path = Path::new(&path).with_extension("done");
+    if !done_path.exists() {
+        return false;
+    }
+        println!("skipping {} because {} exists",
+                 path,
+                 done_path.display());
+
+    return true;
+}
 
 fn main() {
 
@@ -1002,11 +1022,7 @@ fn main() {
         if !path_str.ends_with(".png") {
             continue;
         }
-        let txt_path = Path::new(&path_str).with_extension("done");
-        if txt_path.exists() {
-            println!("skipping {} because {} exists",
-                     path_str,
-                     txt_path.display());
+        if is_done(&path_str) {
             continue;
         }
         process_png(&path_str, &sdl_context, &mut display_state);
@@ -1037,11 +1053,7 @@ fn main() {
             continue;
         }
         // Skip edges that are already solved
-        let done_path = Path::new(&path_str).with_extension("done");
-        if done_path.exists() {
-            println!("skipping {} because {} exists",
-                     path_str,
-                     done_path.display());
+        if is_done(&path_str) {
             continue;
         }
 
@@ -1053,9 +1065,12 @@ fn main() {
             height = cmp::max(height, p.1);
         }
 
+        let filename = path_str.replace("./data/", "");
+
         let edge_info = EdgeInfo {
             points: points,
-            txt_file: path_str.replace("./data/", ""),
+            txt_file: path_str,
+            txt_filename: filename,
             height: height,
         };
         edges.push(edge_info);
@@ -1097,8 +1112,8 @@ fn main() {
             cmp_results.push((score_f, i, j, true)); // flipped=false
 
             println!("red {:<10} vs blue {:10}=> {:>12} flipped => {:>12} (green), todo {} for d={}",
-                     edge_i.txt_file,
-                     edge_j.txt_file,
+                     edge_i.txt_filename,
+                     edge_j.txt_filename,
                      score,
                      score_f,
                      edges.len() - d - i,
@@ -1151,13 +1166,11 @@ fn main() {
         let ref points_i = edge_i.points;
         let ref points_j = edge_j.points;
 
-        println!("red {:<10} vs green {:10}=> {:>12} flipped={} to solve: touch {}; touch {}",
+        println!("red {:<10} vs green {:10}=> {:>12} flipped={} to solve press s",
                  edge_i.txt_file,
                  edge_j.txt_file,
                  r.0,
-                 r.3,
-                 edge_i.txt_file.replace(".txt", ".done"),
-                 edge_j.txt_file.replace(".txt", ".done"));
+                 r.3);
 
         for p in pixels.iter_mut() {
             *p = 0;
@@ -1176,10 +1189,18 @@ fn main() {
             draw_coords(&mut pixels, WND_WIDTH, &points_j, 0, 0, 0, 0, 255);
         }
 
-        display_pixels(&pixels,
+        match display_pixels(&pixels,
                        WND_WIDTH,
                        &sdl_context,
                        &mut renderer,
-                       &mut display_state);
+                       &mut display_state)
+       {
+           UserAction::Solve =>
+           {
+               write_done_file(&edge_i.txt_file.replace(".txt", ".done"));
+               write_done_file(&edge_j.txt_file.replace(".txt", ".done"));
+           },
+           _ => {}
+       }
     }
 }
