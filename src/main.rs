@@ -22,6 +22,10 @@ use sdl2::render::Renderer;
 use sdl2::render::Texture;
 
 // SDL window size - puzzle pieces bitmap must fit even with rotation
+const WND_WIDTH: usize = 1000;
+const WND_HEIGHT: usize = 1000;
+
+// Color masks used to detect borders etc...
 const RED_MASK_NO_MATERIAL: u8 = 1;
 const RED_MASK_MATERIAL: u8 = 1 << 6;
 const RED_MASK_BORDER: u8 = 1 << 7;
@@ -229,7 +233,7 @@ fn detect_material(pixels: &mut Vec<u8>, sqr: usize) -> URect {
             let r = pixels[offset] as i32;
             let g = pixels[offset + 1] as i32;
             let b = pixels[offset + 2] as i32;
-            if r + g + b < 3 * 47 {
+            if r + g + b < 3 * 127 {
                 pixels[offset] = RED_MASK_NO_MATERIAL;
                 pixels[offset + 1] = 0;
                 pixels[offset + 2] = 0;
@@ -744,12 +748,12 @@ fn display_pixels(pixels: &Vec<u8>,
     }
 }
 
-fn process_jpg(img_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut DisplayPixelState) {
+fn process_png(img_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut DisplayPixelState) {
 
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window(img_file, 4000, 4000)
-        .position(100, 0)
+    let window = video_subsystem.window(img_file, WND_WIDTH as u32, WND_HEIGHT as u32)
+        .position(0, 0)
         .opengl()
         .build()
         .unwrap();
@@ -966,8 +970,8 @@ fn main() {
 
     let mut display_state = DisplayPixelState { autorotate: false };
 
-    // Process all .jpg files - this will write 4 txt files for each edge
-    let paths = fs::read_dir("./").unwrap();
+    // Process all .png files - this will write 4 txt files for each edge
+    let paths = fs::read_dir("./data").unwrap();
     for path in paths {
         //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
         let path_str = path.unwrap()
@@ -975,7 +979,7 @@ fn main() {
             .into_os_string()
             .into_string()
             .unwrap();
-        if !path_str.ends_with(".jpg") {
+        if !path_str.ends_with(".png") {
             continue;
         }
         let txt_path = Path::new(&path_str).with_extension("3.txt");
@@ -985,23 +989,30 @@ fn main() {
                      txt_path.display());
             continue;
         }
-        process_jpg(&path_str, &sdl_context, &mut display_state);
+        process_png(&path_str, &sdl_context, &mut display_state);
     }
-    //process_jpg("9.jpg", &sdl_context);
+    //process_png("9.png", &sdl_context);
 
     // Read txt files and find matching edges
     let mut edges = vec![];
-    let entries = fs::read_dir("./").unwrap();
+    let entries = fs::read_dir("./data").unwrap();
     for entry in entries {
         //println!("Name: {}", path.unwrap().path().file_name().unwrap().to_str().unwrap());
 
         let path_str = entry.unwrap()
+	     .path()
+             .into_os_string()
+             .into_string()
+             .unwrap();
+
+        /*let filename = entry.unwrap()
             .path()		// PathBuf
             .file_name()
             .unwrap()		// OsStr
             .to_str()
             .unwrap()
-            .to_string();
+            .to_string();*/
+
         if !path_str.ends_with(".txt") {
             continue;
         }
@@ -1022,15 +1033,12 @@ fn main() {
     }
 
     // SDL window
-    const WND_WIDTH: usize = 4000;
-    const WND_HEIGHT: usize = 4000;
-
     let mut pixels: Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
     let video_subsystem = sdl_context.video().unwrap();
 
     let window =
         video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
-            .position(800, 0)
+            .position(0, 0)
             .opengl()
             .build()
             .unwrap();
