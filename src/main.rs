@@ -564,18 +564,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32));
 
     renderer.copy_ex(&texture,
-                     None,
-                     Some(Rect::new(shift as i32, shift as i32, width, height)),
-                     angle,
-                     None,
-                     false,
-                     false)
+                 None,
+                 Some(Rect::new(shift as i32, shift as i32, width, height)),
+                 angle,
+                 None,
+                 false,
+                 false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                                          PixelFormatEnum::RGB24)
+                     PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -986,7 +986,11 @@ fn compare_edges(points_a: &Vec<(usize, usize)>,
 fn write_done_file(path: &str) {
     let done_path = Path::new(path).with_extension("done");
     let mut file = match File::create(&done_path) {
-        Err(why) => panic!("couldn't create {}: {}", done_path.display(), why.description()),
+        Err(why) => {
+            panic!("couldn't create {}: {}",
+                   done_path.display(),
+                   why.description())
+        }
         Ok(file) => file,
     };
 }
@@ -997,9 +1001,7 @@ fn is_done(path: &str) -> bool {
     if !done_path.exists() {
         return false;
     }
-        println!("skipping {} because {} exists",
-                 path,
-                 done_path.display());
+    println!("skipping {} because {} exists", path, done_path.display());
 
     return true;
 }
@@ -1036,10 +1038,10 @@ fn main() {
         //println!("Name: {}", path.unwrap().path().file_name().unwrap().to_str().unwrap());
 
         let path_str = entry.unwrap()
-	     .path()
-             .into_os_string()
-             .into_string()
-             .unwrap();
+            .path()
+            .into_os_string()
+            .into_string()
+            .unwrap();
 
         /*let filename = entry.unwrap()
             .path()		// PathBuf
@@ -1111,7 +1113,8 @@ fn main() {
             cmp_results.push((score, i, j, false)); // flipped=false
             cmp_results.push((score_f, i, j, true)); // flipped=false
 
-            println!("red {:<10} vs blue {:10}=> {:>12} flipped => {:>12} (green), todo {} for d={}",
+            println!("red {:<10} vs blue {:10}=> {:>12} flipped => {:>12} (green), todo {} for \
+                      d={}",
                      edge_i.txt_filename,
                      edge_j.txt_filename,
                      score,
@@ -1190,17 +1193,15 @@ fn main() {
         }
 
         match display_pixels(&pixels,
-                       WND_WIDTH,
-                       &sdl_context,
-                       &mut renderer,
-                       &mut display_state)
-       {
-           UserAction::Solve =>
-           {
-               write_done_file(&edge_i.txt_file.replace(".txt", ".done"));
-               write_done_file(&edge_j.txt_file.replace(".txt", ".done"));
-           },
-           _ => {}
-       }
+                             WND_WIDTH,
+                             &sdl_context,
+                             &mut renderer,
+                             &mut display_state) {
+            UserAction::Solve => {
+                write_done_file(&edge_i.txt_file.replace(".txt", ".done"));
+                write_done_file(&edge_j.txt_file.replace(".txt", ".done"));
+            }
+            _ => {}
+        }
     }
 }
