@@ -46,6 +46,7 @@ struct DisplayPixelState {
 
 struct EdgeInfo {
     points: Vec<(usize, usize)>,
+    distances: Vec<usize>,
     txt_file: String,
     txt_filename: String,
     max_x: usize,
@@ -956,35 +957,41 @@ fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
 
 fn compare_edges(edge_a: &EdgeInfo,
                  edge_b: &EdgeInfo,
+                 sqr: usize,
                  flip_b: bool,
                  rec: bool)
                  -> usize {
 
     let ref points_a = edge_a.points;
     let ref points_b = edge_b.points;
+    let ref distances_a = edge_a.distances;
 
     let mut res = 0;
     for point_b in points_b {
-        let mut best_dst = usize::max_value();
 
         // Point b - flip if requested
         let b = if flip_b {
-            ((edge_b.max_x - point_b.0) as isize, (edge_b.max_y - point_b.1) as isize)
+            (edge_b.max_x - point_b.0, edge_b.max_y - point_b.1)
         } else {
-             (point_b.0 as isize, point_b.1 as isize ) };
+             (point_b.0, point_b.1) };
 
-        for a in points_a {
-            let dx = (a.0 as isize) - b.0;
-            let dy = (a.1 as isize) - b.1;
-            let dst = (dx * dx + dy * dy) as usize;
-            if dst < best_dst {
-                best_dst = dst;
+        let offset = sqr * b.1 + b.0;
+        let mut best_dst = distances_a[offset];
+        if best_dst == usize::max_value() {
+            for a in points_a {
+                let dx = (a.0 as isize) - (b.0 as isize);
+                let dy = (a.1 as isize) - (b.1 as isize);
+                let dst = (dx * dx + dy * dy) as usize;
+                if dst < best_dst {
+                    best_dst = dst;
+                }
             }
+            //distances_a[offset] = best_dst;
         }
         res += best_dst;
     }
     if rec {
-        res += compare_edges(edge_a, edge_b, flip_b, false); // the same but compute dst from b to a
+        res += compare_edges(edge_a, edge_b, sqr, flip_b, false); // the same but compute dst from b to a
     }
     return res;
 }
@@ -1080,6 +1087,7 @@ fn main() {
 
         let edge_info = EdgeInfo {
             points: points,
+            distances: vec![],
             txt_file: path_str,
             txt_filename: filename,
             max_x: max_x,
@@ -1100,6 +1108,11 @@ fn main() {
 
     // SDL window - make it modulo 4 to play well with texture pitch
     let sqr = cmp::max(width, height) + 5 & !3usize;
+
+    // Make up distances table for fast nearest edge searching
+    for edge in edges.iter_mut() {
+        edge.distances = vec![usize::max_value(); sqr * sqr];
+    }
 
     let mut pixels: Vec<u8> = vec![0;3*sqr*sqr];
     let video_subsystem = sdl_context.video().unwrap();
@@ -1125,8 +1138,8 @@ fn main() {
             let ref edge_i = edges[i];
             let ref edge_j = edges[i + d];
 
-            let score = compare_edges(edge_i, edge_j, false, true);
-            let score_f = compare_edges(edge_i, edge_j, true, true);
+            let score = compare_edges(edge_i, edge_j, sqr, false, true);
+            let score_f = compare_edges(edge_i, edge_j, sqr, true, true);
 
             cmp_results.push((score, i, j, false)); // flipped=false
             cmp_results.push((score_f, i, j, true)); // flipped=true
