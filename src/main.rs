@@ -1130,7 +1130,7 @@ fn main() {
 
     // Compare edges - start with near edges (they have similar height)
     let mut cmp_results = vec![];
-    for d in 1..cmp::min(edges.len(), 1000) {
+    for d in 1..cmp::min(edges.len(), 128) {
         let mut best_score = usize::max_value();
         for i in 0..(edges.len() - d) {
 
@@ -1196,8 +1196,8 @@ fn main() {
         let ref points_f = &flip_coords(points_j);
 
         println!("red {:<10} vs green {:10}=> {:>12} flipped={} to solve press s",
-                 edge_i.txt_file,
-                 edge_j.txt_file,
+                 edge_i.txt_filename,
+                 edge_j.txt_filename,
                  r.0,
                  r.3);
 
