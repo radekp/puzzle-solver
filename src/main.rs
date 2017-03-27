@@ -49,8 +49,8 @@ struct EdgeInfo {
     points_flipped: Vec<(usize, usize)>,
     txt_file: String,
     txt_filename: String,
-    width: usize,
-    height: usize,
+    max_x: usize,
+    max_y: usize,
 }
 
 /*
@@ -952,20 +952,31 @@ fn flip_coords(coords: &Vec<(usize, usize)>) -> Vec<(usize, usize)> {
 }
 
 fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
-    return a.height.cmp(&b.height);
+    return a.max_y.cmp(&b.max_y);
 }
 
-fn compare_edges(points_a: &Vec<(usize, usize)>,
-                 points_b: &Vec<(usize, usize)>,
+fn compare_edges(edge_a: &EdgeInfo,
+                 edge_b: &EdgeInfo,
+                 flip_b: bool,
                  rec: bool)
                  -> usize {
 
+    let ref points_a = edge_a.points;
+    let ref points_b = edge_b.points;
+
     let mut res = 0;
-    for a in points_a {
+    for point_b in points_b {
         let mut best_dst = usize::max_value();
-        for b in points_b {
-            let dx = (a.0 as isize) - (b.0 as isize);
-            let dy = (a.1 as isize) - (b.1 as isize);
+
+        // Point b - flip if requested
+        let b = if flip_b {
+            ((edge_b.max_x - point_b.0) as isize, (edge_b.max_y - point_b.1) as isize)
+        } else {
+             (point_b.0 as isize, point_b.1 as isize ) };
+
+        for a in points_a {
+            let dx = (a.0 as isize) - b.0;
+            let dy = (a.1 as isize) - b.1;
             let dst = (dx * dx + dy * dy) as usize;
             if dst < best_dst {
                 best_dst = dst;
@@ -974,7 +985,7 @@ fn compare_edges(points_a: &Vec<(usize, usize)>,
         res += best_dst;
     }
     if rec {
-        res += compare_edges(points_b, points_a, false); // the same but compute dst from b to a
+        res += compare_edges(edge_a, edge_b, flip_b, false); // the same but compute dst from b to a
     }
     return res;
 }
@@ -1031,8 +1042,6 @@ fn main() {
     // Read txt files and find matching edges
     let mut edges = vec![];
     let entries = fs::read_dir("./data").unwrap();
-    let mut max_width = 0;
-    let mut max_height = 0;
     for entry in entries {
         //println!("Name: {}", path.unwrap().path().file_name().unwrap().to_str().unwrap());
 
@@ -1062,11 +1071,11 @@ fn main() {
         let points_flipped = flip_coords(&points);
 
         // Compute height
-        let mut width = 0;
-        let mut height = 0;
+        let mut max_x = 0;
+        let mut max_y = 0;
         for p in points.iter() {
-            width = cmp::max(width, p.0);
-            height = cmp::max(height, p.1);
+            max_x = cmp::max(max_x, p.0);
+            max_y = cmp::max(max_y, p.1);
         }
 
         let filename = path_str.replace("./data/", "");
@@ -1076,17 +1085,24 @@ fn main() {
             points_flipped: points_flipped,
             txt_file: path_str,
             txt_filename: filename,
-            width: width,
-            height: height,
+            max_x: max_x,
+            max_y: max_y,
         };
         edges.push(edge_info);
-
-        max_width = cmp::max(width, max_width);
-        max_height = cmp::max(width, max_height);
     }
 
+    // Max x and y in all edges
+    let mut max_x = 0;
+    let mut max_y = 0;
+    for edge in edges.iter() {
+        max_x = cmp::max(max_x, edge.max_x);
+        max_y = cmp::max(max_y, edge.max_y);
+    }
+    let width = max_x + 1;
+    let height = max_y + 1;
+
     // SDL window - make it modulo 4 to play well with texture pitch
-    let sqr = cmp::max(max_width, max_height) + 5 & !3usize;
+    let sqr = cmp::max(width, height) + 5 & !3usize;
 
     let mut pixels: Vec<u8> = vec![0;3*sqr*sqr];
     let video_subsystem = sdl_context.video().unwrap();
@@ -1111,15 +1127,11 @@ fn main() {
             let ref edge_i = edges[i];
             let ref edge_j = edges[i + d];
 
-            let ref points_i = edge_i.points;
-            let ref points_j = edge_j.points;
-            let ref points_f = edge_j.points_flipped; // flipped j
-
-            let score = compare_edges(points_i, points_j, true);
-            let score_f = compare_edges(points_i, points_f, true);
+            let score = compare_edges(edge_i, edge_j, false, true);
+            let score_f = compare_edges(edge_i, edge_j, true, true);
 
             cmp_results.push((score, i, j, false)); // flipped=false
-            cmp_results.push((score_f, i, j, true)); // flipped=false
+            cmp_results.push((score_f, i, j, true)); // flipped=true
 
             println!("red {:<10} vs blue {:10}=> {:>12} flipped => {:>12} (green), todo {} for \
                       d={}",
@@ -1135,6 +1147,9 @@ fn main() {
             }
 
             // Normal display
+            let ref points_i = edge_i.points;
+            let ref points_j = edge_j.points;
+
             draw_coords(&mut pixels, sqr, &points_i, 0, 0, 255, 0, 0);
             draw_coords(&mut pixels, sqr, &points_j, 0, 0, 0, 0, 255);
 
@@ -1150,7 +1165,7 @@ fn main() {
 
             // Second edge is flipped
             draw_coords(&mut pixels, sqr, &points_i, 0, 0, 255, 0, 0);
-            draw_coords(&mut pixels, sqr, &points_f, 0, 0, 0, 255, 0);
+            draw_coords(&mut pixels, sqr, &flip_coords(points_j), 0, 0, 0, 255, 0);
 
             display_pixels(&pixels,
                            sqr,
