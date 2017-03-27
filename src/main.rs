@@ -7,10 +7,8 @@ use std::fs::File;
 use std::path::Path;
 use std::str::FromStr;
 use std::error::Error;
-use std::path::PathBuf;
 use std::cmp::Ordering;
 use std::io::prelude::*;
-use std::collections::BTreeMap;
 
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
@@ -30,12 +28,8 @@ const WND_HEIGHT: usize = 1000;
 const RED_MASK_NO_MATERIAL: u8 = 1;
 const RED_MASK_MATERIAL: u8 = 1 << 6;
 const RED_MASK_BORDER: u8 = 1 << 7;
-const RED_MASK_NO_BORDER: u8 = 1 << 1;
 const RED_MASK_JAG: u8 = 1 << 5;
 const RED_MASK_FLOOD_FILLED: u8 = 1 << 1;
-
-const GREEN_MASK_EDGE_1: u8 = 1 << 5;
-const GREEN_MASK_EDGE_2: u8 = 1 << 7;
 
 #[derive(Copy, Clone)]
 struct URect {
@@ -59,6 +53,7 @@ struct EdgeInfo {
     height: usize,
 }
 
+/*
 // Near point iterator
 // Iterates points in spiral centered at cx,cy
 //
@@ -124,7 +119,7 @@ fn near_iter_next(cx: usize,
     }
     a += 1;
     return (cx - a, cy - a, a);
-}
+}*/
 
 enum FFMode {
     FourWay,
@@ -194,7 +189,7 @@ fn flood_unfill(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
     }
 }
 
-fn flood_col(pixels: &mut Vec<u8>, sqr: usize, bounds: URect, r: u8, g: u8, b: u8) {
+/*fn flood_col(pixels: &mut Vec<u8>, sqr: usize, bounds: URect, r: u8, g: u8, b: u8) {
     for y in bounds.min_y..bounds.max_y {
         for x in bounds.min_x..bounds.max_x {
             let offset = 3 * (sqr * y + x);
@@ -206,7 +201,7 @@ fn flood_col(pixels: &mut Vec<u8>, sqr: usize, bounds: URect, r: u8, g: u8, b: u
             pixels[offset + 2] = b;
         }
     }
-}
+}*/
 
 fn flood_points(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) -> Vec<(usize, usize)> {
     let mut res = vec![];
@@ -563,7 +558,7 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
                            -> (usize, usize, usize, usize, Vec<u8>, URect) {
 
     renderer.set_draw_color(Color::RGB(255, 255, 255));
-    renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32));
+    renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
                  None,
@@ -987,7 +982,7 @@ fn compare_edges(points_a: &Vec<(usize, usize)>,
 // Make file processed
 fn write_done_file(path: &str) {
     let done_path = Path::new(path).with_extension("done");
-    let mut file = match File::create(&done_path) {
+    match File::create(&done_path) {
         Err(why) => {
             panic!("couldn't create {}: {}",
                    done_path.display(),
