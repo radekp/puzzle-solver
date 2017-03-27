@@ -54,6 +54,7 @@ struct EdgeInfo {
     points: Vec<(usize, usize)>,
     txt_file: String,
     txt_filename: String,
+    width: usize,
     height: usize,
 }
 
@@ -1034,6 +1035,8 @@ fn main() {
     // Read txt files and find matching edges
     let mut edges = vec![];
     let entries = fs::read_dir("./data").unwrap();
+    let mut max_width = 0;
+    let mut max_height = 0;
     for entry in entries {
         //println!("Name: {}", path.unwrap().path().file_name().unwrap().to_str().unwrap());
 
@@ -1062,8 +1065,10 @@ fn main() {
         let points = read_txt(&path_str);
 
         // Compute height
+        let mut width = 0;
         let mut height = 0;
         for p in points.iter() {
+            width = cmp::max(width, p.0);
             height = cmp::max(height, p.1);
         }
 
@@ -1073,21 +1078,26 @@ fn main() {
             points: points,
             txt_file: path_str,
             txt_filename: filename,
+            width: width,
             height: height,
         };
         edges.push(edge_info);
+
+        max_width = cmp::max(width, max_width);
+        max_height = cmp::max(width, max_height);
     }
 
-    // SDL window
-    let mut pixels: Vec<u8> = vec![0;3*WND_WIDTH*WND_HEIGHT];
+    // SDL window - make it modulo 4 to play well with texture pitch
+    let sqr = cmp::max(max_width, max_height) + 5 & !3usize;
+
+    let mut pixels: Vec<u8> = vec![0;3*sqr*sqr];
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window =
-        video_subsystem.window("rust-sdl2 demo: Video", WND_WIDTH as u32, WND_HEIGHT as u32)
-            .position(0, 0)
-            .opengl()
-            .build()
-            .unwrap();
+    let window = video_subsystem.window("puzzle solver", sqr as u32, sqr as u32)
+        .position(0, 0)
+        .opengl()
+        .build()
+        .unwrap();
 
     let mut renderer = window.renderer().build().unwrap();
 
@@ -1127,11 +1137,11 @@ fn main() {
             }
 
             // Normal display
-            draw_coords(&mut pixels, WND_WIDTH, &points_i, 0, 0, 255, 0, 0);
-            draw_coords(&mut pixels, WND_WIDTH, &points_j, 0, 0, 0, 0, 255);
+            draw_coords(&mut pixels, sqr, &points_i, 0, 0, 255, 0, 0);
+            draw_coords(&mut pixels, sqr, &points_j, 0, 0, 0, 0, 255);
 
             display_pixels(&pixels,
-                           WND_WIDTH,
+                           sqr,
                            &sdl_context,
                            &mut renderer,
                            &mut display_state);
@@ -1141,11 +1151,11 @@ fn main() {
             }
 
             // Second edge is flipped
-            draw_coords(&mut pixels, WND_WIDTH, &points_i, 0, 0, 255, 0, 0);
-            draw_coords(&mut pixels, WND_WIDTH, &points_f, 0, 0, 0, 255, 0);
+            draw_coords(&mut pixels, sqr, &points_i, 0, 0, 255, 0, 0);
+            draw_coords(&mut pixels, sqr, &points_f, 0, 0, 0, 255, 0);
 
             display_pixels(&pixels,
-                           WND_WIDTH,
+                           sqr,
                            &sdl_context,
                            &mut renderer,
                            &mut display_state);
@@ -1178,22 +1188,15 @@ fn main() {
         for p in pixels.iter_mut() {
             *p = 0;
         }
-        draw_coords(&mut pixels, WND_WIDTH, &points_i, 0, 0, 255, 0, 0);
+        draw_coords(&mut pixels, sqr, &points_i, 0, 0, 255, 0, 0);
         if r.3 {
-            draw_coords(&mut pixels,
-                        WND_WIDTH,
-                        &flip_coords(&points_j),
-                        0,
-                        0,
-                        0,
-                        255,
-                        0);
+            draw_coords(&mut pixels, sqr, &flip_coords(&points_j), 0, 0, 0, 255, 0);
         } else {
-            draw_coords(&mut pixels, WND_WIDTH, &points_j, 0, 0, 0, 0, 255);
+            draw_coords(&mut pixels, sqr, &points_j, 0, 0, 0, 0, 255);
         }
 
         match display_pixels(&pixels,
-                             WND_WIDTH,
+                             sqr,
                              &sdl_context,
                              &mut renderer,
                              &mut display_state) {
