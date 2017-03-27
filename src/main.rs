@@ -1120,8 +1120,9 @@ fn main() {
 
     // Compare edges - start with near edges (they have similar height)
     let mut cmp_results = vec![];
-    for d in 1..edges.len() {
-        for i in 0..cmp::min(edges.len() - d, 1000) {
+    for d in 1..cmp::min(edges.len(), 1000) {
+        let mut best_score = usize::max_value();
+        for i in 0..(edges.len() - d) {
 
             let j = i + d;
             let ref edge_i = edges[i];
@@ -1133,38 +1134,29 @@ fn main() {
             cmp_results.push((score, i, j, false)); // flipped=false
             cmp_results.push((score_f, i, j, true)); // flipped=true
 
-            println!("red {:<10} vs blue {:10}=> {:>12} flipped => {:>12} (green), todo {} for \
-                      d={}",
+            // Display best score so that some progress is shown
+            let edge_score = cmp::min(score, score_f);
+            if edge_score < best_score {
+                best_score = edge_score;
+            }
+            else if display_state.autorotate {
+                continue;
+            }
+            println!("red {:<10} vs blue {:10}=> {:>12} flipped => {:>12} (green), todo i={} d={}/{}",
                      edge_i.txt_filename,
                      edge_j.txt_filename,
                      score,
                      score_f,
-                     edges.len() - d - i,
-                     edges.len() - d);
+                     i,
+                     d,
+                     edges.len());
 
-            if display_state.autorotate {
-                continue;
-            }
-
-            // Normal display
+            // Display normal with blue, flipped green
             let ref points_i = edge_i.points;
             let ref points_j = edge_j.points;
 
             draw_coords(&mut pixels, sqr, &points_i, 0, 0, 255, 0, 0);
             draw_coords(&mut pixels, sqr, &points_j, 0, 0, 0, 0, 255);
-
-            display_pixels(&pixels,
-                           sqr,
-                           &sdl_context,
-                           &mut renderer,
-                           &mut display_state);
-
-            for p in pixels.iter_mut() {
-                *p = 0;
-            }
-
-            // Second edge is flipped
-            draw_coords(&mut pixels, sqr, &points_i, 0, 0, 255, 0, 0);
             draw_coords(&mut pixels, sqr, &flip_coords(points_j), 0, 0, 0, 255, 0);
 
             display_pixels(&pixels,
