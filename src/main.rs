@@ -46,7 +46,6 @@ struct DisplayPixelState {
 
 struct EdgeInfo {
     points: Vec<(usize, usize)>,
-    points_flipped: Vec<(usize, usize)>,
     txt_file: String,
     txt_filename: String,
     max_x: usize,
@@ -1068,7 +1067,6 @@ fn main() {
         }
 
         let points = read_txt(&path_str);
-        let points_flipped = flip_coords(&points);
 
         // Compute height
         let mut max_x = 0;
@@ -1082,7 +1080,6 @@ fn main() {
 
         let edge_info = EdgeInfo {
             points: points,
-            points_flipped: points_flipped,
             txt_file: path_str,
             txt_filename: filename,
             max_x: max_x,
@@ -1183,7 +1180,7 @@ fn main() {
 
         let ref points_i = edge_i.points;
         let ref points_j = edge_j.points;
-        let ref points_f = edge_j.points_flipped;
+        let ref points_f = &flip_coords(points_j);
 
         println!("red {:<10} vs green {:10}=> {:>12} flipped={} to solve press s",
                  edge_i.txt_file,
