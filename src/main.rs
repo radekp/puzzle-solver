@@ -561,18 +561,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
-                 None,
-                 Some(Rect::new(shift as i32, shift as i32, width, height)),
-                 angle,
-                 None,
-                 false,
-                 false)
+                     None,
+                     Some(Rect::new(shift as i32, shift as i32, width, height)),
+                     angle,
+                     None,
+                     false,
+                     false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                     PixelFormatEnum::RGB24)
+                                          PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -955,44 +955,54 @@ fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
     return a.max_y.cmp(&b.max_y);
 }
 
-fn compare_edges(edges: &Vec<EdgeInfo>,
-		 a: usize,
-		 b: usize,
+fn compare_edges(edges: &mut Vec<EdgeInfo>,
+                 a: usize,
+                 b: usize,
                  sqr: usize,
                  flip_b: bool,
                  rec: bool)
                  -> usize {
 
-    let ref edge_a = edges[a];
-    let ref edge_b = edges[b];
-    let ref points_a = edge_a.points;
-    let ref points_b = edge_b.points;
-    let ref distances_a = edge_a.distances;
-
     let mut res = 0;
-    for point_b in points_b {
+    let mut new_distances = vec![];
 
-        // Point b - flip if requested
-        let b = if flip_b {
-            (edge_b.max_x - point_b.0, edge_b.max_y - point_b.1)
-        } else {
-             (point_b.0, point_b.1) };
+    {
+        let ref edge_a = edges[a];
+        let ref edge_b = edges[b];
+        let ref points_a = edge_a.points;
+        let ref points_b = edge_b.points;
+        let ref distances_a = edge_a.distances;
 
-        let offset = sqr * b.1 + b.0;
-        let mut best_dst = distances_a[offset];
-        if best_dst == usize::max_value() {
-            for a in points_a {
-                let dx = (a.0 as isize) - (b.0 as isize);
-                let dy = (a.1 as isize) - (b.1 as isize);
-                let dst = (dx * dx + dy * dy) as usize;
-                if dst < best_dst {
-                    best_dst = dst;
+        for point_b in points_b {
+
+            // Point b - flip if requested
+            let b = if flip_b {
+                (edge_b.max_x - point_b.0, edge_b.max_y - point_b.1)
+            } else {
+                (point_b.0, point_b.1)
+            };
+
+            let offset = sqr * b.1 + b.0;
+            let mut best_dst = distances_a[offset];
+            if best_dst == usize::max_value() {
+                for a in points_a {
+                    let dx = (a.0 as isize) - (b.0 as isize);
+                    let dy = (a.1 as isize) - (b.1 as isize);
+                    let dst = (dx * dx + dy * dy) as usize;
+                    if dst < best_dst {
+                        best_dst = dst;
+                    }
                 }
+                new_distances.push((offset, best_dst));
             }
-            //distances_a[offset] = best_dst;
+            res += best_dst;
         }
-        res += best_dst;
     }
+
+    for d in new_distances {
+        edges[a].distances[d.0] = d.1;
+    }
+
     if rec {
         res += compare_edges(edges, a, b, sqr, flip_b, false); // the same but compute dst from b to a
     }
@@ -1138,11 +1148,12 @@ fn main() {
         for i in 0..(edges.len() - d) {
 
             let j = i + d;
+
+            let score = compare_edges(&mut edges, i, j, sqr, false, true);
+            let score_f = compare_edges(&mut edges, i, j, sqr, true, true);
+
             let ref edge_i = edges[i];
             let ref edge_j = edges[i + d];
-
-            let score = compare_edges(&edges, i, j, sqr, false, true);
-            let score_f = compare_edges(&edges, i, j, sqr, true, true);
 
             cmp_results.push((score, i, j, false)); // flipped=false
             cmp_results.push((score_f, i, j, true)); // flipped=true
@@ -1151,8 +1162,7 @@ fn main() {
             let edge_score = cmp::min(score, score_f);
             if edge_score < best_score {
                 best_score = edge_score;
-            }
-            else if display_state.autorotate {
+            } else if display_state.autorotate {
                 continue;
             }
             println!("red {:<10} vs blue {:10}=> {:>12} flipped => {:>12} (green), todo i={} d={}/{}",
