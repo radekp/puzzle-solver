@@ -561,18 +561,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
-                     None,
-                     Some(Rect::new(shift as i32, shift as i32, width, height)),
-                     angle,
-                     None,
-                     false,
-                     false)
+                 None,
+                 Some(Rect::new(shift as i32, shift as i32, width, height)),
+                 angle,
+                 None,
+                 false,
+                 false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                                          PixelFormatEnum::RGB24)
+                     PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -955,13 +955,7 @@ fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
     return a.max_y.cmp(&b.max_y);
 }
 
-fn compare_edges(edges: &mut Vec<EdgeInfo>,
-                 a: usize,
-                 b: usize,
-                 sqr: usize,
-                 flip_b: bool,
-                 rec: bool)
-                 -> usize {
+fn compare_edges(edges: &mut Vec<EdgeInfo>, a: usize, b: usize, sqr: usize, rec: bool) -> usize {
 
     let mut res = 0;
     let mut new_distances = vec![];
@@ -974,14 +968,8 @@ fn compare_edges(edges: &mut Vec<EdgeInfo>,
         let ref distances_a = edge_a.distances;
 
         for point_b in points_b {
-
-            // Point b - flip if requested
-            let b = if flip_b {
-                (edge_b.max_x - point_b.0, edge_b.max_y - point_b.1)
-            } else {
-                (point_b.0, point_b.1)
-            };
-
+            // point b must be flipped
+            let b = (edge_b.max_x - point_b.0, edge_b.max_y - point_b.1);
             let offset = sqr * b.1 + b.0;
             let mut best_dst = distances_a[offset];
             if best_dst == usize::max_value() {
@@ -999,12 +987,13 @@ fn compare_edges(edges: &mut Vec<EdgeInfo>,
         }
     }
 
+    // Fill up newly computed distances
     for d in new_distances {
         edges[a].distances[d.0] = d.1;
     }
 
     if rec {
-        res += compare_edges(edges, a, b, sqr, flip_b, false); // the same but compute dst from b to a
+        res += compare_edges(edges, a, b, sqr, false); // the same but compute dst from b to a
     }
     return res;
 }
@@ -1149,38 +1138,37 @@ fn main() {
 
             let j = i + d;
 
-            let score = compare_edges(&mut edges, i, j, sqr, false, true);
-            let score_f = compare_edges(&mut edges, i, j, sqr, true, true);
+            let score = compare_edges(&mut edges, i, j, sqr, true);
 
             let ref edge_i = edges[i];
             let ref edge_j = edges[i + d];
 
-            cmp_results.push((score, i, j, false)); // flipped=false
-            cmp_results.push((score_f, i, j, true)); // flipped=true
+            cmp_results.push((score, i, j));
 
             // Display best score so that some progress is shown
-            let edge_score = cmp::min(score, score_f);
-            if edge_score < best_score {
-                best_score = edge_score;
+            if score < best_score {
+                best_score = score;
             } else if display_state.autorotate {
                 continue;
             }
-            println!("red {:<10} vs blue {:10}=> {:>12} flipped => {:>12} (green), todo i={} d={}/{}",
+            println!("red {:<10} vs green {:10} score={:>12}, todo i={} d={}/{}",
                      edge_i.txt_filename,
                      edge_j.txt_filename,
                      score,
-                     score_f,
                      i,
                      d,
                      edges.len());
 
-            // Display normal with blue, flipped green
-            let ref points_i = edge_i.points;
-            let ref points_j = edge_j.points;
-
-            draw_coords(&mut pixels, sqr, &points_i, 0, 0, 255, 0, 0);
-            draw_coords(&mut pixels, sqr, &points_j, 0, 0, 0, 0, 255);
-            draw_coords(&mut pixels, sqr, &flip_coords(points_j), 0, 0, 0, 255, 0);
+            // Display points_i with red, points_j in green
+            draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
+            draw_coords(&mut pixels,
+                        sqr,
+                        &flip_coords(&edge_j.points),
+                        0,
+                        0,
+                        0,
+                        255,
+                        0);
 
             display_pixels(&pixels,
                            sqr,
@@ -1204,25 +1192,23 @@ fn main() {
         let ref edge_i = edges[r.1];
         let ref edge_j = edges[r.2];
 
-        let ref points_i = edge_i.points;
-        let ref points_j = edge_j.points;
-        let ref points_f = &flip_coords(points_j);
-
-        println!("red {:<10} vs green {:10}=> {:>12} flipped={} to solve press s",
+        println!("red {:<10} vs green {:10} score={:>12}, to solve press s",
                  edge_i.txt_filename,
                  edge_j.txt_filename,
-                 r.0,
-                 r.3);
+                 r.0);
 
         for p in pixels.iter_mut() {
             *p = 0;
         }
-        draw_coords(&mut pixels, sqr, &points_i, 0, 0, 255, 0, 0);
-        if r.3 {
-            draw_coords(&mut pixels, sqr, &points_f, 0, 0, 0, 255, 0);
-        } else {
-            draw_coords(&mut pixels, sqr, &points_j, 0, 0, 0, 0, 255);
-        }
+        draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
+        draw_coords(&mut pixels,
+                    sqr,
+                    &flip_coords(&edge_j.points),
+                    0,
+                    0,
+                    0,
+                    255,
+                    0);
 
         match display_pixels(&pixels,
                              sqr,
