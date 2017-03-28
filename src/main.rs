@@ -955,13 +955,16 @@ fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
     return a.max_y.cmp(&b.max_y);
 }
 
-fn compare_edges(edge_a: &EdgeInfo,
-                 edge_b: &EdgeInfo,
+fn compare_edges(edges: &Vec<EdgeInfo>,
+		 a: usize,
+		 b: usize,
                  sqr: usize,
                  flip_b: bool,
                  rec: bool)
                  -> usize {
 
+    let ref edge_a = edges[a];
+    let ref edge_b = edges[b];
     let ref points_a = edge_a.points;
     let ref points_b = edge_b.points;
     let ref distances_a = edge_a.distances;
@@ -991,7 +994,7 @@ fn compare_edges(edge_a: &EdgeInfo,
         res += best_dst;
     }
     if rec {
-        res += compare_edges(edge_a, edge_b, sqr, flip_b, false); // the same but compute dst from b to a
+        res += compare_edges(edges, a, b, sqr, flip_b, false); // the same but compute dst from b to a
     }
     return res;
 }
@@ -1138,8 +1141,8 @@ fn main() {
             let ref edge_i = edges[i];
             let ref edge_j = edges[i + d];
 
-            let score = compare_edges(edge_i, edge_j, sqr, false, true);
-            let score_f = compare_edges(edge_i, edge_j, sqr, true, true);
+            let score = compare_edges(&edges, i, j, sqr, false, true);
+            let score_f = compare_edges(&edges, i, j, sqr, true, true);
 
             cmp_results.push((score, i, j, false)); // flipped=false
             cmp_results.push((score_f, i, j, true)); // flipped=true
