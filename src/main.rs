@@ -1187,9 +1187,11 @@ fn main() {
         let ref edge_i = edges[r.1];
         let ref edge_j = edges[r.2];
 
-        println!("red {:<10} vs green {:10} score={:>12}, to solve press s",
-                 edge_i.edge_no,
-                 edge_j.edge_no,
+        println!("red {:>4}.{} vs green {:>4}.{} score={:>12}, to solve press s",
+                 edge_i.edge_no / 10,
+                 edge_i.edge_no % 10,
+                 edge_j.edge_no / 10,
+                 edge_j.edge_no % 10,
                  r.0);
 
         for p in pixels.iter_mut() {
