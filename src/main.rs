@@ -752,7 +752,10 @@ fn display_pixels(pixels: &Vec<u8>,
     }
 }
 
-fn process_png(img_file: &str, png_no: usize, sdl_context: &sdl2::Sdl, display_state: &mut DisplayPixelState) {
+fn process_png(img_file: &str,
+               png_no: usize,
+               sdl_context: &sdl2::Sdl,
+               display_state: &mut DisplayPixelState) {
 
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -1031,22 +1034,19 @@ fn main() {
     let entries = fs::read_dir("./data").unwrap();
     for entry in entries {
         //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
-        
+
         let path = entry.unwrap().path();
         if path.extension().unwrap() != "png" {
             continue;
         }
-  	let png_no: usize = path.file_stem()
+        let png_no: usize = path.file_stem()
             .unwrap()
             .to_str()
             .unwrap()
             .parse()
             .unwrap();
 
-        let path_str = path
-            .into_os_string()
-            .into_string()
-            .unwrap();
+        let path_str = path.into_os_string().into_string().unwrap();
 
         if is_done(&path_str) {
             continue;
@@ -1194,11 +1194,11 @@ fn main() {
 
     display_state.autorotate = false;
     for r in cmp_results.iter() {
-    
-	//     I  -> J
+
+        //     J  <-  I
         let ref edge_i = edges[r.1];
         let ref edge_j = edges[r.2];
-        
+
         let i_no = edge_i.edge_no;
         let j_no = edge_j.edge_no;
 
@@ -1211,59 +1211,96 @@ fn main() {
 
         // Find point M:
         //
-	//     M
-	//     ^
-	//     |
-	//     I  -> J
-        //                 
-	let side_1 = (edge_i.edge_no + 1) & 3;
-	let side_3 = (edge_i.edge_no + 3) & 3;
+        //     M
+        //     ^
+        //     |
+        //     J  ->  I
+        //
+        let side_j_plus = (j_no + 1) & 3;
 
-	println!("  searching M sharing edge {}.{} or {}.{}", i_no >> 2, side_1, i_no >> 2, side_3);
+        println!("  searching M sharing edge {}.{}", j_no >> 2, side_j_plus);
         for r2 in cmp_results.iter() {
-	    let ref edge_k = edges[r2.1];
-	    let ref edge_l = edges[r2.2];
-	    let k_no = edge_k.edge_no;
-	    let l_no = edge_l.edge_no;
-    
-	    let m_no =
-	    if k_no >> 2 == i_no >> 2 && (k_no & 3 == side_1 || k_no & 3 == side_3) {
-		l_no
-	    }
-	    else if l_no >> 2 == i_no >> 2 && (l_no & 3 == side_1 || l_no & 3 == side_3) {
-		k_no
-	    }
-	    else {
-		continue;
-	    };
+            let ref edge_k = edges[r2.1];
+            let ref edge_l = edges[r2.2];
+            let k_no = edge_k.edge_no;
+            let l_no = edge_l.edge_no;
 
-	    println!("  M={}.{} K={:>4}.{} vs L={:>4}.{} score M->I={:>12}",
-		 m_no >> 2,
-		 m_no & 3,
-                 k_no >> 2,
-                 k_no & 3,
-                 l_no >> 2,
-                 l_no & 3,
-                 r2.0);
+            let m_no = if k_no >> 2 == j_no >> 2 && k_no & 3 == side_j_plus {
+                l_no
+            } else if l_no >> 2 == j_no >> 2 && l_no & 3 == side_j_plus {
+                k_no
+            } else {
+                continue;
+            };
+
+            println!("  M={}.{} K={:>4}.{} vs L={:>4}.{} score J->M={:>12}",
+                     m_no >> 2,
+                     m_no & 3,
+                     k_no >> 2,
+                     k_no & 3,
+                     l_no >> 2,
+                     l_no & 3,
+                     r2.0);
 
             // Find point P sharing border with M and J:
-	    //
-	    //     M  -> P
-	    //     ^     ^
-	    //     |     |
-	    //     I  -> J
-	    //
-	    for r3 in cmp_results.iter() {
-		let ref edge_n = edges[r2.1];
-		let ref edge_o = edges[r2.2];
-		let n_no = edge_n.edge_no;
-		let o_no = edge_o.edge_no;
-	    }
-	    
-	    break;
+            //
+            //     M  -> P
+            //     ^     ^
+            //     |     |
+            //     J  -> I
+            //
+            let side_m_plus = (m_no + 1) & 3;
+            println!("  searching P sharing edge {}.{}", m_no >> 2, side_m_plus);
+            for r3 in cmp_results.iter() {
+                let ref edge_n = edges[r3.1];
+                let ref edge_o = edges[r3.2];
+                let n_no = edge_n.edge_no;
+                let o_no = edge_o.edge_no;
+
+                let p_no = if n_no >> 2 == m_no >> 2 && n_no & 3 == side_m_plus {
+                    o_no
+                } else if o_no >> 2 == m_no >> 2 && o_no & 3 == side_m_plus {
+                    n_no
+                } else {
+                    continue;
+                };
+
+                println!("  P={}.{} N={:>4}.{} vs O={:>4}.{} score M->P={:>12}",
+                         p_no >> 2,
+                         p_no & 3,
+                         n_no >> 2,
+                         n_no & 3,
+                         o_no >> 2,
+                         o_no & 3,
+                         r3.0);
+
+                // Compare P with I
+                let p_plus = ((p_no + 1) & 3) | (p_no & !3);
+                let i_minus = ((i_no + 3) & 3) | (i_no & !3);
+                println!("  searching for P->I edge {}.{} -> {}.{}",
+                         p_plus >> 2,
+                         p_plus & 3,
+                         i_minus >> 2,
+                         i_minus & 3);
+                for r4 in cmp_results.iter() {
+                    let q_no = edges[r4.1].edge_no;
+                    let r_no = edges[r4.2].edge_no;
+
+                    if (q_no == p_plus && r_no == i_minus) || (q_no == i_minus && r_no == p_plus) {
+
+                        println!("  P->I score={}, final score={}",
+                                 r4.0,
+                                 r.0 + r2.0 + r3.0 + r4.0);
+                        break;
+                    }
+                }
+                break;
+            }
+
+            break;
         }
-         
-                 
+
+
         for p in pixels.iter_mut() {
             *p = 0;
         }
