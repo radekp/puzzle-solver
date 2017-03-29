@@ -560,18 +560,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
-                     None,
-                     Some(Rect::new(shift as i32, shift as i32, width, height)),
-                     angle,
-                     None,
-                     false,
-                     false)
+                 None,
+                 Some(Rect::new(shift as i32, shift as i32, width, height)),
+                 angle,
+                 None,
+                 false,
+                 false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                                          PixelFormatEnum::RGB24)
+                     PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -1192,6 +1192,8 @@ fn main() {
 
     println!("Compared edges:");
 
+    let mut best_final = usize::max_value();
+
     display_state.autorotate = false;
     for r in cmp_results.iter() {
 
@@ -1208,6 +1210,20 @@ fn main() {
                  j_no >> 2,
                  j_no & 3,
                  r.0);
+
+                 for p in pixels.iter_mut() {
+                     *p = 0;
+                 }
+                 draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
+                 draw_coords(&mut pixels,
+                             sqr,
+                             &flip_coords(&edge_j.points),
+                             0,
+                             0,
+                             0,
+                             255,
+                             0);
+
 
         // Find point M:
         //
@@ -1232,6 +1248,17 @@ fn main() {
             } else {
                 continue;
             };
+
+            draw_coords(&mut pixels, sqr, &edge_k.points, 100, 0, 255, 0, 0);
+            draw_coords(&mut pixels,
+                        sqr,
+                        &flip_coords(&edge_l.points),
+                        100,
+                        0,
+                        0,
+                        255,
+                        0);
+
 
             println!("        {}.{}     K={:>4}.{} vs L={:>4}.{} score J->M={:>12}",
                      m_no >> 2,
@@ -1274,6 +1301,17 @@ fn main() {
                          o_no & 3,
                          r3.0);
 
+                         draw_coords(&mut pixels, sqr, &edge_n.points, 200, 0, 255, 0, 0);
+                         draw_coords(&mut pixels,
+                                     sqr,
+                                     &flip_coords(&edge_o.points),
+                                     200,
+                                     0,
+                                     0,
+                                     255,
+                                     0);
+
+
                 // Compare P with I
                 let p_plus = ((p_no + 1) & 3) | (p_no & !3);
                 let i_minus = ((i_no + 3) & 3) | (i_no & !3);
@@ -1283,19 +1321,38 @@ fn main() {
                          i_minus >> 2,
                          i_minus & 3);*/
                 for r4 in cmp_results.iter() {
+                    let ref edge_q = edges[r4.1];
+                    let ref edge_r = edges[r4.2];
                     let q_no = edges[r4.1].edge_no;
                     let r_no = edges[r4.2].edge_no;
 
                     if (q_no == p_plus && r_no == i_minus) || (q_no == i_minus && r_no == p_plus) {
 
-                         println!("        {}.{} -> {}.{} score={}, FINAL SCORE={}",
-                                                p_plus >> 2,
-			    p_plus & 3,
-			    i_minus >> 2,
-			    i_minus & 3,
+                        let final_score = r.0 + r2.0 + r3.0 + r4.0;
+
+                        println!("        {}.{} -> {}.{} score={}, FINAL SCORE={}",
+                                 p_plus >> 2,
+                                 p_plus & 3,
+                                 i_minus >> 2,
+                                 i_minus & 3,
 
                                  r4.0,
-                                 r.0 + r2.0 + r3.0 + r4.0);
+                                 final_score);
+
+                                 if best_final > final_score {
+                                     best_final = final_score;
+                                 }
+                                 display_state.autorotate = false;
+
+                                 draw_coords(&mut pixels, sqr, &edge_q.points, 300, 0, 255, 0, 0);
+                                 draw_coords(&mut pixels,
+                                             sqr,
+                                             &flip_coords(&edge_r.points),
+                                             300,
+                                             0,
+                                             0,
+                                             255,
+                                             0);
                         break;
                     }
                 }
@@ -1304,20 +1361,6 @@ fn main() {
 
             break;
         }
-
-
-        for p in pixels.iter_mut() {
-            *p = 0;
-        }
-        draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
-        draw_coords(&mut pixels,
-                    sqr,
-                    &flip_coords(&edge_j.points),
-                    0,
-                    0,
-                    0,
-                    255,
-                    0);
 
         match display_pixels(&pixels,
                              sqr,
