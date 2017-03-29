@@ -47,8 +47,7 @@ struct DisplayPixelState {
 struct EdgeInfo {
     points: Vec<(usize, usize)>,
     distances: Vec<usize>,
-    txt_file: String,
-    txt_filename: String,
+    edge_no: usize, // e.g. 103 is 10.3.txt
     max_x: usize,
     max_y: usize,
 }
@@ -561,18 +560,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
-                 None,
-                 Some(Rect::new(shift as i32, shift as i32, width, height)),
-                 angle,
-                 None,
-                 false,
-                 false)
+                     None,
+                     Some(Rect::new(shift as i32, shift as i32, width, height)),
+                     angle,
+                     None,
+                     false,
+                     false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                     PixelFormatEnum::RGB24)
+                                          PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -1047,29 +1046,26 @@ fn main() {
     }
     //process_png("9.png", &sdl_context);
 
-    // Read txt files and find matching edges
+    // Read txt files with edges
     let mut edges = vec![];
     let entries = fs::read_dir("./data").unwrap();
     for entry in entries {
-        //println!("Name: {}", path.unwrap().path().file_name().unwrap().to_str().unwrap());
 
-        let path_str = entry.unwrap()
-            .path()
-            .into_os_string()
-            .into_string()
-            .unwrap();
-
-        /*let filename = entry.unwrap()
-            .path()		// PathBuf
-            .file_name()
-            .unwrap()		// OsStr
-            .to_str()
-            .unwrap()
-            .to_string();*/
-
-        if !path_str.ends_with(".txt") {
+        let path = entry.unwrap().path();
+        if path.extension().unwrap() != "txt" {
             continue;
         }
+
+        let edge_no: usize = path.file_stem()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .replace(".", "")
+            .parse()
+            .unwrap();
+
+        let path_str = path.into_os_string().into_string().unwrap();
+
         // Skip edges that are already solved
         if is_done(&path_str) {
             continue;
@@ -1085,13 +1081,10 @@ fn main() {
             max_y = cmp::max(max_y, p.1);
         }
 
-        let filename = path_str.replace("./data/", "");
-
         let edge_info = EdgeInfo {
             points: points,
             distances: vec![],
-            txt_file: path_str,
-            txt_filename: filename,
+            edge_no: edge_no,
             max_x: max_x,
             max_y: max_y,
         };
@@ -1151,9 +1144,11 @@ fn main() {
             } else if display_state.autorotate {
                 continue;
             }
-            println!("red {:<10} vs green {:10} score={:>12}, todo i={} d={}/{}",
-                     edge_i.txt_filename,
-                     edge_j.txt_filename,
+            println!("red {:>4}.{} vs green {:>4}.{} score={:>12}, todo i={} d={}/{}",
+                     edge_i.edge_no / 10,
+                     edge_i.edge_no % 10,
+                     edge_j.edge_no / 10,
+                     edge_j.edge_no % 10,
                      score,
                      i,
                      d,
@@ -1193,8 +1188,8 @@ fn main() {
         let ref edge_j = edges[r.2];
 
         println!("red {:<10} vs green {:10} score={:>12}, to solve press s",
-                 edge_i.txt_filename,
-                 edge_j.txt_filename,
+                 edge_i.edge_no,
+                 edge_j.edge_no,
                  r.0);
 
         for p in pixels.iter_mut() {
@@ -1216,8 +1211,8 @@ fn main() {
                              &mut renderer,
                              &mut display_state) {
             UserAction::Solve => {
-                write_done_file(&edge_i.txt_file.replace(".txt", ".done"));
-                write_done_file(&edge_j.txt_file.replace(".txt", ".done"));
+                /*write_done_file(&edge_i.txt_file.replace(".txt", ".done"));
+                write_done_file(&edge_j.txt_file.replace(".txt", ".done"));*/
             }
             _ => {}
         }
