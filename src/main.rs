@@ -1202,7 +1202,7 @@ fn main() {
         let i_no = edge_i.edge_no;
         let j_no = edge_j.edge_no;
 
-        println!("red {:>4}.{} vs green {:>4}.{} score={:>12}, to solve press s",
+        println!("{:>4}.{}->{:<4}.{} score={:>12}, to solve press s",
                  i_no >> 2,
                  i_no & 3,
                  j_no >> 2,
@@ -1218,7 +1218,7 @@ fn main() {
         //
         let side_j_plus = (j_no + 1) & 3;
 
-        println!("  searching M sharing edge {}.{}", j_no >> 2, side_j_plus);
+        //println!("  searching M sharing edge {}.{}", j_no >> 2, side_j_plus);
         for r2 in cmp_results.iter() {
             let ref edge_k = edges[r2.1];
             let ref edge_l = edges[r2.2];
@@ -1233,7 +1233,7 @@ fn main() {
                 continue;
             };
 
-            println!("  M={}.{} K={:>4}.{} vs L={:>4}.{} score J->M={:>12}",
+            println!("        {}.{}     K={:>4}.{} vs L={:>4}.{} score J->M={:>12}",
                      m_no >> 2,
                      m_no & 3,
                      k_no >> 2,
@@ -1250,7 +1250,7 @@ fn main() {
             //     J  -> I
             //
             let side_m_plus = (m_no + 1) & 3;
-            println!("  searching P sharing edge {}.{}", m_no >> 2, side_m_plus);
+            //println!("  searching P sharing edge {}.{}", m_no >> 2, side_m_plus);
             for r3 in cmp_results.iter() {
                 let ref edge_n = edges[r3.1];
                 let ref edge_o = edges[r3.2];
@@ -1265,7 +1265,7 @@ fn main() {
                     continue;
                 };
 
-                println!("  P={}.{} N={:>4}.{} vs O={:>4}.{} score M->P={:>12}",
+                println!("        {}.{}       N={:>4}.{} vs O={:>4}.{} score M->P={:>12}",
                          p_no >> 2,
                          p_no & 3,
                          n_no >> 2,
@@ -1277,18 +1277,23 @@ fn main() {
                 // Compare P with I
                 let p_plus = ((p_no + 1) & 3) | (p_no & !3);
                 let i_minus = ((i_no + 3) & 3) | (i_no & !3);
-                println!("  searching for P->I edge {}.{} -> {}.{}",
+                /*println!("  searching for P->I edge {}.{} -> {}.{}",
                          p_plus >> 2,
                          p_plus & 3,
                          i_minus >> 2,
-                         i_minus & 3);
+                         i_minus & 3);*/
                 for r4 in cmp_results.iter() {
                     let q_no = edges[r4.1].edge_no;
                     let r_no = edges[r4.2].edge_no;
 
                     if (q_no == p_plus && r_no == i_minus) || (q_no == i_minus && r_no == p_plus) {
 
-                        println!("  P->I score={}, final score={}",
+                         println!("        {}.{} -> {}.{} score={}, FINAL SCORE={}",
+                                                p_plus >> 2,
+			    p_plus & 3,
+			    i_minus >> 2,
+			    i_minus & 3,
+
                                  r4.0,
                                  r.0 + r2.0 + r3.0 + r4.0);
                         break;
