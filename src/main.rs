@@ -752,7 +752,7 @@ fn display_pixels(pixels: &Vec<u8>,
     }
 }
 
-fn process_png(img_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut DisplayPixelState) {
+fn process_png(img_file: &str, png_no: usize, sdl_context: &sdl2::Sdl, display_state: &mut DisplayPixelState) {
 
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -861,8 +861,8 @@ fn process_png(img_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
 
         // Save left edge coordinates to file
         let content = find_edge(&mut pixels, sqr, bounds, top_x, top_y, bot_x, bot_y);
-        let ext = format!("{}.txt", side);
-        let txt_path = Path::new(img_file).with_extension(ext);
+        let filename = format!("{}.txt", 4 * png_no + side);
+        let txt_path = Path::new(img_file).with_file_name(filename);
         let display = txt_path.display();
 
         let mut file = match File::create(&txt_path) {
@@ -1028,21 +1028,31 @@ fn main() {
     let mut display_state = DisplayPixelState { autorotate: false };
 
     // Process all .png files - this will write 4 txt files for each edge
-    let paths = fs::read_dir("./data").unwrap();
-    for path in paths {
+    let entries = fs::read_dir("./data").unwrap();
+    for entry in entries {
         //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
-        let path_str = path.unwrap()
-            .path()
+        
+        let path = entry.unwrap().path();
+        if path.extension().unwrap() != "png" {
+            continue;
+        }
+  	let png_no: usize = path.file_stem()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .parse()
+            .unwrap();
+
+        let path_str = path
             .into_os_string()
             .into_string()
             .unwrap();
-        if !path_str.ends_with(".png") {
-            continue;
-        }
+
         if is_done(&path_str) {
             continue;
         }
-        process_png(&path_str, &sdl_context, &mut display_state);
+
+        process_png(&path_str, png_no, &sdl_context, &mut display_state);
     }
     //process_png("9.png", &sdl_context);
 
@@ -1145,10 +1155,10 @@ fn main() {
                 continue;
             }
             println!("red {:>4}.{} vs green {:>4}.{} score={:>12}, todo i={} d={}/{}",
-                     edge_i.edge_no / 10,
-                     edge_i.edge_no % 10,
-                     edge_j.edge_no / 10,
-                     edge_j.edge_no % 10,
+                     edge_i.edge_no >> 2,
+                     edge_i.edge_no & 3,
+                     edge_j.edge_no >> 2,
+                     edge_j.edge_no & 3,
                      score,
                      i,
                      d,
@@ -1183,17 +1193,77 @@ fn main() {
     println!("Compared edges:");
 
     display_state.autorotate = false;
-    for r in cmp_results {
+    for r in cmp_results.iter() {
+    
+	//     I  -> J
         let ref edge_i = edges[r.1];
         let ref edge_j = edges[r.2];
+        
+        let i_no = edge_i.edge_no;
+        let j_no = edge_j.edge_no;
 
         println!("red {:>4}.{} vs green {:>4}.{} score={:>12}, to solve press s",
-                 edge_i.edge_no / 10,
-                 edge_i.edge_no % 10,
-                 edge_j.edge_no / 10,
-                 edge_j.edge_no % 10,
+                 i_no >> 2,
+                 i_no & 3,
+                 j_no >> 2,
+                 j_no & 3,
                  r.0);
 
+        // Find point M:
+        //
+	//     M
+	//     ^
+	//     |
+	//     I  -> J
+        //                 
+	let side_1 = (edge_i.edge_no + 1) & 3;
+	let side_3 = (edge_i.edge_no + 3) & 3;
+
+	println!("  searching M sharing edge {}.{} or {}.{}", i_no >> 2, side_1, i_no >> 2, side_3);
+        for r2 in cmp_results.iter() {
+	    let ref edge_k = edges[r2.1];
+	    let ref edge_l = edges[r2.2];
+	    let k_no = edge_k.edge_no;
+	    let l_no = edge_l.edge_no;
+    
+	    let m_no =
+	    if k_no >> 2 == i_no >> 2 && (k_no & 3 == side_1 || k_no & 3 == side_3) {
+		l_no
+	    }
+	    else if l_no >> 2 == i_no >> 2 && (l_no & 3 == side_1 || l_no & 3 == side_3) {
+		k_no
+	    }
+	    else {
+		continue;
+	    };
+
+	    println!("  M={}.{} K={:>4}.{} vs L={:>4}.{} score M->I={:>12}",
+		 m_no >> 2,
+		 m_no & 3,
+                 k_no >> 2,
+                 k_no & 3,
+                 l_no >> 2,
+                 l_no & 3,
+                 r2.0);
+
+            // Find point P sharing border with M and J:
+	    //
+	    //     M  -> P
+	    //     ^     ^
+	    //     |     |
+	    //     I  -> J
+	    //
+	    for r3 in cmp_results.iter() {
+		let ref edge_n = edges[r2.1];
+		let ref edge_o = edges[r2.2];
+		let n_no = edge_n.edge_no;
+		let o_no = edge_o.edge_no;
+	    }
+	    
+	    break;
+        }
+         
+                 
         for p in pixels.iter_mut() {
             *p = 0;
         }
