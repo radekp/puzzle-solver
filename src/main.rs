@@ -954,7 +954,7 @@ fn flip_coords(coords: &Vec<(usize, usize)>) -> Vec<(usize, usize)> {
 }
 
 fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
-    return a.max_y.cmp(&b.max_y);
+    return (a.max_x * a.max_y).cmp(&(b.max_x * b.max_y));
 }
 
 fn compare_edges(edges: &mut Vec<EdgeInfo>, a: usize, b: usize, sqr: usize, rec: bool) -> usize {
