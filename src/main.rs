@@ -1217,6 +1217,10 @@ fn main() {
         let i_no = edge_i.edge_no;
         let j_no = edge_j.edge_no;
 
+        if i_no >> 2 == j_no >> 2 {
+            continue; // 2 edges of the same piece
+        }
+
         println!("===========================================");
         println!("{:>4}.{}->{:>4}.{}                 {:>12}",
                  i_no >> 2,
@@ -1224,11 +1228,6 @@ fn main() {
                  j_no >> 2,
                  j_no & 3,
                  r.0);
-
-        if i_no >> 2 == j_no >> 2 {
-            continue; // 2 edges of the same piece
-        }
-
 
         for p in pixels.iter_mut() {
             *p = 0;
@@ -1266,6 +1265,10 @@ fn main() {
                 continue;
             };
 
+            if m_no >> 2 == i_no >> 2 || m_no >> 2 == j_no >> 2 {
+                continue; // must compare 3 different pieces
+            }
+
             draw_coords(&mut pixels, sqr, &edge_k.points, 100, 0, 255, 0, 0);
             draw_coords(&mut pixels,
                         sqr,
@@ -1283,11 +1286,6 @@ fn main() {
                      m_no >> 2,
                      m_no & 3,
                      r2.0);
-
-            if m_no >> 2 == i_no >> 2 || m_no >> 2 == j_no >> 2 {
-                continue; // must compare 3 different pieces
-            }
-
 
             // Find point P sharing border with M and J:
             //
