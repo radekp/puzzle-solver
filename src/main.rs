@@ -1000,6 +1000,16 @@ fn compare_edges(edges: &mut Vec<EdgeInfo>, a: usize, b: usize, sqr: usize, rec:
     return res;
 }
 
+// Return next side of the piece
+fn side_plus(edge_no: usize) -> usize {
+    return (edge_no & !3) | ((edge_no + 1) & 3);
+}
+
+// Return prev side of the piece
+fn side_minus(edge_no: usize) -> usize {
+    return (edge_no & !3) | ((edge_no + 3) & 3);
+}
+
 // Make file processed
 fn write_done_file(path: &str) {
     let done_path = Path::new(path).with_extension("done");
@@ -1207,6 +1217,7 @@ fn main() {
         let i_no = edge_i.edge_no;
         let j_no = edge_j.edge_no;
 
+	println!("===========================================");
         println!("{:>4}.{}->{:>4}.{}                 {:>12}",
                  i_no >> 2,
                  i_no & 3,
@@ -1235,18 +1246,16 @@ fn main() {
         //     |
         //     J  ->  I
         //
-        let side_j_plus = (j_no + 1) & 3;
-
-        //println!("  searching M sharing edge {}.{}", j_no >> 2, side_j_plus);
+        let j_plus = side_plus(j_no);
         for r2 in cmp_results.iter() {
             let ref edge_k = edges[r2.1];
             let ref edge_l = edges[r2.2];
             let k_no = edge_k.edge_no;
             let l_no = edge_l.edge_no;
 
-            let m_no = if k_no >> 2 == j_no >> 2 && k_no & 3 == side_j_plus {
+            let m_no = if k_no == j_plus {
                 l_no
-            } else if l_no >> 2 == j_no >> 2 && l_no & 3 == side_j_plus {
+            } else if l_no == j_plus {
                 k_no
             } else {
                 continue;
@@ -1264,8 +1273,8 @@ fn main() {
 
 
             println!("        {:>4}.{}->{:>4}.{}         {:>12}",
-                     j_no >> 2,
-                     side_j_plus,
+                     j_plus >> 2,
+                     j_plus & 3,
                      m_no >> 2,
                      m_no & 3,
                      r2.0);
@@ -1277,25 +1286,24 @@ fn main() {
             //     |     |
             //     J  -> I
             //
-            let side_m_plus = (m_no + 1) & 3;
-            //println!("  searching P sharing edge {}.{}", m_no >> 2, side_m_plus);
+            let m_plus = side_plus(m_no);
             for r3 in cmp_results.iter() {
                 let ref edge_n = edges[r3.1];
                 let ref edge_o = edges[r3.2];
                 let n_no = edge_n.edge_no;
                 let o_no = edge_o.edge_no;
 
-                let p_no = if n_no >> 2 == m_no >> 2 && n_no & 3 == side_m_plus {
+                let p_no = if n_no == m_plus {
                     o_no
-                } else if o_no >> 2 == m_no >> 2 && o_no & 3 == side_m_plus {
+                } else if o_no == m_plus {
                     n_no
                 } else {
                     continue;
                 };
 
                 println!("                {:>4}.{}->{:>4}.{} {:>12}",
-                         m_no >> 2,
-                         side_m_plus,
+                         m_plus >> 2,
+                         m_plus & 3,
                          p_no >> 2,
                          p_no & 3,
                          r3.0);
@@ -1312,8 +1320,8 @@ fn main() {
 
 
                 // Compare P with I
-                let p_plus = ((p_no + 1) & 3) | (p_no & !3);
-                let i_minus = ((i_no + 3) & 3) | (i_no & !3);
+                let p_plus = side_plus(p_no);
+                let i_minus = side_minus(i_no);
                 /*println!("  searching for P->I edge {}.{} -> {}.{}",
                          p_plus >> 2,
                          p_plus & 3,
