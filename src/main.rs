@@ -1232,10 +1232,6 @@ fn main() {
         let mut best_skip_mask = 0;
         'mask_loop: loop {
 
-            if skip_mask > 63 {
-                break;
-            }
-
             for p in pixels.iter_mut() {
                 *p = 0;
             }
@@ -1250,12 +1246,26 @@ fn main() {
                         0);
 
 
-            let mut skip = (skip_mask & 3, (skip_mask >> 2) & 3, (skip_mask >> 4) & 3);
-            println!("skip_mask={} skip={}.{}.{}",
+            // Last round displays the best result
+            let skip_src = if skip_mask <= 63 {
+                skip_mask
+            } else if skip_mask == 64 {
+                println!("======= BEST MATCH {} ========", best_skip_mask);
+                display_state.autorotate = false;
+                best_skip_mask
+            } else {
+                break 'mask_loop;
+            };
+
+            let mut skip = (skip_src & 3, (skip_src >> 2) & 3, (skip_src >> 4) & 3);
+            /*println!("skip_mask={} skip={}.{}.{}",
                      skip_mask,
                      skip.0,
                      skip.1,
-                     skip.2);
+                     skip.2);*/
+
+            skip_mask += 1;
+
 
             // Find point M:
             //
@@ -1388,7 +1398,7 @@ fn main() {
 
                             if final_score < best_final_score {
                                 best_final_score = final_score;
-                                display_state.autorotate = false;
+                                best_skip_mask = skip_mask;
                             }
 
                             draw_coords(&mut pixels, sqr, &edge_q.points, 300, 0, 255, 0, 0);
@@ -1413,7 +1423,6 @@ fn main() {
                                 _ => {}
                             }
 
-                            skip_mask += 1;
                             continue 'mask_loop;
                         }
                     }
