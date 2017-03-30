@@ -1112,7 +1112,7 @@ fn main() {
     let height = max_y + 1;
 
     // SDL window - make it modulo 4 to play well with texture pitch
-    let sqr = cmp::max(width, height) + 5 & !3usize;
+    let sqr = 2 * cmp::max(width, height) + 5 & !3usize;
 
     // Make up distances table for fast nearest edge searching
     for edge in edges.iter_mut() {
