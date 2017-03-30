@@ -46,7 +46,7 @@ struct DisplayPixelState {
 
 struct EdgeInfo {
     points: Vec<(usize, usize)>,
-    distances: Vec<usize>,
+    distances: Vec<u16>,
     edge_no: usize, // e.g. 103 is 10.3.txt
     max_x: usize,
     max_y: usize,
@@ -560,18 +560,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
-                     None,
-                     Some(Rect::new(shift as i32, shift as i32, width, height)),
-                     angle,
-                     None,
-                     false,
-                     false)
+                 None,
+                 Some(Rect::new(shift as i32, shift as i32, width, height)),
+                 angle,
+                 None,
+                 false,
+                 false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                                          PixelFormatEnum::RGB24)
+                     PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -973,8 +973,8 @@ fn compare_edges(edges: &mut Vec<EdgeInfo>, a: usize, b: usize, sqr: usize, rec:
             // point b must be flipped
             let b = (edge_b.max_x - point_b.0, edge_b.max_y - point_b.1);
             let offset = sqr * b.1 + b.0;
-            let mut best_dst = distances_a[offset];
-            if best_dst == usize::max_value() {
+            let mut best_dst = distances_a[offset] as usize;
+            if best_dst == u16::max_value() as usize {
                 for a in points_a {
                     let dx = (a.0 as isize) - (b.0 as isize);
                     let dy = (a.1 as isize) - (b.1 as isize);
@@ -983,7 +983,12 @@ fn compare_edges(edges: &mut Vec<EdgeInfo>, a: usize, b: usize, sqr: usize, rec:
                         best_dst = dst;
                     }
                 }
-                new_distances.push((offset, best_dst));
+                let store_dst = if best_dst < u16::max_value() as usize {
+                    best_dst as u16
+                } else {
+                    u16::max_value() - 1
+                };
+                new_distances.push((offset, store_dst));
             }
             res += best_dst;
         }
@@ -1012,7 +1017,9 @@ fn side_minus(edge_no: usize) -> usize {
 
 // Make file processed
 fn write_done_file(path: &str) {
-    let done_path = Path::new(path).with_extension("done");
+    let done_str = path.to_string() + ".done";
+    println!("writting done file {}", done_str);
+    let done_path = Path::new(&done_str);
     match File::create(&done_path) {
         Err(why) => {
             panic!("couldn't create {}: {}",
@@ -1025,7 +1032,8 @@ fn write_done_file(path: &str) {
 
 // Is file already processed?
 fn is_done(path: &str) -> bool {
-    let done_path = Path::new(&path).with_extension("done");
+    let done_str = path.to_string() + ".done";
+    let done_path = Path::new(&done_str);
     if !done_path.exists() {
         return false;
     }
@@ -1126,7 +1134,7 @@ fn main() {
 
     // Make up distances table for fast nearest edge searching
     for edge in edges.iter_mut() {
-        edge.distances = vec![usize::max_value(); sqr * sqr];
+        edge.distances = vec![u16::max_value(); sqr * sqr];
     }
 
     let mut pixels: Vec<u8> = vec![0;3*sqr*sqr];
@@ -1418,8 +1426,8 @@ fn main() {
                                                  &mut renderer,
                                                  &mut display_state) {
                                 UserAction::Solve => {
-                                    /*write_done_file(&edge_i.txt_file.replace(".txt", ".done"));
-				    write_done_file(&edge_j.txt_file.replace(".txt", ".done"));*/
+                                    write_done_file(&format!("data/{}.txt", i_no));
+                                    write_done_file(&format!("data/{}.txt", j_no));
                                 }
                                 _ => {}
                             }
