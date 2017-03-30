@@ -1220,15 +1220,9 @@ fn main() {
         }
 
         println!("===========================================");
-        println!("{:>4}.{}->{:>4}.{}                 {:>12}",
-                 i_no >> 2,
-                 i_no & 3,
-                 j_no >> 2,
-                 j_no & 3,
-                 r.0);
 
         let mut best_final_score = usize::max_value();
-        let mut skip_mask = 0;
+        let mut skip_counter = 0;
         let mut best_skip_mask = 0;
         'mask_loop: loop {
 
@@ -1247,9 +1241,9 @@ fn main() {
 
 
             // Last round displays the best result
-            let skip_src = if skip_mask <= 63 {
-                skip_mask
-            } else if skip_mask == 64 {
+            let skip_mask = if skip_counter <= 63 {
+                skip_counter
+            } else if skip_counter == 64 {
                 println!("======= BEST MATCH {} ========", best_skip_mask);
                 display_state.autorotate = false;
                 best_skip_mask
@@ -1257,14 +1251,21 @@ fn main() {
                 break 'mask_loop;
             };
 
-            let mut skip = (skip_src & 3, (skip_src >> 2) & 3, (skip_src >> 4) & 3);
-            /*println!("skip_mask={} skip={}.{}.{}",
-                     skip_mask,
+            let mut skip = (skip_mask & 3, (skip_mask >> 2) & 3, (skip_mask >> 4) & 3);
+            println!("skip_counter={} skip={}.{}.{}",
+                     skip_counter,
                      skip.0,
                      skip.1,
-                     skip.2);*/
+                     skip.2);
 
-            skip_mask += 1;
+            skip_counter += 1;
+
+            println!("{:>4}.{}->{:>4}.{}                 {:>12}",
+                     i_no >> 2,
+                     i_no & 3,
+                     j_no >> 2,
+                     j_no & 3,
+                     r.0);
 
 
             // Find point M:
@@ -1275,7 +1276,7 @@ fn main() {
             //     J  ->  I
             //
             let j_plus = side_plus(j_no);
-            for r2 in cmp_results.iter() {
+            'loop_r2: for r2 in cmp_results.iter() {
                 let ref edge_k = edges[r2.1];
                 let ref edge_l = edges[r2.2];
                 let k_no = edge_k.edge_no;
@@ -1426,8 +1427,13 @@ fn main() {
                             continue 'mask_loop;
                         }
                     }
+                    //println!("r4");
+                    break 'loop_r2; // no more points, this skip does not lead to result
                 }
+                //println!("r3");
+                break 'loop_r2; // no more points, this skip does not lead to result
             }
+            //println!("r2");
         }
     }
 }
