@@ -1205,8 +1205,6 @@ fn main() {
     println!("   1st     2nd     3rd   4th          score");
 
 
-    let mut best_final = usize::max_value();
-
     display_state.autorotate = false;
     for r in cmp_results.iter() {
 
@@ -1229,167 +1227,198 @@ fn main() {
                  j_no & 3,
                  r.0);
 
-        for p in pixels.iter_mut() {
-            *p = 0;
-        }
-        draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
-        draw_coords(&mut pixels,
-                    sqr,
-                    &flip_coords(&edge_j.points),
-                    0,
-                    0,
-                    0,
-                    255,
-                    0);
+        let mut best_final_score = usize::max_value();
+        let mut skip_mask = 0;
+        let mut best_skip_mask = 0;
+        'mask_loop: loop {
 
-
-        // Find point M:
-        //
-        //     M
-        //     ^
-        //     |
-        //     J  ->  I
-        //
-        let j_plus = side_plus(j_no);
-        for r2 in cmp_results.iter() {
-            let ref edge_k = edges[r2.1];
-            let ref edge_l = edges[r2.2];
-            let k_no = edge_k.edge_no;
-            let l_no = edge_l.edge_no;
-
-            let m_no = if k_no == j_plus {
-                l_no
-            } else if l_no == j_plus {
-                k_no
-            } else {
-                continue;
-            };
-
-            if m_no >> 2 == i_no >> 2 || m_no >> 2 == j_no >> 2 {
-                continue; // must compare 3 different pieces
+            if skip_mask > 63 {
+                break;
             }
 
-            draw_coords(&mut pixels, sqr, &edge_k.points, 100, 0, 255, 0, 0);
+            for p in pixels.iter_mut() {
+                *p = 0;
+            }
+            draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
             draw_coords(&mut pixels,
                         sqr,
-                        &flip_coords(&edge_l.points),
-                        100,
+                        &flip_coords(&edge_j.points),
+                        0,
                         0,
                         0,
                         255,
                         0);
 
 
-            println!("        {:>4}.{}->{:>4}.{}         {:>12}",
-                     j_plus >> 2,
-                     j_plus & 3,
-                     m_no >> 2,
-                     m_no & 3,
-                     r2.0);
+            let mut skip = (skip_mask & 3, (skip_mask >> 2) & 3, (skip_mask >> 4) & 3);
+            println!("skip_mask={} skip={}.{}.{}",
+                     skip_mask,
+                     skip.0,
+                     skip.1,
+                     skip.2);
 
-            // Find point P sharing border with M and J:
+            // Find point M:
             //
-            //     M  -> P
-            //     ^     ^
-            //     |     |
-            //     J  -> I
+            //     M
+            //     ^
+            //     |
+            //     J  ->  I
             //
-            let m_plus = side_plus(m_no);
-            for r3 in cmp_results.iter() {
-                let ref edge_n = edges[r3.1];
-                let ref edge_o = edges[r3.2];
-                let n_no = edge_n.edge_no;
-                let o_no = edge_o.edge_no;
+            let j_plus = side_plus(j_no);
+            for r2 in cmp_results.iter() {
+                let ref edge_k = edges[r2.1];
+                let ref edge_l = edges[r2.2];
+                let k_no = edge_k.edge_no;
+                let l_no = edge_l.edge_no;
 
-                let p_no = if n_no == m_plus {
-                    o_no
-                } else if o_no == m_plus {
-                    n_no
+                let m_no = if k_no == j_plus {
+                    l_no
+                } else if l_no == j_plus {
+                    k_no
                 } else {
                     continue;
                 };
 
-                if p_no >> 2 == i_no >> 2 || p_no >> 2 == j_no >> 2 || p_no >> 2 == m_no >> 2 {
-                    continue; // must compare 4 different pieces
+                if m_no >> 2 == i_no >> 2 || m_no >> 2 == j_no >> 2 {
+                    continue; // must compare 3 different pieces
+                }
+                if skip.0 > 0 {
+                    skip.0 -= 1; // try 2nd best, 3rd best..
+                    continue;
                 }
 
-                println!("                {:>4}.{}->{:>4}.{} {:>12}",
-                         m_plus >> 2,
-                         m_plus & 3,
-                         p_no >> 2,
-                         p_no & 3,
-                         r3.0);
-
-                draw_coords(&mut pixels, sqr, &edge_n.points, 200, 0, 255, 0, 0);
+                draw_coords(&mut pixels, sqr, &edge_k.points, 100, 0, 255, 0, 0);
                 draw_coords(&mut pixels,
                             sqr,
-                            &flip_coords(&edge_o.points),
-                            200,
+                            &flip_coords(&edge_l.points),
+                            100,
                             0,
                             0,
                             255,
                             0);
 
 
-                // Compare P with I
-                let p_plus = side_plus(p_no);
-                let i_minus = side_minus(i_no);
-                /*println!("  searching for P->I edge {}.{} -> {}.{}",
+                println!("        {:>4}.{}->{:>4}.{}         {:>12}",
+                         j_plus >> 2,
+                         j_plus & 3,
+                         m_no >> 2,
+                         m_no & 3,
+                         r2.0);
+
+                // Find point P sharing border with M and J:
+                //
+                //     M  -> P
+                //     ^     ^
+                //     |     |
+                //     J  -> I
+                //
+                let m_plus = side_plus(m_no);
+                for r3 in cmp_results.iter() {
+                    let ref edge_n = edges[r3.1];
+                    let ref edge_o = edges[r3.2];
+                    let n_no = edge_n.edge_no;
+                    let o_no = edge_o.edge_no;
+
+                    let p_no = if n_no == m_plus {
+                        o_no
+                    } else if o_no == m_plus {
+                        n_no
+                    } else {
+                        continue;
+                    };
+
+                    if p_no >> 2 == i_no >> 2 || p_no >> 2 == j_no >> 2 || p_no >> 2 == m_no >> 2 {
+                        continue; // must compare 4 different pieces
+                    }
+
+                    if skip.1 > 0 {
+                        skip.1 -= 1; // try 2nd best, 3rd best..
+                        continue;
+                    }
+
+                    println!("                {:>4}.{}->{:>4}.{} {:>12}",
+                             m_plus >> 2,
+                             m_plus & 3,
+                             p_no >> 2,
+                             p_no & 3,
+                             r3.0);
+
+                    draw_coords(&mut pixels, sqr, &edge_n.points, 200, 0, 255, 0, 0);
+                    draw_coords(&mut pixels,
+                                sqr,
+                                &flip_coords(&edge_o.points),
+                                200,
+                                0,
+                                0,
+                                255,
+                                0);
+
+
+                    // Compare P with I
+                    let p_plus = side_plus(p_no);
+                    let i_minus = side_minus(i_no);
+                    /*println!("  searching for P->I edge {}.{} -> {}.{}",
                          p_plus >> 2,
                          p_plus & 3,
                          i_minus >> 2,
                          i_minus & 3);*/
-                for r4 in cmp_results.iter() {
-                    let ref edge_q = edges[r4.1];
-                    let ref edge_r = edges[r4.2];
-                    let q_no = edges[r4.1].edge_no;
-                    let r_no = edges[r4.2].edge_no;
+                    for r4 in cmp_results.iter() {
+                        let ref edge_q = edges[r4.1];
+                        let ref edge_r = edges[r4.2];
+                        let q_no = edges[r4.1].edge_no;
+                        let r_no = edges[r4.2].edge_no;
 
-                    if (q_no == p_plus && r_no == i_minus) || (q_no == i_minus && r_no == p_plus) {
+                        if (q_no == p_plus && r_no == i_minus) ||
+                           (q_no == i_minus && r_no == p_plus) {
 
-                        let final_score = r.0 + r2.0 + r3.0 + r4.0;
+                            if skip.2 > 0 {
+                                skip.2 -= 1; // try 2nd best, 3rd best..
+                                continue;
+                            }
 
-                        println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
-                                 i_minus >> 2,
-                                 i_minus & 3,
-                                 p_plus >> 2,
-                                 p_plus & 3,
-                                 r4.0,
-                                 final_score);
+                            let final_score = r.0 + r2.0 + r3.0 + r4.0;
 
-                        if best_final > final_score {
-                            best_final = final_score;
+                            println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
+                                     i_minus >> 2,
+                                     i_minus & 3,
+                                     p_plus >> 2,
+                                     p_plus & 3,
+                                     r4.0,
+                                     final_score);
+
+                            if final_score < best_final_score {
+                                best_final_score = final_score;
+                                display_state.autorotate = false;
+                            }
+
+                            draw_coords(&mut pixels, sqr, &edge_q.points, 300, 0, 255, 0, 0);
+                            draw_coords(&mut pixels,
+                                        sqr,
+                                        &flip_coords(&edge_r.points),
+                                        300,
+                                        0,
+                                        0,
+                                        255,
+                                        0);
+
+                            match display_pixels(&pixels,
+                                                 sqr,
+                                                 &sdl_context,
+                                                 &mut renderer,
+                                                 &mut display_state) {
+                                UserAction::Solve => {
+                                    /*write_done_file(&edge_i.txt_file.replace(".txt", ".done"));
+				    write_done_file(&edge_j.txt_file.replace(".txt", ".done"));*/
+                                }
+                                _ => {}
+                            }
+
+                            skip_mask += 1;
+                            continue 'mask_loop;
                         }
-                        display_state.autorotate = false;
-
-                        draw_coords(&mut pixels, sqr, &edge_q.points, 300, 0, 255, 0, 0);
-                        draw_coords(&mut pixels,
-                                    sqr,
-                                    &flip_coords(&edge_r.points),
-                                    300,
-                                    0,
-                                    0,
-                                    255,
-                                    0);
-                        break;
                     }
                 }
-                break;
             }
-
-            break;
-        }
-
-        match display_pixels(&pixels,
-                             sqr,
-                             &sdl_context,
-                             &mut renderer,
-                             &mut display_state) {
-            UserAction::Solve => {
-                /*write_done_file(&edge_i.txt_file.replace(".txt", ".done"));
-                write_done_file(&edge_j.txt_file.replace(".txt", ".done"));*/
-            }
-            _ => {}
         }
     }
 }
