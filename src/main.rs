@@ -560,18 +560,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
-                 None,
-                 Some(Rect::new(shift as i32, shift as i32, width, height)),
-                 angle,
-                 None,
-                 false,
-                 false)
+                     None,
+                     Some(Rect::new(shift as i32, shift as i32, width, height)),
+                     angle,
+                     None,
+                     false,
+                     false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                     PixelFormatEnum::RGB24)
+                                          PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -1154,7 +1154,7 @@ fn main() {
             } else if display_state.autorotate {
                 continue;
             }
-            println!("red {:>4}.{} vs green {:>4}.{} score={:>12}, todo i={} d={}/{}",
+            println!("{:>4}.{}->{:>4}.{} score={:>12}, todo i={} d={}/{}",
                      edge_i.edge_no >> 2,
                      edge_i.edge_no & 3,
                      edge_j.edge_no >> 2,
@@ -1191,6 +1191,9 @@ fn main() {
     cmp_results.sort_by(|a, b| a.cmp(&b));
 
     println!("Compared edges:");
+    println!("");
+    println!("   1st     2nd     3rd   4th          score");
+
 
     let mut best_final = usize::max_value();
 
@@ -1204,25 +1207,25 @@ fn main() {
         let i_no = edge_i.edge_no;
         let j_no = edge_j.edge_no;
 
-        println!("{:>4}.{}->{:<4}.{} score={:>12}, to solve press s",
+        println!("{:>4}.{}->{:>4}.{}                 {:>12}",
                  i_no >> 2,
                  i_no & 3,
                  j_no >> 2,
                  j_no & 3,
                  r.0);
 
-                 for p in pixels.iter_mut() {
-                     *p = 0;
-                 }
-                 draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
-                 draw_coords(&mut pixels,
-                             sqr,
-                             &flip_coords(&edge_j.points),
-                             0,
-                             0,
-                             0,
-                             255,
-                             0);
+        for p in pixels.iter_mut() {
+            *p = 0;
+        }
+        draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
+        draw_coords(&mut pixels,
+                    sqr,
+                    &flip_coords(&edge_j.points),
+                    0,
+                    0,
+                    0,
+                    255,
+                    0);
 
 
         // Find point M:
@@ -1260,13 +1263,11 @@ fn main() {
                         0);
 
 
-            println!("        {}.{}     K={:>4}.{} vs L={:>4}.{} score J->M={:>12}",
+            println!("        {:>4}.{}->{:>4}.{}         {:>12}",
+                     j_no >> 2,
+                     side_j_plus,
                      m_no >> 2,
                      m_no & 3,
-                     k_no >> 2,
-                     k_no & 3,
-                     l_no >> 2,
-                     l_no & 3,
                      r2.0);
 
             // Find point P sharing border with M and J:
@@ -1292,24 +1293,22 @@ fn main() {
                     continue;
                 };
 
-                println!("        {}.{}       N={:>4}.{} vs O={:>4}.{} score M->P={:>12}",
+                println!("                {:>4}.{}->{:>4}.{} {:>12}",
+                         m_no >> 2,
+                         side_m_plus,
                          p_no >> 2,
                          p_no & 3,
-                         n_no >> 2,
-                         n_no & 3,
-                         o_no >> 2,
-                         o_no & 3,
                          r3.0);
 
-                         draw_coords(&mut pixels, sqr, &edge_n.points, 200, 0, 255, 0, 0);
-                         draw_coords(&mut pixels,
-                                     sqr,
-                                     &flip_coords(&edge_o.points),
-                                     200,
-                                     0,
-                                     0,
-                                     255,
-                                     0);
+                draw_coords(&mut pixels, sqr, &edge_n.points, 200, 0, 255, 0, 0);
+                draw_coords(&mut pixels,
+                            sqr,
+                            &flip_coords(&edge_o.points),
+                            200,
+                            0,
+                            0,
+                            255,
+                            0);
 
 
                 // Compare P with I
@@ -1330,29 +1329,28 @@ fn main() {
 
                         let final_score = r.0 + r2.0 + r3.0 + r4.0;
 
-                        println!("        {}.{} -> {}.{} score={}, FINAL SCORE={}",
-                                 p_plus >> 2,
-                                 p_plus & 3,
+                        println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
                                  i_minus >> 2,
                                  i_minus & 3,
-
+                                 p_plus >> 2,
+                                 p_plus & 3,
                                  r4.0,
                                  final_score);
 
-                                 if best_final > final_score {
-                                     best_final = final_score;
-                                 }
-                                 display_state.autorotate = false;
+                        if best_final > final_score {
+                            best_final = final_score;
+                        }
+                        display_state.autorotate = false;
 
-                                 draw_coords(&mut pixels, sqr, &edge_q.points, 300, 0, 255, 0, 0);
-                                 draw_coords(&mut pixels,
-                                             sqr,
-                                             &flip_coords(&edge_r.points),
-                                             300,
-                                             0,
-                                             0,
-                                             255,
-                                             0);
+                        draw_coords(&mut pixels, sqr, &edge_q.points, 300, 0, 255, 0, 0);
+                        draw_coords(&mut pixels,
+                                    sqr,
+                                    &flip_coords(&edge_r.points),
+                                    300,
+                                    0,
+                                    0,
+                                    255,
+                                    0);
                         break;
                     }
                 }
