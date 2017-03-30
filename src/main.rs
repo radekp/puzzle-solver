@@ -1292,8 +1292,8 @@ fn main() {
                 if m_no >> 2 == i_no >> 2 || m_no >> 2 == j_no >> 2 {
                     continue; // must compare 3 different pieces
                 }
-                if skip.0 > 0 {
-                    skip.0 -= 1; // try 2nd best, 3rd best..
+                if skip.2 > 0 {
+                    skip.2 -= 1; // try 2nd best, 3rd best..
                     continue;
                 }
 
@@ -1381,8 +1381,8 @@ fn main() {
                         if (q_no == p_plus && r_no == i_minus) ||
                            (q_no == i_minus && r_no == p_plus) {
 
-                            if skip.2 > 0 {
-                                skip.2 -= 1; // try 2nd best, 3rd best..
+                            if skip.0 > 0 {
+                                skip.0 -= 1; // try 2nd best, 3rd best..
                                 continue;
                             }
 
