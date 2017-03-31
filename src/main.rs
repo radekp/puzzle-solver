@@ -610,10 +610,21 @@ fn find_edge(pixels: &mut Vec<u8>,
         pixels[3 * (sqr * (bot_y + i) + bot_x - i)] &= !RED_MASK_BORDER;
         pixels[3 * (sqr * (bot_y - i) + bot_x + i)] &= !RED_MASK_BORDER;
 
+        // Make it 2points thin so that flood fill cant go through diagonal
+        pixels[3 * (sqr * (top_y - i) + top_x - i + 1)] &= !RED_MASK_BORDER;
+        pixels[3 * (sqr * (top_y + i) + top_x + i + 1)] &= !RED_MASK_BORDER;
+        pixels[3 * (sqr * (bot_y + i) + bot_x - i + 1)] &= !RED_MASK_BORDER;
+        pixels[3 * (sqr * (bot_y - i) + bot_x + i + 1)] &= !RED_MASK_BORDER;
+
         pixels[3 * (sqr * (top_y - i) + top_x - i) + 1] = (255 - 25 * i) as u8;
         pixels[3 * (sqr * (top_y + i) + top_x + i) + 1] = (255 - 25 * i) as u8;
         pixels[3 * (sqr * (bot_y + i) + bot_x - i) + 1] = (255 - 25 * i) as u8;
         pixels[3 * (sqr * (bot_y - i) + bot_x + i) + 1] = (255 - 25 * i) as u8;
+
+        pixels[3 * (sqr * (top_y - i) + top_x - i + 1) + 1] = (255 - 25 * i) as u8;
+        pixels[3 * (sqr * (top_y + i) + top_x + i + 1) + 1] = (255 - 25 * i) as u8;
+        pixels[3 * (sqr * (bot_y + i) + bot_x - i + 1) + 1] = (255 - 25 * i) as u8;
+        pixels[3 * (sqr * (bot_y - i) + bot_x + i + 1) + 1] = (255 - 25 * i) as u8;
     }
 
     // Fill the edge in the middle of piece height
