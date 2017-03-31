@@ -561,18 +561,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
-                     None,
-                     Some(Rect::new(shift as i32, shift as i32, width, height)),
-                     angle,
-                     None,
-                     false,
-                     false)
+                 None,
+                 Some(Rect::new(shift as i32, shift as i32, width, height)),
+                 angle,
+                 None,
+                 false,
+                 false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                                          PixelFormatEnum::RGB24)
+                     PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -1022,50 +1022,35 @@ fn compare_two_edges(edges: &mut Vec<EdgeInfo>,
     return res;
 }
 
-fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>, edge_index: usize, sqr: usize) {
+fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
+                            edge_index: usize,
+                            max_width: usize,
+                            max_height: usize) {
 
     // Compute distances to nearest edge point for eatch point in sqr x sqr
-    /*let mut distances = vec![usize::max_value();sqr*sqr];
-    for y in 0..sqr {
-	for x in 0..sqr {
-	    let mut best_dst = usize::max_value();
-	    for p in edges[edge_index].points.iter() {
-		let dx = (p.0 as isize) - (x as isize);
-                    let dy = (p.1 as isize) - (y as isize);
+    let mut distances = vec![usize::max_value();max_width*max_height];
+    for i in 0..edges.len() {
+        let mut dst_sum = 0;
+        for a in edges[i].points.iter() {
+            let offset = max_width * a.1 + a.0;
+            let mut best_dst = distances[offset]; // precomputed distance
+
+            // Compute best distance to edge from given x,y (point a) on first hit
+            if best_dst == usize::max_value() {
+                for b in edges[edge_index].points.iter() {
+                    let dy = (b.1 as isize) - (a.1 as isize);
+                    let dx = (b.0 as isize) - (a.0 as isize);
                     let dst = (dx * dx + dy * dy) as usize;
                     if dst < best_dst {
                         best_dst = dst;
                     }
-	    }
-	    distances[sqr * y + x] = best_dst;
-	}
-    }*/
-
-    let edges_len = edges.len() as isize;
-    let limit: isize = 100;
-    let ii = edge_index as isize;
-    let mut distances = vec![usize::max_value();sqr*sqr];
-
-    for i in cmp::max(0, ii - limit) as usize..cmp::min(edges_len, ii + limit + 1) as usize {
-        let mut dst = 0;
-        for b in edges[i].points.iter() {
-            let offset = sqr * b.1 + b.0;
-            let mut best_dst = distances[offset];
-            if best_dst == usize::max_value() {
-                for a in edges[edge_index].points.iter() {
-                    let dx = (a.0 as isize) - (b.0 as isize);
-                    let dy = (a.1 as isize) - (b.1 as isize);
-                    let ab_dst = (dx * dx + dy * dy) as usize;
-                    if ab_dst < best_dst {
-                        best_dst = ab_dst;
-                    }
                 }
                 distances[offset] = best_dst;
             }
-            dst += best_dst;
+            dst_sum += best_dst;
         }
-        edges[edge_index].scores[i] += dst; // so that we compare a->b
-        edges[i].scores[edge_index] += dst; // and b->a
+        edges[edge_index].scores[i] += dst_sum; // so that we compare a->b
+        edges[i].scores[edge_index] += dst_sum; // and b->a
     }
 }
 
@@ -1196,11 +1181,11 @@ fn main() {
         max_x = cmp::max(max_x, edge.max_x);
         max_y = cmp::max(max_y, edge.max_y);
     }
-    let width = max_x + 1;
-    let height = max_y + 1;
+    let max_width = max_x + 1;
+    let max_height = max_y + 1;
 
     // SDL window - make it modulo 4 to play well with texture pitch
-    let sqr = 2 * cmp::max(width, height) + 5 & !3usize;
+    let sqr = 2 * cmp::max(max_width, max_height) + 5 & !3usize;
 
     // Make up distances table for fast nearest edge searching
     for edge in edges.iter_mut() {
@@ -1224,7 +1209,7 @@ fn main() {
 
     for i in 0..edges_len {
         println!("comparing edge {}/{} with others", i, edges_len);
-        compare_edge_with_others(&mut edges, i, sqr);
+        compare_edge_with_others(&mut edges, i, max_width, max_height);
     }
 
     // Compare edges - start with near edges (they have similar height)
