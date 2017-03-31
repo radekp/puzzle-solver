@@ -50,7 +50,7 @@ struct EdgeInfo {
     edge_no: usize, // e.g. 103 is 10.3.txt
     max_x: usize,
     max_y: usize,
-    scores: Vec<usize>, // index is edge_no of the other edge, value is compare score
+    diff_to: Vec<usize>,    // distance sum to edge at given index (in edges vector)
 }
 
 // Near point iterator
@@ -62,7 +62,7 @@ struct EdgeInfo {
 //       7 6 5
 //
 // If a==0 it will start in cx,cy orherwise a is square side on start
-fn near_iter_begin(cx: isize, cy: isize, start_a: isize) -> (isize, isize, isize) {
+/*fn near_iter_begin(cx: isize, cy: isize, start_a: isize) -> (isize, isize, isize) {
     return (cx - start_a, cy - start_a, start_a);
 }
 
@@ -118,7 +118,7 @@ fn near_iter_next(cx: isize,
     }
     a += 1;
     return (cx - a, cy - a, a);
-}
+}*/
 
 enum FFMode {
     FourWay,
@@ -1029,58 +1029,32 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
     // For each x,y there is distance to edge at edge_index
     let mut distances = vec![usize::max_value();max_width*max_height];
 
-    // We use fast fill for distances more then this limit. E.g. height=100, if we hit point
-    // that is 50 points away from edge, we fast fill square of side 50-20
-    let fast_fill_limit = (max_height * max_height) / (5 * 5);
-
-    let mut num_ff = 0;
-
     for i in 0..edges.len() {
-        let mut dst_sum = 0;
+        if i == edge_index {
+            continue;
+        }
+        let mut diff = 0;
         for a in edges[i].points.iter() {
             let offset = max_width * a.1 + a.0;
             let mut best_dst = distances[offset]; // precomputed distance
 
             // Compute best distance to edge from given x,y (point a) on first hit
             if best_dst == usize::max_value() {
-                let mut best_p = (0,0);
                 for b in edges[edge_index].points.iter() {
                     let dx = (b.0 as isize) - (a.0 as isize);
                     let dy = (b.1 as isize) - (a.1 as isize);
                     let dst = (dx * dx + dy * dy) as usize;
                     if dst < best_dst {
                         best_dst = dst;
-                        best_p = *b;
                     }
-                }
-                // Optimize speed - if distance is too long fill also some points nearby
-                if best_dst > fast_fill_limit {
-                    let mut n = near_iter_begin(a.0 as isize, a.1 as isize, 1);
-                    loop {
-                        if n.0 >= 0 && n.1 >= 0 {
-                            let x = n.0 as usize;
-                            let y = n.1 as usize;
-                            if x < max_width && y < max_height {
-                                let dx = (x as isize) - (best_p.0 as isize);
-                                let dy = (y as isize) - (best_p.1 as isize);
-                                distances[max_width * y + x] = (dx * dx + dy * dy) as usize;
-                            }
-                        }
-                        n = near_iter_next(a.0 as isize, a.1 as isize, n.0, n.1, n.2);
-                        if (n.2 * n.2) as usize + fast_fill_limit >= best_dst {
-                            break;
-                        }
-                    }
-                    num_ff += 1;
                 }
                 distances[offset] = best_dst;
             }
-            dst_sum += best_dst;
+            diff += best_dst;
         }
-        edges[edge_index].scores[i] += dst_sum; // so that we compare a->b
-        edges[i].scores[edge_index] += dst_sum; // and b->a
+        edges[edge_index].diff_to[i] += diff; // so that we compare a->b
+        edges[i].diff_to[edge_index] += diff; // and b->a
     }
-    println!("num_ff={}", num_ff);
 }
 
 // Return next side of the piece
@@ -1196,7 +1170,7 @@ fn main() {
             edge_no: edge_no,
             max_x: max_x,
             max_y: max_y,
-            scores: vec![],
+            diff_to: vec![],
         };
         edges.push(edge_info);
     }
@@ -1219,7 +1193,7 @@ fn main() {
     // Make up distances table for fast nearest edge searching
     for edge in edges.iter_mut() {
         edge.distances = vec![u16::max_value(); sqr * sqr];
-        edge.scores = vec![0; edges_len];
+        edge.diff_to = vec![0; edges_len];
     }
 
     let mut pixels: Vec<u8> = vec![0;3*sqr*sqr];
