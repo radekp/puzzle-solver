@@ -560,18 +560,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
-                 None,
-                 Some(Rect::new(shift as i32, shift as i32, width, height)),
-                 angle,
-                 None,
-                 false,
-                 false)
+                     None,
+                     Some(Rect::new(shift as i32, shift as i32, width, height)),
+                     angle,
+                     None,
+                     false,
+                     false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                     PixelFormatEnum::RGB24)
+                                          PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -864,7 +864,7 @@ fn process_png(img_file: &str,
 
         // Save left edge coordinates to file
         let content = find_edge(&mut pixels, sqr, bounds, top_x, top_y, bot_x, bot_y);
-        let filename = format!("{}.txt", 4 * png_no + side);
+        let filename = format!("{}.{}.txt", png_no, side);
         let txt_path = Path::new(img_file).with_file_name(filename);
         let display = txt_path.display();
 
@@ -1084,13 +1084,16 @@ fn main() {
             continue;
         }
 
-        let edge_no: usize = path.file_stem()
+        let filename_nums: usize = path.file_stem()
             .unwrap()
             .to_str()
             .unwrap()
             .replace(".", "")
             .parse()
             .unwrap();
+
+        // 12.3.txt -> 123 -> 4 * 12 + 3
+        let edge_no: usize = 4 * (filename_nums / 10) + (filename_nums % 10);
 
         let path_str = path.into_os_string().into_string().unwrap();
 
