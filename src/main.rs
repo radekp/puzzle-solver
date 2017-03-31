@@ -50,6 +50,7 @@ struct EdgeInfo {
     edge_no: usize, // e.g. 103 is 10.3.txt
     max_x: usize,
     max_y: usize,
+    scores: Vec<usize>, // index is edge_no of the other edge, value is compare score
 }
 
 /*
@@ -968,7 +969,12 @@ fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
     return (a.max_x * a.max_y).cmp(&(b.max_x * b.max_y));
 }
 
-fn compare_edges(edges: &mut Vec<EdgeInfo>, a: usize, b: usize, sqr: usize, rec: bool) -> usize {
+fn compare_two_edges(edges: &mut Vec<EdgeInfo>,
+                     a: usize,
+                     b: usize,
+                     sqr: usize,
+                     rec: bool)
+                     -> usize {
 
     let mut res = 0;
     let mut new_distances = vec![];
@@ -1011,9 +1017,56 @@ fn compare_edges(edges: &mut Vec<EdgeInfo>, a: usize, b: usize, sqr: usize, rec:
     }
 
     if rec {
-        res += compare_edges(edges, a, b, sqr, false); // the same but compute dst from b to a
+        res += compare_two_edges(edges, a, b, sqr, false); // the same but compute dst from b to a
     }
     return res;
+}
+
+fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>, edge_index: usize, sqr: usize) {
+
+    // Compute distances to nearest edge point for eatch point in sqr x sqr
+    /*let mut distances = vec![usize::max_value();sqr*sqr];
+    for y in 0..sqr {
+	for x in 0..sqr {
+	    let mut best_dst = usize::max_value();
+	    for p in edges[edge_index].points.iter() {
+		let dx = (p.0 as isize) - (x as isize);
+                    let dy = (p.1 as isize) - (y as isize);
+                    let dst = (dx * dx + dy * dy) as usize;
+                    if dst < best_dst {
+                        best_dst = dst;
+                    }
+	    }
+	    distances[sqr * y + x] = best_dst;
+	}
+    }*/
+
+    let edges_len = edges.len() as isize;
+    let limit: isize = 100;
+    let ii = edge_index as isize;
+    let mut distances = vec![usize::max_value();sqr*sqr];
+
+    for i in cmp::max(0, ii - limit) as usize..cmp::min(edges_len, ii + limit + 1) as usize {
+        let mut dst = 0;
+        for b in edges[i].points.iter() {
+            let offset = sqr * b.1 + b.0;
+            let mut best_dst = distances[offset];
+            if best_dst == usize::max_value() {
+                for a in edges[edge_index].points.iter() {
+                    let dx = (a.0 as isize) - (b.0 as isize);
+                    let dy = (a.1 as isize) - (b.1 as isize);
+                    let ab_dst = (dx * dx + dy * dy) as usize;
+                    if ab_dst < best_dst {
+                        best_dst = ab_dst;
+                    }
+                }
+                distances[offset] = best_dst;
+            }
+            dst += best_dst;
+        }
+        edges[edge_index].scores[i] += dst; // so that we compare a->b
+        edges[i].scores[edge_index] += dst; // and b->a
+    }
 }
 
 // Return next side of the piece
@@ -1129,9 +1182,12 @@ fn main() {
             edge_no: edge_no,
             max_x: max_x,
             max_y: max_y,
+            scores: vec![],
         };
         edges.push(edge_info);
     }
+
+    let edges_len = edges.len();
 
     // Max x and y in all edges
     let mut max_x = 0;
@@ -1149,6 +1205,7 @@ fn main() {
     // Make up distances table for fast nearest edge searching
     for edge in edges.iter_mut() {
         edge.distances = vec![u16::max_value(); sqr * sqr];
+        edge.scores = vec![0; edges_len];
     }
 
     let mut pixels: Vec<u8> = vec![0;3*sqr*sqr];
@@ -1162,8 +1219,13 @@ fn main() {
 
     let mut renderer = window.renderer().build().unwrap();
 
-    // Sort edges by max y
+    // Sort similar edges (by volume of widht*height)
     edges.sort_by(|a, b| compare_edge_info(a, b));
+
+    for i in 0..edges_len {
+        println!("comparing edge {}/{} with others", i, edges_len);
+        compare_edge_with_others(&mut edges, i, sqr);
+    }
 
     // Compare edges - start with near edges (they have similar height)
     let mut cmp_results = vec![];
@@ -1173,7 +1235,7 @@ fn main() {
 
             let j = i + d;
 
-            let score = compare_edges(&mut edges, i, j, sqr, true);
+            let score = compare_two_edges(&mut edges, i, j, sqr, true);
 
             let ref edge_i = edges[i];
             let ref edge_j = edges[i + d];
