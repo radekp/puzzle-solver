@@ -53,7 +53,6 @@ struct EdgeInfo {
     scores: Vec<usize>, // index is edge_no of the other edge, value is compare score
 }
 
-/*
 // Near point iterator
 // Iterates points in spiral centered at cx,cy
 //
@@ -63,17 +62,17 @@ struct EdgeInfo {
 //       7 6 5
 //
 // If a==0 it will start in cx,cy orherwise a is square side on start
-fn near_iter_begin(cx: usize, cy: usize, start_a: usize) -> (usize, usize, usize) {
-    return (cx - start_a as usize, cy - start_a as usize, start_a);
+fn near_iter_begin(cx: isize, cy: isize, start_a: isize) -> (isize, isize, isize) {
+    return (cx - start_a, cy - start_a, start_a);
 }
 
 // Return next point in spiral
-fn near_iter_next(cx: usize,
-                  cy: usize,
-                  prev_x: usize,
-                  prev_y: usize,
-                  prev_a: usize)
-                  -> (usize, usize, usize) {
+fn near_iter_next(cx: isize,
+                  cy: isize,
+                  prev_x: isize,
+                  prev_y: isize,
+                  prev_a: isize)
+                  -> (isize, isize, isize) {
 
     let mut x = prev_x;
     let mut y = prev_y;
@@ -119,7 +118,7 @@ fn near_iter_next(cx: usize,
     }
     a += 1;
     return (cx - a, cy - a, a);
-}*/
+}
 
 enum FFMode {
     FourWay,
@@ -1027,8 +1026,15 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
                             max_width: usize,
                             max_height: usize) {
 
-    // Compute distances to nearest edge point for eatch point in sqr x sqr
+    // For each x,y there is distance to edge at edge_index
     let mut distances = vec![usize::max_value();max_width*max_height];
+
+    // We use fast fill for distances more then this limit. E.g. height=100, if we hit point
+    // that is 50 points away from edge, we fast fill square of side 50-20
+    let fast_fill_limit = (max_height * max_height) / (5 * 5);
+
+    let mut num_ff = 0;
+
     for i in 0..edges.len() {
         let mut dst_sum = 0;
         for a in edges[i].points.iter() {
@@ -1037,13 +1043,35 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
 
             // Compute best distance to edge from given x,y (point a) on first hit
             if best_dst == usize::max_value() {
+                let mut best_p = (0,0);
                 for b in edges[edge_index].points.iter() {
-                    let dy = (b.1 as isize) - (a.1 as isize);
                     let dx = (b.0 as isize) - (a.0 as isize);
+                    let dy = (b.1 as isize) - (a.1 as isize);
                     let dst = (dx * dx + dy * dy) as usize;
                     if dst < best_dst {
                         best_dst = dst;
+                        best_p = *b;
                     }
+                }
+                // Optimize speed - if distance is too long fill also some points nearby
+                if best_dst > fast_fill_limit {
+                    let mut n = near_iter_begin(a.0 as isize, a.1 as isize, 1);
+                    loop {
+                        if n.0 >= 0 && n.1 >= 0 {
+                            let x = n.0 as usize;
+                            let y = n.1 as usize;
+                            if x < max_width && y < max_height {
+                                let dx = (x as isize) - (best_p.0 as isize);
+                                let dy = (y as isize) - (best_p.1 as isize);
+                                distances[max_width * y + x] = (dx * dx + dy * dy) as usize;
+                            }
+                        }
+                        n = near_iter_next(a.0 as isize, a.1 as isize, n.0, n.1, n.2);
+                        if (n.2 * n.2) as usize + fast_fill_limit >= best_dst {
+                            break;
+                        }
+                    }
+                    num_ff += 1;
                 }
                 distances[offset] = best_dst;
             }
@@ -1052,6 +1080,7 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
         edges[edge_index].scores[i] += dst_sum; // so that we compare a->b
         edges[i].scores[edge_index] += dst_sum; // and b->a
     }
+    println!("num_ff={}", num_ff);
 }
 
 // Return next side of the piece
