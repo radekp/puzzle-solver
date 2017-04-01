@@ -51,6 +51,7 @@ struct EdgeInfo {
     max_x: usize,
     max_y: usize,
     diff_to: Vec<usize>,    // distance sum to edge at given index (in edges vector)
+    best_diffs: Vec<usize>  // indices for best matching edges
 }
 
 // Near point iterator
@@ -1171,6 +1172,7 @@ fn main() {
             max_x: max_x,
             max_y: max_y,
             diff_to: vec![],
+            best_diffs: vec![],
         };
         edges.push(edge_info);
     }
@@ -1214,6 +1216,59 @@ fn main() {
         println!("comparing edge {}/{} with others", i, edges_len);
         compare_edge_with_others(&mut edges, i, max_width, max_height);
     }
+
+    // Foreach i=edge index
+    for i in 0..edges_len {
+        'diff_to_loop: for diff_index in 0..edges[i].diff_to.len() {
+
+            if diff_index == i {
+                continue;       // dont compare with self
+            }
+
+            let diff = edges[i].diff_to[diff_index];
+            println!("diff[{}]={}", diff_index, diff);
+
+            for bd in edges[i].best_diffs.iter() {
+                print!("{} ", bd);
+            }
+
+            for j in 0..100000 {
+                if j >= 10 {
+                    continue 'diff_to_loop;
+                }
+                if j >= edges[i].best_diffs.len() {
+                    edges[i].best_diffs.push(i);
+                    println!("1");
+                    continue 'diff_to_loop;
+                }
+
+                let j_edge = edges[i].best_diffs[j];
+                let diff_j = edges[i].diff_to[j_edge];
+
+                println!("j={} j_edge={} diff_j={}", j, j_edge, diff_j);
+
+                if diff < diff_j {
+                    edges[i].best_diffs[j] = i;
+                    continue 'diff_to_loop;
+                }
+            }
+
+        }
+        panic!("hotovo");
+    }
+
+        /*for p in pixels.iter_mut() {
+            *p = 0;
+        }
+        draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
+        draw_coords(&mut pixels,
+                    sqr,
+                    &flip_coords(&edge_j.points),
+                    0,
+                    0,
+                    0,
+                    255,
+                    0);*/
 
     // Compare edges - start with near edges (they have similar height)
     let mut cmp_results = vec![];
