@@ -3,6 +3,7 @@ extern crate image;
 
 use std::fs;
 use std::cmp;
+use std::env;
 use std::fs::File;
 use std::path::Path;
 use std::str::FromStr;
@@ -50,8 +51,8 @@ struct EdgeInfo {
     edge_no: usize, // e.g. 103 is 10.3.txt
     max_x: usize,
     max_y: usize,
-    diff_to: Vec<usize>,    // distance sum to edge at given index (in edges vector)
-    best_diffs: Vec<usize>  // indices for best matching edges
+    diff_to: Vec<usize>, // distance sum to edge at given index (in edges vector)
+    best_index_diff: Vec<(usize, usize)>, // top 10 (edge_index, diff)
 }
 
 // Near point iterator
@@ -1172,7 +1173,7 @@ fn main() {
             max_x: max_x,
             max_y: max_y,
             diff_to: vec![],
-            best_diffs: vec![],
+            best_index_diff: vec![],
         };
         edges.push(edge_info);
     }
@@ -1213,51 +1214,76 @@ fn main() {
     edges.sort_by(|a, b| compare_edge_info(a, b));
 
     for i in 0..edges_len {
-        println!("comparing edge {}/{} with others", i, edges_len);
+        let edge_no = edges[i].edge_no;
+        println!("comparing edge {:>4}.{} {}/{} with others",
+                 edge_no >> 2,
+                 edge_no & 3,
+                 i,
+                 edges_len);
         compare_edge_with_others(&mut edges, i, max_width, max_height);
     }
 
-    // Foreach i=edge index
+    // Foreach i=edge index find top 10 best matching
     for i in 0..edges_len {
-        'diff_to_loop: for diff_index in 0..edges[i].diff_to.len() {
 
-            if diff_index == i {
-                continue;       // dont compare with self
-            }
-
-            let diff = edges[i].diff_to[diff_index];
-            println!("diff[{}]={}", diff_index, diff);
-
-            for bd in edges[i].best_diffs.iter() {
-                print!("{} ", bd);
-            }
-
-            for j in 0..100000 {
-                if j >= 10 {
-                    continue 'diff_to_loop;
-                }
-                if j >= edges[i].best_diffs.len() {
-                    edges[i].best_diffs.push(i);
-                    println!("1");
-                    continue 'diff_to_loop;
-                }
-
-                let j_edge = edges[i].best_diffs[j];
-                let diff_j = edges[i].diff_to[j_edge];
-
-                println!("j={} j_edge={} diff_j={}", j, j_edge, diff_j);
-
-                if diff < diff_j {
-                    edges[i].best_diffs[j] = i;
-                    continue 'diff_to_loop;
-                }
-            }
-
+        // Init best_index_diff with 10 values
+        let init_j = (i + 1) % edges_len;
+        for _ in 0..10 {
+            edges[i].best_index_diff.push((init_j, usize::max_value()));
         }
-        panic!("hotovo");
+
+        // We will take diff for each i->j compare
+        for j in 0..edges[i].diff_to.len() {
+
+            if i == j {
+                continue; // dont compare with self
+            }
+            let diff = edges[i].diff_to[j];
+
+            for k in 0..edges[i].best_index_diff.len() {
+                // index to best
+                let mut b = edges[i].best_index_diff[k];
+                if diff <= b.1 {
+                    edges[i].best_index_diff[k] = (j, diff); // replace best
+                    let mut kk = k + 1;
+                    while kk < edges[i].best_index_diff.len() {
+                        // places the prev best after it
+                        let tmp = edges[i].best_index_diff[kk];
+                        edges[i].best_index_diff[kk] = b;
+                        b = tmp;
+                        kk += 1;
+                    }
+                    break;
+                }
+            }
+        }
     }
 
-        /*for p in pixels.iter_mut() {
+    // Prefer pieces from command line
+    let mut pref_indices = vec![];
+    for (index, arg) in env::args().enumerate() {
+        if index == 0 {
+            continue; // program file
+        }
+        let argv: usize = arg.parse().unwrap();
+        for i in 0..edges_len {
+            let png_no = edges[i].edge_no >> 2;
+            if png_no == argv {
+                pref_indices.push(i);
+            }
+        }
+    }
+    pref_indices.sort();
+    for i in 0..pref_indices.len() {
+        edges.swap(i, pref_indices[i]);
+    }
+
+    for i in 0..edges_len {
+        println!("edge={}.{}", edges[i].edge_no >> 2, edges[i].edge_no & 3);
+    }
+    panic!("hotovo");
+
+    /*for p in pixels.iter_mut() {
             *p = 0;
         }
         draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
