@@ -10,6 +10,7 @@ use std::str::FromStr;
 use std::error::Error;
 use std::cmp::Ordering;
 use std::io::prelude::*;
+use std::collections::HashMap;
 
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
@@ -1278,10 +1279,53 @@ fn main() {
         edges.swap(i, pref_indices[i]);
     }
 
+    // Hashmap to get index by edge_no
+    let mut edge_nums = HashMap::new();
     for i in 0..edges_len {
         println!("edge={}.{}", edges[i].edge_no >> 2, edges[i].edge_no & 3);
+        edge_nums.insert(edges[i].edge_no, i);
     }
     panic!("hotovo");
+
+    println!("Compared edges:");
+    println!("");
+    println!("   1st     2nd     3rd   4th          score");
+
+    // Do 4-edges compare (edges I,J,M,P)
+    //     M  ->  P
+    //     ^      |
+    //     |      v
+    //     J  <-  I
+    for i in 0..edges_len {
+        let ref edge_i = edges[i];
+
+        // Loop to compare combination of best edges, e.g. 1stJ..1stP, 1stJ..2ndM, 2ndJ..2ndM
+        let mut best_final_score = usize::max_value();
+        let mut combi_counter = 0;
+        let mut best_combi_counter = 0;
+        'combi_loop: loop {
+
+            // Last round displays the best result
+            let combi_val = if combi_counter <= 63 {
+                combi_counter
+            } else if combi_counter == 64 {
+                println!("======= BEST MATCH {} ========", best_combi_counter);
+                display_state.autorotate = false;
+                best_combi_counter
+            } else {
+                break 'combi_loop;
+            };
+
+            let mut combi = (combi_val & 3, (combi_val >> 2) & 3, (combi_val >> 4) & 3);
+            println!("combi_counter={} combi={}.{}.{}",
+                     combi_counter,
+                     combi.0,
+                     combi.1,
+                     combi.2);
+
+            combi_counter += 1;
+        }
+    }
 
     /*for p in pixels.iter_mut() {
             *p = 0;
