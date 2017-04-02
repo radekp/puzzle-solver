@@ -1285,7 +1285,6 @@ fn main() {
         println!("edge={}.{}", edges[i].edge_no >> 2, edges[i].edge_no & 3);
         edge_nums.insert(edges[i].edge_no, i);
     }
-    panic!("hotovo");
 
     println!("Compared edges:");
     println!("");
@@ -1298,6 +1297,7 @@ fn main() {
     //     J  <-  I
     for i in 0..edges_len {
         let ref edge_i = edges[i];
+        let i_no = edge_i.edge_no;
 
         // Loop to compare combination of best edges, e.g. 1stJ..1stP, 1stJ..2ndM, 2ndJ..2ndM
         let mut best_final_score = usize::max_value();
@@ -1324,8 +1324,51 @@ fn main() {
                      combi.2);
 
             combi_counter += 1;
+
+            let index_diff_j = edge_i.best_index_diff[combi.0];
+            let ref edge_j = edges[index_diff_j.0];
+            let j_no = edge_j.edge_no;
+
+            if i_no >> 2 == j_no >> 2 {
+                continue; // 2 edges of the same piece
+            }
+
+            println!("{:>4}.{}->{:>4}.{}                 {:>12}",
+                     i_no >> 2,
+                     i_no & 3,
+                     j_no >> 2,
+                     j_no & 3,
+                     index_diff_j.1);
+
+            for p in pixels.iter_mut() {
+                *p = 0;
+            }
+
+            draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
+            draw_coords(&mut pixels,
+                        sqr,
+                        &flip_coords(&edge_j.points),
+                        0,
+                        0,
+                        0,
+                        255,
+                        0);
+
+            match display_pixels(&pixels,
+                                 sqr,
+                                 &sdl_context,
+                                 &mut renderer,
+                                 &mut display_state) {
+                UserAction::Solve => {
+                    write_done_file(&format!("data/{}.txt", i_no));
+                    write_done_file(&format!("data/{}.txt", j_no));
+                }
+                _ => {}
+            }
         }
     }
+
+    panic!("hotovo");
 
     /*for p in pixels.iter_mut() {
             *p = 0;
