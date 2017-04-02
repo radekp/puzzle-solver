@@ -1032,6 +1032,9 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
     // For each x,y there is distance to edge at edge_index
     let mut distances = vec![usize::max_value();max_width*max_height];
 
+    let edge_max_x = edges[edge_index].max_x;
+    let edge_max_y = edges[edge_index].max_y;
+
     for i in 0..edges.len() {
         if i == edge_index {
             continue;
@@ -1043,7 +1046,9 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
 
             // Compute best distance to edge from given x,y (point a) on first hit
             if best_dst == usize::max_value() {
-                for b in edges[edge_index].points.iter() {
+                for point_b in edges[edge_index].points.iter() {
+                    // One point must be flipped (flipping a is faster)
+                    let b = (edge_max_x - point_b.0, edge_max_y - point_b.1);
                     let dx = (b.0 as isize) - (a.0 as isize);
                     let dy = (b.1 as isize) - (a.1 as isize);
                     let dst = (dx * dx + dy * dy) as usize;
@@ -1258,6 +1263,14 @@ fn main() {
                 }
             }
         }
+
+        let i_no = edges[i].edge_no;
+        print!("  best {} for edge {}.{}: ", edges[i].best_index_diff.len(), i_no >> 2, i_no & 3);
+        for b in edges[i].best_index_diff.iter() {
+            let b_no = edges[b.0].edge_no;
+            print!("({}.{},{})", b_no >> 2, b_no & 3, b.1);
+        }
+        println!("");
     }
 
     // Prefer pieces from command line
