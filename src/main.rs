@@ -1265,7 +1265,10 @@ fn main() {
         }
 
         let i_no = edges[i].edge_no;
-        print!("  best {} for edge {}.{}: ", edges[i].best_index_diff.len(), i_no >> 2, i_no & 3);
+        print!("  best {} for edge {}.{}: ",
+               edges[i].best_index_diff.len(),
+               i_no >> 2,
+               i_no & 3);
         for b in edges[i].best_index_diff.iter() {
             let b_no = edges[b.0].edge_no;
             print!("({}.{},{})", b_no >> 2, b_no & 3, b.1);
@@ -1338,6 +1341,7 @@ fn main() {
 
             combi_counter += 1;
 
+            //     J  <-  I
             let index_diff_j = edge_i.best_index_diff[combi.0];
             let ref edge_j = edges[index_diff_j.0];
             let j_no = edge_j.edge_no;
@@ -1352,6 +1356,63 @@ fn main() {
                      j_no >> 2,
                      j_no & 3,
                      index_diff_j.1);
+
+            //     K
+            //     ^
+            //     |
+            //     J  <-  I
+            let j_plus = side_plus(j_no);
+            let ref edge_j_plus = edges[*edge_nums.get(&j_plus).unwrap()];
+
+            let index_diff_k = edge_j_plus.best_index_diff[combi.1];
+            let ref edge_k = edges[index_diff_k.0];
+            let k_no = edge_k.edge_no;
+
+            println!("        {:>4}.{}->{:>4}.{}         {:>12}",
+                     j_plus >> 2,
+                     j_plus & 3,
+                     k_no >> 2,
+                     k_no & 3,
+                     index_diff_k.1);
+
+            let k_plus = side_plus(k_no);
+            let index_k_plus = *edge_nums.get(&k_plus).unwrap();
+            let ref edge_k_plus = edges[index_k_plus];
+
+            let index_diff_l = edge_k_plus.best_index_diff[combi.1];
+            let ref edge_l = edges[index_diff_l.0];
+            let l_no = edge_l.edge_no;
+
+            println!("                {:>4}.{}->{:>4}.{} {:>12}",
+                     k_plus >> 2,
+                     k_plus & 3,
+                     l_no >> 2,
+                     l_no & 3,
+                     index_diff_l.1);
+
+             let l_plus = side_plus(l_no);
+             let index_l_plus = *edge_nums.get(&l_plus).unwrap();
+
+           let i_minus = side_minus(i_no);
+           let i_minus_index = *edge_nums.get(&i_minus).unwrap();
+           let ref edge_i_minus = edges[i_minus_index];
+           let diff_i_minus = edge_i_minus.diff_to[index_l_plus];
+
+           let final_score = index_diff_j.1 + index_diff_k.1 + index_diff_l.1 + diff_i_minus;
+
+           println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
+                    i_minus >> 2,
+                    i_minus & 3,
+                    l_plus >> 2,
+                    l_plus & 3,
+                    diff_i_minus,
+                    final_score);
+
+           if final_score < best_final_score {
+               best_final_score = final_score;
+               best_combi_counter = combi_counter;
+           }
+
 
             for p in pixels.iter_mut() {
                 *p = 0;
