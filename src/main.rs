@@ -1390,28 +1390,29 @@ fn main() {
                      l_no & 3,
                      index_diff_l.1);
 
-             let l_plus = side_plus(l_no);
-             let index_l_plus = *edge_nums.get(&l_plus).unwrap();
+            let l_plus = side_plus(l_no);
+            let index_l_plus = *edge_nums.get(&l_plus).unwrap();
+            let ref edge_l_plus = edges[index_l_plus];
 
-           let i_minus = side_minus(i_no);
-           let i_minus_index = *edge_nums.get(&i_minus).unwrap();
-           let ref edge_i_minus = edges[i_minus_index];
-           let diff_i_minus = edge_i_minus.diff_to[index_l_plus];
+            let i_minus = side_minus(i_no);
+            let i_minus_index = *edge_nums.get(&i_minus).unwrap();
+            let ref edge_i_minus = edges[i_minus_index];
+            let diff_i_minus = edge_i_minus.diff_to[index_l_plus];
 
-           let final_score = index_diff_j.1 + index_diff_k.1 + index_diff_l.1 + diff_i_minus;
+            let final_score = index_diff_j.1 + index_diff_k.1 + index_diff_l.1 + diff_i_minus;
 
-           println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
-                    i_minus >> 2,
-                    i_minus & 3,
-                    l_plus >> 2,
-                    l_plus & 3,
-                    diff_i_minus,
-                    final_score);
+            println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
+                     i_minus >> 2,
+                     i_minus & 3,
+                     l_plus >> 2,
+                     l_plus & 3,
+                     diff_i_minus,
+                     final_score);
 
-           if final_score < best_final_score {
-               best_final_score = final_score;
-               best_combi_counter = combi_counter;
-           }
+            if final_score < best_final_score {
+                best_final_score = final_score;
+                best_combi_counter = combi_val;
+            }
 
 
             for p in pixels.iter_mut() {
@@ -1423,6 +1424,36 @@ fn main() {
                         sqr,
                         &flip_coords(&edge_j.points),
                         0,
+                        0,
+                        0,
+                        255,
+                        0);
+
+            draw_coords(&mut pixels, sqr, &edge_j_plus.points, 100, 0, 255, 0, 0);
+            draw_coords(&mut pixels,
+                        sqr,
+                        &flip_coords(&edge_k.points),
+                        100,
+                        0,
+                        0,
+                        255,
+                        0);
+
+            draw_coords(&mut pixels, sqr, &edge_k_plus.points, 200, 0, 255, 0, 0);
+            draw_coords(&mut pixels,
+                        sqr,
+                        &flip_coords(&edge_l.points),
+                        200,
+                        0,
+                        0,
+                        255,
+                        0);
+
+            draw_coords(&mut pixels, sqr, &edge_l_plus.points, 300, 0, 255, 0, 0);
+            draw_coords(&mut pixels,
+                        sqr,
+                        &flip_coords(&edge_i_minus.points),
+                        300,
                         0,
                         0,
                         255,
