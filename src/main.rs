@@ -1012,6 +1012,48 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
     }
 }
 
+// Compute egge.best_diff vector
+fn compute_best_diffs(edges: &mut Vec<EdgeInfo>, num_best: usize) {
+
+    let edges_len = edges.len();
+
+    // Foreach i=edge index find top 10 best matching
+    for i in 0..edges_len {
+
+        // Init best_diff with 10 values
+        let init_j = (i + 1) % edges_len;
+        for _ in 0..num_best {
+            edges[i].best_diff.push((init_j, usize::max_value()));
+        }
+
+        // We will take diff for each i->j compare
+        for j in 0..edges[i].diff_to.len() {
+
+            if i == j {
+                continue; // dont compare with self
+            }
+            let diff = edges[i].diff_to[j];
+
+            for k in 0..edges[i].best_diff.len() {
+                // index to best
+                let mut b = edges[i].best_diff[k];
+                if diff <= b.1 {
+                    edges[i].best_diff[k] = (j, diff); // replace best
+                    let mut kk = k + 1;
+                    while kk < edges[i].best_diff.len() {
+                        // places the prev best after it
+                        let tmp = edges[i].best_diff[kk];
+                        edges[i].best_diff[kk] = b;
+                        b = tmp;
+                        kk += 1;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+}
+
 // Return next side of the piece
 fn side_plus(edge_no: usize) -> usize {
     return (edge_no & !3) | ((edge_no + 1) & 3);
@@ -1195,52 +1237,8 @@ fn main() {
         compare_edge_with_others(&mut edges, i, max_width, max_height);
     }
 
-    // Foreach i=edge index find top 10 best matching
-    for i in 0..edges_len {
-
-        // Init best_diff with 10 values
-        let init_j = (i + 1) % edges_len;
-        for _ in 0..10 {
-            edges[i].best_diff.push((init_j, usize::max_value()));
-        }
-
-        // We will take diff for each i->j compare
-        for j in 0..edges[i].diff_to.len() {
-
-            if i == j {
-                continue; // dont compare with self
-            }
-            let diff = edges[i].diff_to[j];
-
-            for k in 0..edges[i].best_diff.len() {
-                // index to best
-                let mut b = edges[i].best_diff[k];
-                if diff <= b.1 {
-                    edges[i].best_diff[k] = (j, diff); // replace best
-                    let mut kk = k + 1;
-                    while kk < edges[i].best_diff.len() {
-                        // places the prev best after it
-                        let tmp = edges[i].best_diff[kk];
-                        edges[i].best_diff[kk] = b;
-                        b = tmp;
-                        kk += 1;
-                    }
-                    break;
-                }
-            }
-        }
-
-        let i_no = edges[i].edge_no;
-        print!("  best {} for edge {}.{}: ",
-               edges[i].best_diff.len(),
-               i_no >> 2,
-               i_no & 3);
-        for b in edges[i].best_diff.iter() {
-            let b_no = edges[b.0].edge_no;
-            print!("({}.{},{})", b_no >> 2, b_no & 3, b.1);
-        }
-        println!("");
-    }
+    // Foreach edge index find top 10 best matching
+    compute_best_diffs(&mut edges, 10);
 
     // Hashmap to get index by edge_no
     let mut edge_nums = HashMap::new();
@@ -1324,12 +1322,7 @@ fn main() {
             //     B  <-  A
             let c_plus = side_plus(c_no);
             let ref edge_c_plus = edges[*edge_nums.get(&c_plus).unwrap()];
-
-            println!("c_plus no={}.{} combi.2={}", edge_c_plus.edge_no >> 2, edge_c_plus.edge_no & 3, combi.2);
-
             let diff_d = edge_c_plus.best_diff[combi.2];
-
-            println!("diff_d=({},{})", diff_d.0, diff_d.1);
 
             let ref edge_d = edges[diff_d.0];
             let d_no = edge_d.edge_no;
