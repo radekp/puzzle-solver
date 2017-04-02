@@ -48,7 +48,6 @@ struct DisplayPixelState {
 
 struct EdgeInfo {
     points: Vec<(usize, usize)>,
-    distances: Vec<u16>,
     edge_no: usize, // e.g. 103 is 10.3.txt
     max_x: usize,
     max_y: usize,
@@ -1163,7 +1162,6 @@ fn main() {
 
         let edge_info = EdgeInfo {
             points: points,
-            distances: vec![],
             edge_no: edge_no,
             max_x: max_x,
             max_y: max_y,
@@ -1175,24 +1173,19 @@ fn main() {
 
     let edges_len = edges.len();
 
-    // Max x and y in all edges
+    // Max x and y in all edges, make diff_to vector
     let mut max_x = 0;
     let mut max_y = 0;
-    for edge in edges.iter() {
+    for edge in edges.iter_mut() {
         max_x = cmp::max(max_x, edge.max_x);
         max_y = cmp::max(max_y, edge.max_y);
+        edge.diff_to = vec![0; edges_len];
     }
     let max_width = max_x + 1;
     let max_height = max_y + 1;
 
     // SDL window - make it modulo 4 to play well with texture pitch
     let sqr = 2 * cmp::max(max_width, max_height) + 5 & !3usize;
-
-    // Make up distances table for fast nearest edge searching
-    for edge in edges.iter_mut() {
-        edge.distances = vec![u16::max_value(); sqr * sqr];
-        edge.diff_to = vec![0; edges_len];
-    }
 
     let mut pixels: Vec<u8> = vec![0;3*sqr*sqr];
     let video_subsystem = sdl_context.video().unwrap();
@@ -1212,7 +1205,7 @@ fn main() {
     let mut pref_indices = vec![];
     for (index, arg) in env::args().enumerate() {
         if index == 0 {
-            continue; // program file
+            continue; // arg0 is path to exe file
         }
         let argv: usize = arg.parse().unwrap();
         for i in 0..edges_len {
