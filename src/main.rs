@@ -1293,10 +1293,6 @@ fn main() {
             let ref edge_b = edges[index_diff_b.0];
             let b_no = edge_b.edge_no;
 
-            if a_no >> 2 == b_no >> 2 {
-                continue; // 2 edges of the same piece
-            }
-
             println!("{:>4}.{}->{:>4}.{}                 {:>12}",
                      a_no >> 2,
                      a_no & 3,
@@ -1313,32 +1309,32 @@ fn main() {
 
             let index_diff_c = edge_b_plus.best_index_diff[combi.1];
             let ref edge_c = edges[index_diff_c.0];
-            let k_no = edge_c.edge_no;
+            let c_no = edge_c.edge_no;
 
             println!("        {:>4}.{}->{:>4}.{}         {:>12}",
                      b_plus >> 2,
                      b_plus & 3,
-                     k_no >> 2,
-                     k_no & 3,
+                     c_no >> 2,
+                     c_no & 3,
                      index_diff_c.1);
 
             //     C  ->  D
             //     ^
             //     |
             //     B  <-  A
-            let k_plus = side_plus(k_no);
-            let index_c_plus = *edge_nums.get(&k_plus).unwrap();
+            let c_plus = side_plus(c_no);
+            let index_c_plus = *edge_nums.get(&c_plus).unwrap();
             let ref edge_c_plus = edges[index_c_plus];
 
-            let index_diff_d = edge_c_plus.best_index_diff[combi.1];
+            let index_diff_d = edge_c_plus.best_index_diff[combi.2];
             let ref edge_d = edges[index_diff_d.0];
-            let c_no = edge_d.edge_no;
+            let d_no = edge_d.edge_no;
 
             println!("                {:>4}.{}->{:>4}.{} {:>12}",
-                     k_plus >> 2,
-                     k_plus & 3,
-                     c_no >> 2,
-                     c_no & 3,
+                     c_plus >> 2,
+                     c_plus & 3,
+                     d_no >> 2,
+                     d_no & 3,
                      index_diff_d.1);
 
             // Now check A->D - must be small if pieces fit
@@ -1347,8 +1343,8 @@ fn main() {
             //     ^      ^
             //     |      |
             //     B  <-  A
-            let c_plus = side_plus(c_no);
-            let index_d_plus = *edge_nums.get(&c_plus).unwrap();
+            let d_plus = side_plus(d_no);
+            let index_d_plus = *edge_nums.get(&d_plus).unwrap();
             let ref edge_d_plus = edges[index_d_plus];
 
             let a_minus = side_minus(a_no);
