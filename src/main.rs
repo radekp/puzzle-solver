@@ -971,59 +971,6 @@ fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
     return (a.max_x * a.max_y).cmp(&(b.max_x * b.max_y));
 }
 
-fn compare_two_edges(edges: &mut Vec<EdgeInfo>,
-                     a: usize,
-                     b: usize,
-                     sqr: usize,
-                     rec: bool)
-                     -> usize {
-
-    let mut res = 0;
-    let mut new_distances = vec![];
-
-    {
-        let ref edge_a = edges[a];
-        let ref edge_b = edges[b];
-        let ref points_a = edge_a.points;
-        let ref points_b = edge_b.points;
-        let ref distances_a = edge_a.distances;
-
-        for point_b in points_b {
-            // point b must be flipped
-            let b = (edge_b.max_x - point_b.0, edge_b.max_y - point_b.1);
-            let offset = sqr * b.1 + b.0;
-            let mut best_dst = distances_a[offset] as usize;
-            if best_dst == u16::max_value() as usize {
-                for a in points_a {
-                    let dx = (a.0 as isize) - (b.0 as isize);
-                    let dy = (a.1 as isize) - (b.1 as isize);
-                    let dst = (dx * dx + dy * dy) as usize;
-                    if dst < best_dst {
-                        best_dst = dst;
-                    }
-                }
-                let store_dst = if best_dst < u16::max_value() as usize {
-                    best_dst as u16
-                } else {
-                    u16::max_value() - 1
-                };
-                new_distances.push((offset, store_dst));
-            }
-            res += best_dst;
-        }
-    }
-
-    // Fill up newly computed distances
-    for d in new_distances {
-        edges[a].distances[d.0] = d.1;
-    }
-
-    if rec {
-        res += compare_two_edges(edges, a, b, sqr, false); // the same but compute dst from b to a
-    }
-    return res;
-}
-
 fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
                             edge_index: usize,
                             max_width: usize,
@@ -1306,14 +1253,14 @@ fn main() {
     println!("");
     println!("   1st     2nd     3rd   4th          score");
 
-    // Do 4-edges compare (edges I,J,M,P)
-    //     M  ->  P
+    // Do 4-edges compare (edges from pieces A,B,C,D)
+    //     C  ->  D
     //     ^      |
     //     |      v
-    //     J  <-  I
-    for i in 0..edges_len {
-        let ref edge_i = edges[i];
-        let i_no = edge_i.edge_no;
+    //     B  <-  A
+    for a in 0..edges_len {
+        let ref edge_a = edges[a];
+        let a_no = edge_a.edge_no;
 
         // Loop to compare combination of best edges, e.g. 1stJ..1stP, 1stJ..2ndM, 2ndJ..2ndM
         let mut best_final_score = usize::max_value();
@@ -1332,7 +1279,7 @@ fn main() {
                 break 'combi_loop;
             };
 
-            let mut combi = (combi_val & 3, (combi_val >> 2) & 3, (combi_val >> 4) & 3);
+            let combi = (combi_val & 3, (combi_val >> 2) & 3, (combi_val >> 4) & 3);
             println!("combi_counter={} combi={}.{}.{}",
                      combi_counter,
                      combi.0,
@@ -1341,118 +1288,129 @@ fn main() {
 
             combi_counter += 1;
 
-            //     J  <-  I
-            let index_diff_j = edge_i.best_index_diff[combi.0];
-            let ref edge_j = edges[index_diff_j.0];
-            let j_no = edge_j.edge_no;
+            //     B  <-  A
+            let index_diff_b = edge_a.best_index_diff[combi.0];
+            let ref edge_b = edges[index_diff_b.0];
+            let b_no = edge_b.edge_no;
 
-            if i_no >> 2 == j_no >> 2 {
+            if a_no >> 2 == b_no >> 2 {
                 continue; // 2 edges of the same piece
             }
 
             println!("{:>4}.{}->{:>4}.{}                 {:>12}",
-                     i_no >> 2,
-                     i_no & 3,
-                     j_no >> 2,
-                     j_no & 3,
-                     index_diff_j.1);
+                     a_no >> 2,
+                     a_no & 3,
+                     b_no >> 2,
+                     b_no & 3,
+                     index_diff_b.1);
 
-            //     K
+            //     C
             //     ^
             //     |
-            //     J  <-  I
-            let j_plus = side_plus(j_no);
-            let ref edge_j_plus = edges[*edge_nums.get(&j_plus).unwrap()];
+            //     B  <-  A
+            let b_plus = side_plus(b_no);
+            let ref edge_b_plus = edges[*edge_nums.get(&b_plus).unwrap()];
 
-            let index_diff_k = edge_j_plus.best_index_diff[combi.1];
-            let ref edge_k = edges[index_diff_k.0];
-            let k_no = edge_k.edge_no;
+            let index_diff_c = edge_b_plus.best_index_diff[combi.1];
+            let ref edge_c = edges[index_diff_c.0];
+            let k_no = edge_c.edge_no;
 
             println!("        {:>4}.{}->{:>4}.{}         {:>12}",
-                     j_plus >> 2,
-                     j_plus & 3,
+                     b_plus >> 2,
+                     b_plus & 3,
                      k_no >> 2,
                      k_no & 3,
-                     index_diff_k.1);
+                     index_diff_c.1);
 
+            //     C  ->  D
+            //     ^
+            //     |
+            //     B  <-  A
             let k_plus = side_plus(k_no);
-            let index_k_plus = *edge_nums.get(&k_plus).unwrap();
-            let ref edge_k_plus = edges[index_k_plus];
+            let index_c_plus = *edge_nums.get(&k_plus).unwrap();
+            let ref edge_c_plus = edges[index_c_plus];
 
-            let index_diff_l = edge_k_plus.best_index_diff[combi.1];
-            let ref edge_l = edges[index_diff_l.0];
-            let l_no = edge_l.edge_no;
+            let index_diff_d = edge_c_plus.best_index_diff[combi.1];
+            let ref edge_d = edges[index_diff_d.0];
+            let c_no = edge_d.edge_no;
 
             println!("                {:>4}.{}->{:>4}.{} {:>12}",
                      k_plus >> 2,
                      k_plus & 3,
-                     l_no >> 2,
-                     l_no & 3,
-                     index_diff_l.1);
+                     c_no >> 2,
+                     c_no & 3,
+                     index_diff_d.1);
 
-            let l_plus = side_plus(l_no);
-            let index_l_plus = *edge_nums.get(&l_plus).unwrap();
-            let ref edge_l_plus = edges[index_l_plus];
+            // Now check A->D - must be small if pieces fit
+            //
+            //     C  ->  D
+            //     ^      ^
+            //     |      |
+            //     B  <-  A
+            let c_plus = side_plus(c_no);
+            let index_d_plus = *edge_nums.get(&c_plus).unwrap();
+            let ref edge_d_plus = edges[index_d_plus];
 
-            let i_minus = side_minus(i_no);
-            let i_minus_index = *edge_nums.get(&i_minus).unwrap();
-            let ref edge_i_minus = edges[i_minus_index];
-            let diff_i_minus = edge_i_minus.diff_to[index_l_plus];
+            let a_minus = side_minus(a_no);
+            let a_minus_index = *edge_nums.get(&a_minus).unwrap();
+            let ref edge_a_minus = edges[a_minus_index];
+            let diff_a_minus = edge_a_minus.diff_to[index_d_plus];
 
-            let final_score = index_diff_j.1 + index_diff_k.1 + index_diff_l.1 + diff_i_minus;
+            let final_score = index_diff_b.1 + index_diff_c.1 + index_diff_d.1 + diff_a_minus;
 
             println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
-                     i_minus >> 2,
-                     i_minus & 3,
-                     l_plus >> 2,
-                     l_plus & 3,
-                     diff_i_minus,
+                     a_minus >> 2,
+                     a_minus & 3,
+                     c_plus >> 2,
+                     c_plus & 3,
+                     diff_a_minus,
                      final_score);
 
+            // Remeber best 4-edge diff that will be displayed after all cominations computed
             if final_score < best_final_score {
                 best_final_score = final_score;
                 best_combi_counter = combi_val;
             }
 
-
+            // Display comapred edges
             for p in pixels.iter_mut() {
                 *p = 0;
             }
 
-            draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
+            draw_coords(&mut pixels, sqr, &edge_a.points, 0, 0, 255, 0, 0);
             draw_coords(&mut pixels,
                         sqr,
-                        &flip_coords(&edge_j.points),
+                        &flip_coords(&edge_b.points),
                         0,
                         0,
                         0,
                         255,
                         0);
 
-            draw_coords(&mut pixels, sqr, &edge_j_plus.points, 100, 0, 255, 0, 0);
+            draw_coords(&mut pixels, sqr, &edge_b_plus.points, 100, 0, 255, 0, 0);
             draw_coords(&mut pixels,
                         sqr,
-                        &flip_coords(&edge_k.points),
+                        &flip_coords(&edge_c.points),
                         100,
                         0,
                         0,
                         255,
                         0);
 
-            draw_coords(&mut pixels, sqr, &edge_k_plus.points, 200, 0, 255, 0, 0);
+            draw_coords(&mut pixels, sqr, &edge_c_plus.points, 200, 0, 255, 0, 0);
             draw_coords(&mut pixels,
                         sqr,
-                        &flip_coords(&edge_l.points),
+                        &flip_coords(&edge_d.points),
                         200,
                         0,
                         0,
                         255,
                         0);
 
-            draw_coords(&mut pixels, sqr, &edge_l_plus.points, 300, 0, 255, 0, 0);
+            draw_coords(&mut pixels, sqr, &edge_d_plus.points, 300, 0, 255, 0, 0);
             draw_coords(&mut pixels,
                         sqr,
-                        &flip_coords(&edge_i_minus.points),
+                        &flip_coords(&edge_a_minus.points),
                         300,
                         0,
                         0,
@@ -1465,320 +1423,11 @@ fn main() {
                                  &mut renderer,
                                  &mut display_state) {
                 UserAction::Solve => {
-                    write_done_file(&format!("data/{}.txt", i_no));
-                    write_done_file(&format!("data/{}.txt", j_no));
+                    write_done_file(&format!("data/{}.txt", a_no));
+                    write_done_file(&format!("data/{}.txt", b_no));
                 }
                 _ => {}
             }
-        }
-    }
-
-    panic!("hotovo");
-
-    /*for p in pixels.iter_mut() {
-            *p = 0;
-        }
-        draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
-        draw_coords(&mut pixels,
-                    sqr,
-                    &flip_coords(&edge_j.points),
-                    0,
-                    0,
-                    0,
-                    255,
-                    0);*/
-
-    // Compare edges - start with near edges (they have similar height)
-    let mut cmp_results = vec![];
-    for d in 1..cmp::min(edges.len(), 128) {
-        let mut best_score = usize::max_value();
-        for i in 0..(edges.len() - d) {
-
-            let j = i + d;
-
-            let score = compare_two_edges(&mut edges, i, j, sqr, true);
-
-            let ref edge_i = edges[i];
-            let ref edge_j = edges[i + d];
-
-            cmp_results.push((score, i, j));
-
-            // Display best score so that some progress is shown
-            if score < best_score {
-                best_score = score;
-            } else if display_state.autorotate {
-                continue;
-            }
-            println!("{:>4}.{}->{:>4}.{} score={:>12}, todo i={} d={}/{}",
-                     edge_i.edge_no >> 2,
-                     edge_i.edge_no & 3,
-                     edge_j.edge_no >> 2,
-                     edge_j.edge_no & 3,
-                     score,
-                     i,
-                     d,
-                     edges.len());
-
-            // Display points_i with red, points_j in green
-            draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
-            draw_coords(&mut pixels,
-                        sqr,
-                        &flip_coords(&edge_j.points),
-                        0,
-                        0,
-                        0,
-                        255,
-                        0);
-
-            display_pixels(&pixels,
-                           sqr,
-                           &sdl_context,
-                           &mut renderer,
-                           &mut display_state);
-
-            for p in pixels.iter_mut() {
-                *p = 0;
-            }
-        }
-    }
-
-    // Sort results by best score
-    cmp_results.sort_by(|a, b| a.cmp(&b));
-
-    println!("Compared edges:");
-    println!("");
-    println!("   1st     2nd     3rd   4th          score");
-
-
-    display_state.autorotate = false;
-    for r in cmp_results.iter() {
-
-        //     J  <-  I
-        let ref edge_i = edges[r.1];
-        let ref edge_j = edges[r.2];
-
-        let i_no = edge_i.edge_no;
-        let j_no = edge_j.edge_no;
-
-        if i_no >> 2 == j_no >> 2 {
-            continue; // 2 edges of the same piece
-        }
-
-        println!("===========================================");
-
-        let mut best_final_score = usize::max_value();
-        let mut skip_counter = 0;
-        let mut best_skip_mask = 0;
-        'mask_loop: loop {
-
-            for p in pixels.iter_mut() {
-                *p = 0;
-            }
-            draw_coords(&mut pixels, sqr, &edge_i.points, 0, 0, 255, 0, 0);
-            draw_coords(&mut pixels,
-                        sqr,
-                        &flip_coords(&edge_j.points),
-                        0,
-                        0,
-                        0,
-                        255,
-                        0);
-
-
-            // Last round displays the best result
-            let skip_mask = if skip_counter <= 63 {
-                skip_counter
-            } else if skip_counter == 64 {
-                println!("======= BEST MATCH {} ========", best_skip_mask);
-                display_state.autorotate = false;
-                best_skip_mask
-            } else {
-                break 'mask_loop;
-            };
-
-            let mut skip = (skip_mask & 3, (skip_mask >> 2) & 3, (skip_mask >> 4) & 3);
-            println!("skip_counter={} skip={}.{}.{}",
-                     skip_counter,
-                     skip.0,
-                     skip.1,
-                     skip.2);
-
-            skip_counter += 1;
-
-            println!("{:>4}.{}->{:>4}.{}                 {:>12}",
-                     i_no >> 2,
-                     i_no & 3,
-                     j_no >> 2,
-                     j_no & 3,
-                     r.0);
-
-
-            // Find point M:
-            //
-            //     M
-            //     ^
-            //     |
-            //     J  ->  I
-            //
-            let j_plus = side_plus(j_no);
-            'loop_r2: for r2 in cmp_results.iter() {
-                let ref edge_k = edges[r2.1];
-                let ref edge_l = edges[r2.2];
-                let k_no = edge_k.edge_no;
-                let l_no = edge_l.edge_no;
-
-                let m_no = if k_no == j_plus {
-                    l_no
-                } else if l_no == j_plus {
-                    k_no
-                } else {
-                    continue;
-                };
-
-                if m_no >> 2 == i_no >> 2 || m_no >> 2 == j_no >> 2 {
-                    continue; // must compare 3 different pieces
-                }
-                if skip.2 > 0 {
-                    skip.2 -= 1; // try 2nd best, 3rd best..
-                    continue;
-                }
-
-                draw_coords(&mut pixels, sqr, &edge_k.points, 100, 0, 255, 0, 0);
-                draw_coords(&mut pixels,
-                            sqr,
-                            &flip_coords(&edge_l.points),
-                            100,
-                            0,
-                            0,
-                            255,
-                            0);
-
-
-                println!("        {:>4}.{}->{:>4}.{}         {:>12}",
-                         j_plus >> 2,
-                         j_plus & 3,
-                         m_no >> 2,
-                         m_no & 3,
-                         r2.0);
-
-                // Find point P sharing border with M and J:
-                //
-                //     M  -> P
-                //     ^     ^
-                //     |     |
-                //     J  -> I
-                //
-                let m_plus = side_plus(m_no);
-                for r3 in cmp_results.iter() {
-                    let ref edge_n = edges[r3.1];
-                    let ref edge_o = edges[r3.2];
-                    let n_no = edge_n.edge_no;
-                    let o_no = edge_o.edge_no;
-
-                    let p_no = if n_no == m_plus {
-                        o_no
-                    } else if o_no == m_plus {
-                        n_no
-                    } else {
-                        continue;
-                    };
-
-                    if p_no >> 2 == i_no >> 2 || p_no >> 2 == j_no >> 2 || p_no >> 2 == m_no >> 2 {
-                        continue; // must compare 4 different pieces
-                    }
-
-                    if skip.1 > 0 {
-                        skip.1 -= 1; // try 2nd best, 3rd best..
-                        continue;
-                    }
-
-                    println!("                {:>4}.{}->{:>4}.{} {:>12}",
-                             m_plus >> 2,
-                             m_plus & 3,
-                             p_no >> 2,
-                             p_no & 3,
-                             r3.0);
-
-                    draw_coords(&mut pixels, sqr, &edge_n.points, 200, 0, 255, 0, 0);
-                    draw_coords(&mut pixels,
-                                sqr,
-                                &flip_coords(&edge_o.points),
-                                200,
-                                0,
-                                0,
-                                255,
-                                0);
-
-
-                    // Compare P with I
-                    let p_plus = side_plus(p_no);
-                    let i_minus = side_minus(i_no);
-                    /*println!("  searching for P->I edge {}.{} -> {}.{}",
-                         p_plus >> 2,
-                         p_plus & 3,
-                         i_minus >> 2,
-                         i_minus & 3);*/
-                    for r4 in cmp_results.iter() {
-                        let ref edge_q = edges[r4.1];
-                        let ref edge_r = edges[r4.2];
-                        let q_no = edges[r4.1].edge_no;
-                        let r_no = edges[r4.2].edge_no;
-
-                        if (q_no == p_plus && r_no == i_minus) ||
-                           (q_no == i_minus && r_no == p_plus) {
-
-                            if skip.0 > 0 {
-                                skip.0 -= 1; // try 2nd best, 3rd best..
-                                continue;
-                            }
-
-                            let final_score = r.0 + r2.0 + r3.0 + r4.0;
-
-                            println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
-                                     i_minus >> 2,
-                                     i_minus & 3,
-                                     p_plus >> 2,
-                                     p_plus & 3,
-                                     r4.0,
-                                     final_score);
-
-                            if final_score < best_final_score {
-                                best_final_score = final_score;
-                                best_skip_mask = skip_mask;
-                            }
-
-                            draw_coords(&mut pixels, sqr, &edge_q.points, 300, 0, 255, 0, 0);
-                            draw_coords(&mut pixels,
-                                        sqr,
-                                        &flip_coords(&edge_r.points),
-                                        300,
-                                        0,
-                                        0,
-                                        255,
-                                        0);
-
-                            match display_pixels(&pixels,
-                                                 sqr,
-                                                 &sdl_context,
-                                                 &mut renderer,
-                                                 &mut display_state) {
-                                UserAction::Solve => {
-                                    write_done_file(&format!("data/{}.txt", i_no));
-                                    write_done_file(&format!("data/{}.txt", j_no));
-                                }
-                                _ => {}
-                            }
-
-                            continue 'mask_loop;
-                        }
-                    }
-                    //println!("r4");
-                    break 'loop_r2; // no more points, this skip does not lead to result
-                }
-                //println!("r3");
-                break 'loop_r2; // no more points, this skip does not lead to result
-            }
-            //println!("r2");
         }
     }
 }
