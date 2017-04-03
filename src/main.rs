@@ -1066,44 +1066,50 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
 }
 
 // Compute egge.best_diff vector
-fn compute_best_diffs(edges: &mut Vec<EdgeInfo>, num_best: usize) {
+fn compute_best_diff(i: usize, edges: &mut Vec<EdgeInfo>, num_best: usize) {
 
     let edges_len = edges.len();
 
-    // Foreach i=edge index find top 10 best matching
-    for i in 0..edges_len {
 
-        // Init best_diff with 10 values
-        let init_j = (i + 1) % edges_len;
-        for _ in 0..num_best {
-            edges[i].best_diff.push((init_j, usize::max_value()));
+    // Init best_diff with 10 values
+    let init_j = (i + 1) % edges_len;
+    for _ in 0..num_best {
+        edges[i].best_diff.push((init_j, usize::max_value()));
+    }
+
+    // We will take diff for each i->j compare
+    for j in 0..edges[i].diff_to.len() {
+
+        if i == j {
+            continue; // dont compare with self
         }
+        let diff = edges[i].diff_to[j];
 
-        // We will take diff for each i->j compare
-        for j in 0..edges[i].diff_to.len() {
-
-            if i == j {
-                continue; // dont compare with self
-            }
-            let diff = edges[i].diff_to[j];
-
-            for k in 0..edges[i].best_diff.len() {
-                // index to best
-                let mut b = edges[i].best_diff[k];
-                if diff <= b.1 {
-                    edges[i].best_diff[k] = (j, diff); // replace best
-                    let mut kk = k + 1;
-                    while kk < edges[i].best_diff.len() {
-                        // places the prev best after it
-                        let tmp = edges[i].best_diff[kk];
-                        edges[i].best_diff[kk] = b;
-                        b = tmp;
-                        kk += 1;
-                    }
-                    break;
+        for k in 0..edges[i].best_diff.len() {
+            // index to best
+            let mut b = edges[i].best_diff[k];
+            if diff <= b.1 {
+                edges[i].best_diff[k] = (j, diff); // replace best
+                let mut kk = k + 1;
+                while kk < edges[i].best_diff.len() {
+                    // places the prev best after it
+                    let tmp = edges[i].best_diff[kk];
+                    edges[i].best_diff[kk] = b;
+                    b = tmp;
+                    kk += 1;
                 }
+                break;
             }
         }
+    }
+}
+
+// Compute egge.best_diff vector
+fn compute_best_diffs(edges: &mut Vec<EdgeInfo>, num_best: usize) {
+
+    let edges_len = edges.len();
+    for i in 0..edges_len {
+        compute_best_diff(i, edges, num_best);
     }
 }
 
