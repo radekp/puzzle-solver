@@ -1314,8 +1314,7 @@ fn main() {
     //     |      v
     //     B  <-  A
     for a in 0..edges_len {
-        let ref edge_a = edges[a];
-        let a_no = edge_a.edge_no;
+        let a_no = edges[a].edge_no;
 
         // Loop to compare combination of best edges, e.g. 1stJ..1stP, 1stJ..2ndM, 2ndJ..2ndM
         let mut best_final_score = usize::max_value();
@@ -1344,7 +1343,7 @@ fn main() {
             combi_counter += 1;
 
             //     B  <-  A
-            let (b, diff_b) = edge_a.best_diff[combi.0];
+            let (b, diff_b) = edges[a].best_diff[combi.0];
             let b_no = edges[b].edge_no;
 
             println!("{:>4}.{}->{:>4}.{}                 {:>12}",
@@ -1398,15 +1397,15 @@ fn main() {
             let index_d_plus = *edge_nums.get(&d_plus).unwrap();
             let ref edge_d_plus = edges[index_d_plus];
 
-            let a_minus = side_minus(a_no);
-            let ref edge_a_minus = edges[*edge_nums.get(&a_minus).unwrap()];
-            let diff_a_minus = edge_a_minus.diff_to[index_d_plus];
+            let a_minus_no = side_minus(a_no);
+            let a_minus = *edge_nums.get(&a_minus_no).unwrap();
+            let diff_a_minus = edges[a_minus].diff_to[index_d_plus];
 
             let final_score = diff_b + diff_c + diff_d + diff_a_minus;
 
             println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
-                     a_minus >> 2,
-                     a_minus & 3,
+                     a_minus_no >> 2,
+                     a_minus_no & 3,
                      c_plus_no >> 2,
                      c_plus_no & 3,
                      diff_a_minus,
@@ -1423,7 +1422,7 @@ fn main() {
                 *p = 0;
             }
 
-            draw_coords(&mut pixels, sqr, &edge_a.points, 0, 0, 255, 0, 0);
+            draw_coords(&mut pixels, sqr, &edges[a].points, 0, 0, 255, 0, 0);
             draw_coords(&mut pixels,
                         sqr,
                         &flip_coords(&edges[b].points),
@@ -1456,7 +1455,7 @@ fn main() {
             draw_coords(&mut pixels, sqr, &edge_d_plus.points, 300, 0, 255, 0, 0);
             draw_coords(&mut pixels,
                         sqr,
-                        &flip_coords(&edge_a_minus.points),
+                        &flip_coords(&edges[a_minus].points),
                         300,
                         0,
                         0,
