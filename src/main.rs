@@ -1344,16 +1344,15 @@ fn main() {
             combi_counter += 1;
 
             //     B  <-  A
-            let diff_b = edge_a.best_diff[combi.0];
-            let ref edge_b = edges[diff_b.0];
-            let b_no = edge_b.edge_no;
+            let (b, diff_b) = edge_a.best_diff[combi.0];
+            let b_no = edges[b].edge_no;
 
             println!("{:>4}.{}->{:>4}.{}                 {:>12}",
                      a_no >> 2,
                      a_no & 3,
                      b_no >> 2,
                      b_no & 3,
-                     diff_b.1);
+                     diff_b);
 
             //     C
             //     ^
@@ -1405,7 +1404,7 @@ fn main() {
             let ref edge_a_minus = edges[*edge_nums.get(&a_minus).unwrap()];
             let diff_a_minus = edge_a_minus.diff_to[index_d_plus];
 
-            let final_score = diff_b.1 + diff_c.1 + diff_d.1 + diff_a_minus;
+            let final_score = diff_b + diff_c.1 + diff_d.1 + diff_a_minus;
 
             println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
                      a_minus >> 2,
@@ -1429,7 +1428,7 @@ fn main() {
             draw_coords(&mut pixels, sqr, &edge_a.points, 0, 0, 255, 0, 0);
             draw_coords(&mut pixels,
                         sqr,
-                        &flip_coords(&edge_b.points),
+                        &flip_coords(&edges[b].points),
                         0,
                         0,
                         0,
