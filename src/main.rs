@@ -1068,6 +1068,14 @@ fn compute_best_diff(i: usize, edges: &mut Vec<EdgeInfo>, num_best: usize) {
             }
         }
     }
+
+    /*let i_no = edges[i].edge_no;
+    print!("best diffs for {}.{}: ", i_no >> 2, i_no & 3);
+    for b in edges[i].best_diff.iter() {
+        let b_no = edges[b.0].edge_no;
+        print!("({}.{},{})", b_no >> 2, b_no & 3, b.1);
+    }
+    println!("");*/
 }
 
 // Return next side of the piece
@@ -1387,8 +1395,8 @@ fn main() {
             println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
                      a_minus_no >> 2,
                      a_minus_no & 3,
-                     c_plus_no >> 2,
-                     c_plus_no & 3,
+                     d_plus_no >> 2,
+                     d_plus_no & 3,
                      diff_a_minus,
                      final_score);
 
