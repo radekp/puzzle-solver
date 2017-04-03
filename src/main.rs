@@ -1375,19 +1375,18 @@ fn main() {
             //     ^
             //     |
             //     B  <-  A
-            let c_plus = side_plus(c_no);
-            let ref edge_c_plus = edges[*edge_nums.get(&c_plus).unwrap()];
-            let diff_d = edge_c_plus.best_diff[combi.2];
+            let c_plus_no = side_plus(c_no);
+            let c_plus = *edge_nums.get(&c_plus_no).unwrap();
 
-            let ref edge_d = edges[diff_d.0];
-            let d_no = edge_d.edge_no;
+            let (d, diff_d) = edges[c_plus].best_diff[combi.2];
+            let d_no = edges[d].edge_no;
 
             println!("                {:>4}.{}->{:>4}.{} {:>12}",
-                     c_plus >> 2,
-                     c_plus & 3,
+                     c_plus_no >> 2,
+                     c_plus_no & 3,
                      d_no >> 2,
                      d_no & 3,
-                     diff_d.1);
+                     diff_d);
 
             // Now check A->D - must be small if pieces fit
             //
@@ -1403,13 +1402,13 @@ fn main() {
             let ref edge_a_minus = edges[*edge_nums.get(&a_minus).unwrap()];
             let diff_a_minus = edge_a_minus.diff_to[index_d_plus];
 
-            let final_score = diff_b + diff_c + diff_d.1 + diff_a_minus;
+            let final_score = diff_b + diff_c + diff_d + diff_a_minus;
 
             println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
                      a_minus >> 2,
                      a_minus & 3,
-                     c_plus >> 2,
-                     c_plus & 3,
+                     c_plus_no >> 2,
+                     c_plus_no & 3,
                      diff_a_minus,
                      final_score);
 
@@ -1444,10 +1443,10 @@ fn main() {
                         255,
                         0);
 
-            draw_coords(&mut pixels, sqr, &edge_c_plus.points, 200, 0, 255, 0, 0);
+            draw_coords(&mut pixels, sqr, &edges[c_plus].points, 200, 0, 255, 0, 0);
             draw_coords(&mut pixels,
                         sqr,
-                        &flip_coords(&edge_d.points),
+                        &flip_coords(&edges[d].points),
                         200,
                         0,
                         0,
