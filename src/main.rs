@@ -1358,16 +1358,16 @@ fn main() {
             //     ^
             //     |
             //     B  <-  A
-            let b_plus = side_plus(b_no);
-            let ref edge_b_plus = edges[*edge_nums.get(&b_plus).unwrap()];
+            let b_plus_no = side_plus(b_no);
+            let b_plus = *edge_nums.get(&b_plus_no).unwrap();
 
-            let diff_c = edge_b_plus.best_diff[combi.1];
+            let diff_c = edges[b_plus].best_diff[combi.1];
             let ref edge_c = edges[diff_c.0];
             let c_no = edge_c.edge_no;
 
             println!("        {:>4}.{}->{:>4}.{}         {:>12}",
-                     b_plus >> 2,
-                     b_plus & 3,
+                     b_plus_no >> 2,
+                     b_plus_no & 3,
                      c_no >> 2,
                      c_no & 3,
                      diff_c.1);
@@ -1435,7 +1435,7 @@ fn main() {
                         255,
                         0);
 
-            draw_coords(&mut pixels, sqr, &edge_b_plus.points, 100, 0, 255, 0, 0);
+            draw_coords(&mut pixels, sqr, &edges[b_plus].points, 100, 0, 255, 0, 0);
             draw_coords(&mut pixels,
                         sqr,
                         &flip_coords(&edge_c.points),
