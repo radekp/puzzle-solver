@@ -974,8 +974,10 @@ fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
 fn compare_edge_with_others2_helper(edge_e: &mut EdgeInfo,
                                     distances: &mut Vec<usize>,
                                     others: &mut [EdgeInfo],
-                                    max_width: usize,
-                                    max_height: usize) {
+                                    max_width: usize) {
+
+    // One edge must be flipped
+    let ref mut points_e = &flip_coords(&edge_e.points);
 
     for edge_o in others {
         let mut diff = 0;
@@ -986,11 +988,7 @@ fn compare_edge_with_others2_helper(edge_e: &mut EdgeInfo,
             // Compute best distance to edge from given x,y (point e) on first hit
             if best_dst == usize::max_value() {
 
-                for point_e in edge_e.points.iter() {
-
-                    // One point must be flipped (flipping a is faster)
-                    let e = (edge_e.max_x - point_e.0, edge_e.max_y - point_e.1);
-
+                for e in points_e.iter() {
                     let dx = (o.0 as isize) - (e.0 as isize);
                     let dy = (o.1 as isize) - (e.1 as isize);
                     let dst = (dx * dx + dy * dy) as usize;
@@ -1020,8 +1018,8 @@ fn compare_edge_with_others2(edges: &mut Vec<EdgeInfo>,
 
     let ref mut edge = c[0];
 
-    compare_edge_with_others2_helper(edge, &mut distances, a, max_width, max_height);
-    compare_edge_with_others2_helper(edge, &mut distances, d, max_width, max_height);
+    compare_edge_with_others2_helper(edge, &mut distances, a, max_width);
+    compare_edge_with_others2_helper(edge, &mut distances, d, max_width);
 
 }
 
