@@ -49,6 +49,7 @@ struct DisplayPixelState {
 struct EdgeInfo {
     points: Vec<(usize, usize)>,
     edge_no: usize, // e.g. 103 is 10.3.txt
+    edge_index: usize, // index to edges vector
     max_x: usize,
     max_y: usize,
     diff_to: Vec<usize>, // distance sum to edge at given index (in edges vector)
@@ -562,18 +563,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
-                 None,
-                 Some(Rect::new(shift as i32, shift as i32, width, height)),
-                 angle,
-                 None,
-                 false,
-                 false)
+                     None,
+                     Some(Rect::new(shift as i32, shift as i32, width, height)),
+                     angle,
+                     None,
+                     false,
+                     false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                     PixelFormatEnum::RGB24)
+                                          PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -970,6 +971,61 @@ fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
     return (a.max_x * a.max_y).cmp(&(b.max_x * b.max_y));
 }
 
+fn compare_edge_with_others2_helper(edge_e: &mut EdgeInfo,
+                                    distances: &mut Vec<usize>,
+                                    others: &mut [EdgeInfo],
+                                    max_width: usize,
+                                    max_height: usize) {
+
+    for edge_o in others {
+        let mut diff = 0;
+        for o in edge_o.points.iter() {
+            let offset = max_width * o.1 + o.0;
+            let mut best_dst = distances[offset]; // precomputed distance for edge_e
+
+            // Compute best distance to edge from given x,y (point e) on first hit
+            if best_dst == usize::max_value() {
+
+                for point_e in edge_e.points.iter() {
+
+                    // One point must be flipped (flipping a is faster)
+                    let e = (edge_e.max_x - point_e.0, edge_e.max_y - point_e.1);
+
+                    let dx = (o.0 as isize) - (e.0 as isize);
+                    let dy = (o.1 as isize) - (e.1 as isize);
+                    let dst = (dx * dx + dy * dy) as usize;
+                    if dst < best_dst {
+                        best_dst = dst;
+                    }
+                }
+                distances[offset] = best_dst;
+            }
+            diff += best_dst;
+        }
+        edge_e.diff_to[edge_o.edge_index] += diff; // so that we compare a->b
+        edge_o.diff_to[edge_e.edge_index] += diff; // and b->a
+    }
+}
+
+fn compare_edge_with_others2(edges: &mut Vec<EdgeInfo>,
+                             edge_index: usize,
+                             max_width: usize,
+                             max_height: usize) {
+
+    let (a, b) = edges.split_at_mut(edge_index);
+    let (c, d) = b.split_at_mut(1);
+
+    // For each x,y there is distance to edge at edge_index
+    let mut distances = vec![usize::max_value();max_width*max_height];
+
+    let ref mut edge = c[0];
+
+    compare_edge_with_others2_helper(edge, &mut distances, a, max_width, max_height);
+    compare_edge_with_others2_helper(edge, &mut distances, d, max_width, max_height);
+
+}
+
+
 fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
                             edge_index: usize,
                             max_width: usize,
@@ -1167,6 +1223,7 @@ fn main() {
             max_y: max_y,
             diff_to: vec![],
             best_diff: vec![],
+            edge_index: usize::max_value(),
         };
         edges.push(edge_info);
     }
@@ -1220,6 +1277,16 @@ fn main() {
         edges.swap(i, pref_indices[i]);
     }
 
+    // Hashmap to get index by edge_no
+    let mut edge_nums = HashMap::new();
+    for i in 0..edges_len {
+        let ref mut edge_i = edges[i];
+        let i_no = edge_i.edge_no;
+        println!("edge={}.{}", i_no >> 2, i_no & 3);
+        edge_nums.insert(i_no, i);
+        edge_i.edge_index = i;
+    }
+
     for i in 0..edges_len {
         let edge_no = edges[i].edge_no;
         println!("comparing edge {:>4}.{} {}/{} with others",
@@ -1227,18 +1294,11 @@ fn main() {
                  edge_no & 3,
                  i,
                  edges_len);
-        compare_edge_with_others(&mut edges, i, max_width, max_height);
+        compare_edge_with_others2(&mut edges, i, max_width, max_height);
     }
 
     // Foreach edge index find top 10 best matching
     compute_best_diffs(&mut edges, 10);
-
-    // Hashmap to get index by edge_no
-    let mut edge_nums = HashMap::new();
-    for i in 0..edges_len {
-        println!("edge={}.{}", edges[i].edge_no >> 2, edges[i].edge_no & 3);
-        edge_nums.insert(edges[i].edge_no, i);
-    }
 
     println!("Compared edges:");
     println!("");
