@@ -972,7 +972,8 @@ fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
 }
 
 fn compare_edge_with_others2_helper(me: &mut EdgeInfo,
-                                    my_distances: &mut Vec<usize>,
+                                    my_distances: &mut Vec<(usize, usize, usize)>,
+                                    other_distances: &mut Vec<(usize, usize)>,
                                     others: &mut [EdgeInfo],
                                     max_width: usize) {
 
@@ -981,27 +982,57 @@ fn compare_edge_with_others2_helper(me: &mut EdgeInfo,
 
     for edge_o in others {
         let mut diff = 0;
+
+        if me.diff_to[edge_o.edge_index] != usize::max_value() {
+            continue;
+        }
+
+        // Distance from other->me
         for o in edge_o.points.iter() {
             let my_offset = max_width * o.1 + o.0;
-            let mut best_dst = my_distances[my_offset]; // precomputed distance for my.points
+            let mut my_best = my_distances[my_offset]; // precomputed distance for my.points
 
             // Compute best distance to edge from given x,y (point e) on first hit
-            if best_dst == usize::max_value() {
+            if my_best.0 == usize::max_value() {
 
                 for m in my_points.iter() {
                     let dx = (o.0 as isize) - (m.0 as isize);
                     let dy = (o.1 as isize) - (m.1 as isize);
                     let dst = (dx * dx + dy * dy) as usize;
-                    if dst < best_dst {
-                        best_dst = dst;
+                    if dst < my_best.0 {
+                        my_best = (dst, m.0, m.1);
                     }
                 }
-                my_distances[my_offset] = best_dst;
+                my_distances[my_offset] = my_best;
+            }
+            diff += my_best.0;
+
+            // The same distance can be used for computing me->other distance
+            other_distances[max_width * my_best.2 + my_best.1] = (edge_o.edge_no, my_best.0)
+        }
+
+        // Distance from me->other
+        for m in my_points.iter() {
+            // Reuse distance from above ^^^ if possible
+            let other_dst = other_distances[m.1 * max_width + m.0];
+            if other_dst.0 == edge_o.edge_no {
+                diff += other_dst.1;
+                continue;
+            }
+            let mut best_dst = usize::max_value();
+            for o in edge_o.points.iter() {
+                let dx = (o.0 as isize) - (m.0 as isize);
+                let dy = (o.1 as isize) - (m.1 as isize);
+                let dst = (dx * dx + dy * dy) as usize;
+                if dst < best_dst {
+                    best_dst = dst;
+                }
             }
             diff += best_dst;
         }
+
         me.diff_to[edge_o.edge_index] = diff; // so that we compare a->b
-        //edge_o.diff_to[edge_e.edge_index] += diff; // and b->a
+        edge_o.diff_to[me.edge_index] = diff; // and b->a
     }
 }
 
@@ -1010,23 +1041,27 @@ fn compare_edge_with_others2(edges: &mut Vec<EdgeInfo>,
                              max_width: usize,
                              max_height: usize) {
 
-    if edges[edge_index].diff_to.len() > 0 {
+    // When we have best diffs, it must be compared
+    if edges[edge_index].best_diff.len() > 0 {
         return;
     }
+
+    // Use split_at_mut so that we can have mut ref to self edge and other edges
     let edges_len = edges.len();
 
     let (a, b) = edges.split_at_mut(edge_index);
     let (c, d) = b.split_at_mut(1);
 
-    // For each x,y there is distance to edge at edge_index
-    let mut my_distances = vec![usize::max_value();max_width*max_height];
+    // For each offset=y*max_width+x there is distance and closest point on edge
+    let mut my_distances = vec![(usize::max_value(),0,0);max_width*max_height];
+
+    // For some offset=y*max_width+x, there is edge_no and distance to point on my edge
     let mut other_distances = vec![(usize::max_value(), usize::max_value());max_width*max_height];
 
-    let ref mut edge = c[0];
-    edge.diff_to = vec![0; edges_len];
+    let ref mut me = c[0];
 
-    compare_edge_with_others2_helper(edge, &mut my_distances, a, max_width);
-    compare_edge_with_others2_helper(edge, &mut my_distances, d, max_width);
+    compare_edge_with_others2_helper(me, &mut my_distances, &mut other_distances, a, max_width);
+    compare_edge_with_others2_helper(me, &mut my_distances, &mut other_distances, d, max_width);
 }
 
 // Compute egge.best_diff vector
@@ -1054,16 +1089,7 @@ fn compute_best_diff(i: usize,
         if i == j {
             continue; // dont compare with self
         }
-        let diff_ij = edges[i].diff_to[j];
-        let worst = edges[i].best_diff[num_best - 1].1;
-        if diff_ij > worst {
-            continue;
-        }
-
-        compare_edge_with_others2(edges, j, max_width, max_height);
-        let diff_ji = edges[j].diff_to[i];
-        let diff = diff_ij + diff_ji;
-
+        let diff = edges[i].diff_to[j];
         for k in 0..edges[i].best_diff.len() {
             // index to best
             let mut b = edges[i].best_diff[k];
@@ -1266,6 +1292,7 @@ fn main() {
         //println!("edge={}.{}", i_no >> 2, i_no & 3);
         edge_nums.insert(i_no, i);
         edge_i.edge_index = i;
+        edge_i.diff_to = vec![usize::max_value();edges_len];
     }
 
     /*for i in 0..edges_len {
@@ -1400,7 +1427,7 @@ fn main() {
 
             // The last edge can be marked as solved and thus not loaded
             if a_minus_ret.is_none() {
-		continue;
+                continue;
             }
 
             let a_minus = *a_minus_ret.unwrap();
