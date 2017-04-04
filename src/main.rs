@@ -1262,7 +1262,7 @@ fn main() {
     for i in 0..edges_len {
         let ref mut edge_i = edges[i];
         let i_no = edge_i.edge_no;
-        println!("edge={}.{}", i_no >> 2, i_no & 3);
+        //println!("edge={}.{}", i_no >> 2, i_no & 3);
         edge_nums.insert(i_no, i);
         edge_i.edge_index = i;
     }
@@ -1469,8 +1469,8 @@ fn main() {
                                  &mut renderer,
                                  &mut display_state) {
                 UserAction::Solve => {
-                    write_done_file(&format!("data/{}.txt", a_no));
-                    write_done_file(&format!("data/{}.txt", b_no));
+                    write_done_file(&format!("data/{}.{}.txt", a_no >> 2, a_no & 3));
+                    write_done_file(&format!("data/{}.{}.txt", b_no >> 2, b_no & 3));
                 }
                 _ => {}
             }
