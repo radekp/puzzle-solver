@@ -1020,13 +1020,15 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
 // Compute egge.best_diff vector
 fn compute_best_diff(i: usize,
                      mut edges: &mut Vec<EdgeInfo>,
-                     num_best: usize,
+                     max_best_index: usize,
                      max_width: usize,
                      max_height: usize) {
 
-    if edges[i].best_diff.len() > 0 {
+    if edges[i].best_diff.len() > max_best_index {
         return;
     }
+    let num_best = max_best_index + 1;
+
     let edges_len = edges.len();
 
     // Compare self with all other edges
@@ -1048,7 +1050,7 @@ fn compute_best_diff(i: usize,
             continue;       // dont compare with self
         }
 
-        if diff_ij > best_diff[num_best-1].1 {
+        if diff_ij > best_diff[max_best_index].1 {
             continue;   // even one way compare is worse then last one...
         }
 
@@ -1296,8 +1298,6 @@ fn main() {
     for a in 0..edges_len {
         let a_no = edges[a].edge_no;
 
-        compute_best_diff(a, &mut edges, 10, max_width, max_height);
-
         // Loop to compare combination of best edges, e.g. 1stJ..1stP, 1stJ..2ndM, 2ndJ..2ndM
         let mut best_final_score = usize::max_value();
         let mut combi_counter = 0;
@@ -1325,9 +1325,9 @@ fn main() {
             combi_counter += 1;
 
             //     B  <-  A
+            compute_best_diff(a, &mut edges, combi.0, max_width, max_height);
             let (b, diff_b) = edges[a].best_diff[combi.0];
             let b_no = edges[b].edge_no;
-            compute_best_diff(b, &mut edges, 10, max_width, max_height);
 
             println!("{:>4}.{}->{:>4}.{}                 {:>12}",
                      a_no >> 2,
@@ -1342,12 +1342,10 @@ fn main() {
             //     B  <-  A
             let b_plus_no = side_plus(b_no);
             let b_plus = *edge_nums.get(&b_plus_no).unwrap();
-            compute_best_diff(b_plus, &mut edges, 10, max_width, max_height);
 
+            compute_best_diff(b_plus, &mut edges, combi.1, max_width, max_height);
             let (c, diff_c) = edges[b_plus].best_diff[combi.1];
             let c_no = edges[c].edge_no;
-            compute_best_diff(c, &mut edges, 10, max_width, max_height);
-
 
             println!("        {:>4}.{}->{:>4}.{}         {:>12}",
                      b_plus_no >> 2,
@@ -1362,12 +1360,10 @@ fn main() {
             //     B  <-  A
             let c_plus_no = side_plus(c_no);
             let c_plus = *edge_nums.get(&c_plus_no).unwrap();
-            compute_best_diff(c_plus, &mut edges, 10, max_width, max_height);
 
+            compute_best_diff(c_plus, &mut edges, combi.2, max_width, max_height);
             let (d, diff_d) = edges[c_plus].best_diff[combi.2];
             let d_no = edges[d].edge_no;
-            compute_best_diff(d, &mut edges, 10, max_width, max_height);
-
 
             println!("                {:>4}.{}->{:>4}.{} {:>12}",
                      c_plus_no >> 2,
@@ -1384,7 +1380,6 @@ fn main() {
             //     B  <-  A
             let d_plus_no = side_plus(d_no);
             let d_plus = *edge_nums.get(&d_plus_no).unwrap();
-            compute_best_diff(d_plus, &mut edges, 10, max_width, max_height);
 
             let a_minus_no = side_minus(a_no);
             let a_minus_ret = edge_nums.get(&a_minus_no);
@@ -1395,8 +1390,8 @@ fn main() {
             }
 
             let a_minus = *a_minus_ret.unwrap();
-            compute_best_diff(a_minus, &mut edges, 10, max_width, max_height);
-
+            compare_edge_with_others(&mut edges, a_minus, max_width, max_height);
+            compare_edge_with_others(&mut edges, d_plus, max_width, max_height);
             let diff_a_minus = edges[a_minus].diff_to[d_plus] + edges[d_plus].diff_to[a_minus];
 
             let final_score = diff_b + diff_c + diff_d + diff_a_minus;
