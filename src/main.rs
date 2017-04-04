@@ -976,13 +976,19 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
                             max_width: usize,
                             max_height: usize) {
 
+    if edges[edge_index].diff_to.len() > 0 {
+        return;
+    }
+    let edges_len = edges.len();
+    edges[edge_index].diff_to = vec![usize::max_value();edges_len];
+
     // For each x,y there is distance to edge at edge_index
     let mut distances = vec![usize::max_value();max_width*max_height];
 
     let edge_max_x = edges[edge_index].max_x;
     let edge_max_y = edges[edge_index].max_y;
 
-    for i in 0..edges.len() {
+    for i in 0..edges_len {
         if i == edge_index {
             continue;
         }
@@ -1022,22 +1028,34 @@ fn compute_best_diff(i: usize,
         return;
     }
     let edges_len = edges.len();
+    println!("compute_best_diff i={}", i);
 
     // Compare self with all other edges
     compare_edge_with_others(&mut edges, i, max_width, max_height);
+    println!("1");
 
     // Init best_diff with 10 values - index must be != me (i+1) % edges_len works
     let mut best_diff = vec![((i + 1) % edges_len, usize::max_value()); num_best];
 
     // We will take diff for each i->j compare
-    for j in 0..edges[i].diff_to.len() {
+    for j in 0..edges_len {
         if i == j {
             continue; // dont compare with self
         }
-        let diff = edges[i].diff_to[j];
+        let diff_ij = edges[i].diff_to[j];
         for k in 0..best_diff.len() {
             // index to best
             let mut b = best_diff[k];
+            if diff_ij > b.1 {          // one way compare is worse, we can go on
+                continue;
+            }
+            //println!("j={} diff_ij={} b={}", j, diff_ij, b.1);
+            if edges[j].diff_to.len() == 0 {
+                println!("1 compare_edge_with_others j={} len={}", j, edges[j].diff_to.len());
+                compare_edge_with_others(&mut edges, j, max_width, max_height);
+                println!("2 compare_edge_with_others j={} len={}", j, edges[j].diff_to.len());
+            }
+            let diff = diff_ij + edges[j].diff_to[i];
             if diff > b.1 {
                 continue;
             }
@@ -1210,7 +1228,7 @@ fn main() {
     let mut renderer = window.renderer().build().unwrap();
 
     // Sort similar edges (by volume of widht*height)
-    //edges.sort_by(|a, b| compare_edge_info(a, b));
+    edges.sort_by(|a, b| compare_edge_info(a, b));
 
     // Prefer pieces from command line
     let mut pref_indices = vec![];
@@ -1239,7 +1257,6 @@ fn main() {
         //println!("edge={}.{}", i_no >> 2, i_no & 3);
         edge_nums.insert(i_no, i);
         edge_i.edge_index = i;
-        edge_i.diff_to = vec![usize::max_value();edges_len];
     }
 
     /*for i in 0..edges_len {
@@ -1368,7 +1385,7 @@ fn main() {
             let a_minus = *a_minus_ret.unwrap();
             compute_best_diff(a_minus, &mut edges, 10, max_width, max_height);
 
-            let diff_a_minus = edges[a_minus].diff_to[d_plus];
+            let diff_a_minus = edges[a_minus].diff_to[d_plus] + edges[d_plus].diff_to[a_minus];
 
             let final_score = diff_b + diff_c + diff_d + diff_a_minus;
 
