@@ -981,11 +981,12 @@ fn compare_edge_with_others2_helper(me: &mut EdgeInfo,
     let ref mut my_points = &flip_coords(&me.points);
 
     for edge_o in others {
-        let mut diff = 0;
-
         if me.diff_to[edge_o.edge_index] != usize::max_value() {
             continue;
         }
+
+        // Me->other + other->me difference
+        let mut diff = 0;
 
         // Distance from other->me
         for o in edge_o.points.iter() {
@@ -1071,41 +1072,44 @@ fn compute_best_diff(i: usize,
                      max_width: usize,
                      max_height: usize) {
 
-    if edges[i].best_diff.len() > 0 {
-        return;
-    }
-
-    let edges_len = edges.len();
-
-    // Init best_diff with 10 values
-    let init_j = (i + 1) % edges_len;
-    for _ in 0..num_best {
-        edges[i].best_diff.push((init_j, usize::max_value()));
-    }
-
-    // We will take diff for each i->j compare
-    for j in 0..edges[i].diff_to.len() {
-
-        if i == j {
-            continue; // dont compare with self
+    {
+        let edges_len = edges.len();
+        let ref mut me = edges[i];
+        if me.best_diff.len() > 0 {
+            return;
         }
-        let diff = edges[i].diff_to[j];
-        for k in 0..edges[i].best_diff.len() {
-            // index to best
-            let mut b = edges[i].best_diff[k];
-            if diff <= b.1 {
-                edges[i].best_diff[k] = (j, diff); // replace best
-                let mut kk = k + 1;
-                while kk < edges[i].best_diff.len() {
-                    // places the prev best after it
-                    let tmp = edges[i].best_diff[kk];
-                    edges[i].best_diff[kk] = b;
-                    b = tmp;
-                    kk += 1;
+
+        // Compare self with all other edges
+        compare_edge_with_others2(&mut edges, i, max_width, max_height);
+
+        // Init best_diff with 10 values - index must be != me (i+1) % edges_len works
+        let mut best_diff = vec![((i + 1) % edges_len, usize::max_value()); num_best];
+
+        // We will take diff for each i->j compare
+        for j in 0..me.diff_to.len() {
+
+            if i == j {
+                continue; // dont compare with self
+            }
+            let diff = me.diff_to[j];
+            for k in 0..best_diff.len() {
+                // index to best
+                let mut b = best_diff[k];
+                if diff <= b.1 {
+                    best_diff[k] = (j, diff); // replace best
+                    let mut kk = k + 1;
+                    while kk < best_diff.len() {
+                        // places the prev best after it
+                        let tmp = best_diff[kk];
+                        best_diff[kk] = b;
+                        b = tmp;
+                        kk += 1;
+                    }
+                    break;
                 }
-                break;
             }
         }
+        me.best_diff = best_diff;
     }
 
     /*let i_no = edges[i].edge_no;
