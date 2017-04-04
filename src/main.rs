@@ -1395,7 +1395,14 @@ fn main() {
             compute_best_diff(d_plus, &mut edges, 10, max_width, max_height);
 
             let a_minus_no = side_minus(a_no);
-            let a_minus = *edge_nums.get(&a_minus_no).unwrap();
+            let a_minus_ret = edge_nums.get(&a_minus_no);
+            
+            // The last edge can be marked as solved and thus not loaded
+            if a_minus_ret.is_none() {
+		continue;
+            }
+            
+            let a_minus = *a_minus_ret.unwrap();
 
             compare_edge_with_others2(&mut edges, a_minus, max_width, max_height);
             compute_best_diff(a_minus, &mut edges, 10, max_width, max_height);
