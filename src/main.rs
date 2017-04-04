@@ -1236,7 +1236,7 @@ fn main() {
     let mut renderer = window.renderer().build().unwrap();
 
     // Sort similar edges (by volume of widht*height)
-    edges.sort_by(|a, b| compare_edge_info(a, b));
+    //edges.sort_by(|a, b| compare_edge_info(a, b));
 
     // Prefer pieces from command line
     let mut pref_indices = vec![];
