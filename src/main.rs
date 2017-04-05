@@ -987,12 +987,37 @@ fn flip_coords(coords: &Vec<(usize, usize)>) -> Vec<(usize, usize)> {
         max_y = cmp::max(p.1, max_y);
     }
 
-    let mut res = vec![];
+    let mut res = Vec::with_capacity(coords.len());
     for p in coords {
         res.push((max_x - p.0, max_y - p.1));
     }
     res.reverse();
     return res;
+}
+
+fn rotate_piece(points: &Vec<(usize, usize)>, side: usize) -> Vec<(usize, usize)> {
+
+    let max = max_xy(&points);
+    let mut res = Vec::with_capacity(points.len());
+
+    if side == 0 {
+        for p in points.iter() {
+            res.push((p.0, p.1));
+        }
+    } else if side == 1 {
+        for p in points.iter() {
+            res.push((p.1, max.0 - p.0));
+        }
+    } else if side == 2 {
+        for p in points.iter() {
+            res.push((max.1 - p.1, p.0));
+        }
+    } else {
+        for p in points.iter() {
+            res.push((max.0 - p.0, max.1 - p.1));
+        }
+    }
+    res
 }
 
 fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
@@ -1305,7 +1330,7 @@ fn main() {
              max_y);
 
     // SDL window - make it modulo 4 to play well with texture pitch
-    let sqr = 2 * cmp::max(max_width, max_height) + 5 & !3usize;
+    let sqr = 4 * cmp::max(max_width, max_height) + 5 & !3usize;
 
     let mut pixels: Vec<u8> = vec![0;3*sqr*sqr];
     let video_subsystem = sdl_context.video().unwrap();
@@ -1455,18 +1480,22 @@ fn main() {
             //     ^      ^
             //     |      |
             //     B  <-  A
+            //
+            // The last edge can be marked as solved and thus not loaded
             let d_plus_no = side_plus(d_no);
-            let d_plus = *edge_nums.get(&d_plus_no).unwrap();
+            let d_plus_ret = edge_nums.get(&d_plus_no);
+            if d_plus_ret.is_none() {
+                continue;
+            }
+            let d_plus = *d_plus_ret.unwrap();
 
             let a_minus_no = side_minus(a_no);
             let a_minus_ret = edge_nums.get(&a_minus_no);
-
-            // The last edge can be marked as solved and thus not loaded
             if a_minus_ret.is_none() {
                 continue;
             }
-
             let a_minus = *a_minus_ret.unwrap();
+
             let diff_a_minus = compare_edges(&mut edges, a_minus, d_plus) +
                                compare_edges(&mut edges, d_plus, a_minus);
 
@@ -1531,16 +1560,31 @@ fn main() {
                         255,
                         0);
 
-            /*let piece_a = pieces.get(&(a_no >> 2)).unwrap();
-	    let piece_b = pieces.get(&(b_no >> 2)).unwrap();
-	    let piece_c = pieces.get(&(c_no >> 2)).unwrap();
-	    let piece_d = pieces.get(&(d_no >> 2)).unwrap();
-	    let max_a = max_xy(piece_a);
+            let piece_a = rotate_piece(pieces.get(&(a_no >> 2)).unwrap(), a_no & 3);
+            let piece_b = rotate_piece(pieces.get(&(b_no >> 2)).unwrap(), b_no & 3);
+            let piece_c = rotate_piece(pieces.get(&(c_no >> 2)).unwrap(), c_no & 3);
+            let piece_d = rotate_piece(pieces.get(&(d_no >> 2)).unwrap(), d_no & 3);
+            let max_a = max_xy(&piece_a);
 
-	    draw_coords(&mut pixels, sqr, piece_a, 0, max_height, 255, 0, 0);
-	    draw_coords(&mut pixels, sqr, piece_b, max_a.0, max_height, 0, 255, 0);
-	    draw_coords(&mut pixels, sqr, piece_c, 0, max_height + max_a.1, 0, 255, 0);
-	    draw_coords(&mut pixels, sqr, piece_d, max_a.0, max_height + max_a.1, 0, 255, 0);*/
+            draw_coords(&mut pixels,
+                        sqr,
+                        &piece_a,
+                        max_a.0,
+                        max_height + max_a.1,
+                        255,
+                        0,
+                        0);
+            draw_coords(&mut pixels,
+                        sqr,
+                        &piece_b,
+                        0,
+                        max_height + max_a.1,
+                        0,
+                        255,
+                        0);
+
+            draw_coords(&mut pixels, sqr, &piece_c, 0, max_height, 0, 0, 255);
+            draw_coords(&mut pixels, sqr, &piece_d, max_a.0, max_height, 255, 255, 255);
 
             match display_pixels(&pixels,
                                  sqr,
@@ -1549,7 +1593,7 @@ fn main() {
                                  &mut display_state) {
                 UserAction::Solve => {
                     write_done_file(&format!("data/{}.{}.txt", a_no >> 2, a_no & 3));
-                    write_done_file(&format!("data/{}.{}.txt", b_no >> 2, b_no & 3));
+                    //write_done_file(&format!("data/{}.{}.txt", b_no >> 2, b_no & 3));
                 }
                 _ => {}
             }
