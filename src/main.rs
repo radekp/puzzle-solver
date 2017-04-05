@@ -1019,15 +1019,18 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
 
 fn compare_edges(edges: &mut Vec<EdgeInfo>, index_b: usize, index_a: usize) -> usize {
 
-    let mut diff = 0;
-    let b_max_x = edges[index_b].max_x;
-    let b_max_y = edges[index_b].max_y;
+    // Use diff_to if computed, otherwise get max_x and max_y from b
+    let ref edge_b = edges[index_b];
+    if edge_b.diff_to.len() > 0 {
+        return edge_b.diff_to[index_a];
+    }
 
+    let mut diff = 0;
     for a in edges[index_a].points.iter() {
         let mut best_dst = usize::max_value();
         for point_b in edges[index_b].points.iter() {
             // One point must be flipped
-            let b = (b_max_x - point_b.0, b_max_y - point_b.1);
+            let b = (edge_b.max_x - point_b.0, edge_b.max_y - point_b.1);
             let dx = (b.0 as isize) - (a.0 as isize);
             let dy = (b.1 as isize) - (a.1 as isize);
             let dst = (dx * dx + dy * dy) as usize;
@@ -1037,6 +1040,7 @@ fn compare_edges(edges: &mut Vec<EdgeInfo>, index_b: usize, index_a: usize) -> u
         }
         diff += best_dst;
     }
+
     return diff;
 }
 
@@ -1077,13 +1081,8 @@ fn compute_best_diff(i: usize,
             continue; // even one way compare is worse then last one...
         }
 
-        // Diff for j->i direction
-        let diff_ji = if edges[j].diff_to.len() > 0 {
-            edges[j].diff_to[i]
-        } else {
-            compare_edges(edges, j, i)
-        };
-        let diff = diff_ij + diff_ji;
+        // Add diff for j->i direction
+        let diff = diff_ij + compare_edges(edges, j, i);
 
         for k in 0..num_best {
             // (index, diff) of k.th best
@@ -1415,9 +1414,8 @@ fn main() {
             }
 
             let a_minus = *a_minus_ret.unwrap();
-            compare_edge_with_others(&mut edges, a_minus, max_width, max_height);
-            compare_edge_with_others(&mut edges, d_plus, max_width, max_height);
-            let diff_a_minus = edges[a_minus].diff_to[d_plus] + edges[d_plus].diff_to[a_minus];
+            let diff_a_minus = compare_edges(&mut edges, a_minus, d_plus) +
+                               compare_edges(&mut edges, d_plus, a_minus);
 
             let final_score = diff_b + diff_c + diff_d + diff_a_minus;
 
