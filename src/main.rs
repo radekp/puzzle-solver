@@ -842,7 +842,7 @@ fn process_png(img_file: &str,
             let corner_delta = cmp::max(top_x, bot_x) - cmp::min(top_x, bot_x);
 
             //println!("corner_delta={}", corner_delta);
-            if corner_delta < best_corner_delta {
+            if corner_delta <= best_corner_delta {
                 best_corner_delta = corner_delta;
                 best_corner_angle = angle;
             }
@@ -852,7 +852,13 @@ fn process_png(img_file: &str,
                 _ => {}
             }
 
-            r += 0.2f64;
+            if corner_delta > 10 {
+                r += 1f64;
+            } else if corner_delta > 5 {
+                r += 0.5f64;
+            } else {
+                r += 0.02f64;
+            }
             if r > 10f64 {
                 break;
             }
