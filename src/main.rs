@@ -1559,10 +1559,10 @@ fn main() {
                         255,
                         0);
 
-            let piece_a = rotate_piece(pieces.get(&(a_no >> 2)).unwrap(), a_no & 3);
-            let piece_b = rotate_piece(pieces.get(&(b_no >> 2)).unwrap(), b_no & 3);
-            let piece_c = rotate_piece(pieces.get(&(c_no >> 2)).unwrap(), c_no & 3);
-            let piece_d = rotate_piece(pieces.get(&(d_no >> 2)).unwrap(), d_no & 3);
+            let piece_a = rotate_piece(pieces.get(&(a_no >> 2)).unwrap(), 0);
+            let piece_b = rotate_piece(pieces.get(&(b_no >> 2)).unwrap(), 0);
+            let piece_c = rotate_piece(pieces.get(&(c_no >> 2)).unwrap(), 0);
+            let piece_d = rotate_piece(pieces.get(&(d_no >> 2)).unwrap(), 0);
             let max_a = max_xy(&piece_a);
 
             draw_coords(&mut pixels,
