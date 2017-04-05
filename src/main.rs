@@ -8,7 +8,6 @@ use std::fs::File;
 use std::path::Path;
 use std::str::FromStr;
 use std::error::Error;
-use std::cmp::Ordering;
 use std::io::prelude::*;
 use std::collections::HashMap;
 
@@ -902,7 +901,7 @@ fn process_png(img_file: &str,
 
         // Save all border points to file
         if side == 0 {
-            let mut border = get_points(&pixels, sqr, bounds, RED_MASK_BORDER);
+            let border = get_points(&pixels, sqr, bounds, RED_MASK_BORDER);
             save_points(&border, img_file, &format!("{}.txt", png_no));
         }
 
@@ -949,6 +948,17 @@ fn read_txt(txt_file: &str) -> Vec<(usize, usize)> {
     return coords;
 }
 
+fn max_xy(coords: &Vec<(usize, usize)>) -> (usize, usize) {
+
+    let mut max_x = 0;
+    let mut max_y = 0;
+    for p in coords {
+        max_x = cmp::max(p.0, max_x);
+        max_y = cmp::max(p.1, max_y);
+    }
+    (max_x, max_y)
+}
+
 fn draw_coords(pixels: &mut Vec<u8>,
                sqr: usize,
                coords: &Vec<(usize, usize)>,
@@ -983,10 +993,6 @@ fn flip_coords(coords: &Vec<(usize, usize)>) -> Vec<(usize, usize)> {
     }
     res.reverse();
     return res;
-}
-
-fn compare_edge_info(a: &EdgeInfo, b: &EdgeInfo) -> Ordering {
-    return (a.max_x * a.max_y).cmp(&(b.max_x * b.max_y));
 }
 
 fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
@@ -1209,6 +1215,7 @@ fn main() {
 
     // Read txt files with edges
     let mut edges = vec![];
+    let mut pieces = HashMap::new();
     let entries = fs::read_dir("./data").unwrap();
     for entry in entries {
 
@@ -1217,16 +1224,22 @@ fn main() {
             continue;
         }
 
-        let filename_nums: usize = path.file_stem()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .replace(".", "")
-            .parse()
-            .unwrap();
+        let (edge_no, piece_no) = {
 
-        // 12.3.txt -> 123 -> 4 * 12 + 3
-        let edge_no: usize = 4 * (filename_nums / 10) + (filename_nums % 10);
+            let file_stem = path.file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap();
+
+            let filename_nums: usize = file_stem.replace(".", "").parse().unwrap();
+
+            if file_stem.contains(".") {
+                // edge no: 12.3.txt -> 123 -> 4 * 12 + 3
+                (4 * (filename_nums / 10) + (filename_nums % 10), usize::max_value())
+            } else {
+                (usize::max_value(), filename_nums) // piece_no
+            }
+        };
 
         let path_str = path.into_os_string().into_string().unwrap();
 
@@ -1237,7 +1250,13 @@ fn main() {
 
         let points = read_txt(&path_str);
 
-        // Compute height
+        // If it's pieces, just read points
+        if piece_no != usize::max_value() {
+            pieces.insert(piece_no, points);
+            continue;
+        }
+
+        // It's edge. Compute height and add EdgeInfo
         let mut max_x = 0;
         let mut max_y = 0;
         for p in points.iter() {
@@ -1511,6 +1530,17 @@ fn main() {
                         0,
                         255,
                         0);
+
+            /*let piece_a = pieces.get(&(a_no >> 2)).unwrap();
+	    let piece_b = pieces.get(&(b_no >> 2)).unwrap();
+	    let piece_c = pieces.get(&(c_no >> 2)).unwrap();
+	    let piece_d = pieces.get(&(d_no >> 2)).unwrap();
+	    let max_a = max_xy(piece_a);
+
+	    draw_coords(&mut pixels, sqr, piece_a, 0, max_height, 255, 0, 0);
+	    draw_coords(&mut pixels, sqr, piece_b, max_a.0, max_height, 0, 255, 0);
+	    draw_coords(&mut pixels, sqr, piece_c, 0, max_height + max_a.1, 0, 255, 0);
+	    draw_coords(&mut pixels, sqr, piece_d, max_a.0, max_height + max_a.1, 0, 255, 0);*/
 
             match display_pixels(&pixels,
                                  sqr,
