@@ -563,18 +563,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
-                 None,
-                 Some(Rect::new(shift as i32, shift as i32, width, height)),
-                 angle,
-                 None,
-                 false,
-                 false)
+                     None,
+                     Some(Rect::new(shift as i32, shift as i32, width, height)),
+                     angle,
+                     None,
+                     false,
+                     false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                     PixelFormatEnum::RGB24)
+                                          PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -1017,6 +1017,29 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
     }
 }
 
+fn compare_edges(edges: &mut Vec<EdgeInfo>, index_b: usize, index_a: usize) -> usize {
+
+    let mut diff = 0;
+    let b_max_x = edges[index_b].max_x;
+    let b_max_y = edges[index_b].max_y;
+
+    for a in edges[index_a].points.iter() {
+        let mut best_dst = usize::max_value();
+        for point_b in edges[index_b].points.iter() {
+            // One point must be flipped
+            let b = (b_max_x - point_b.0, b_max_y - point_b.1);
+            let dx = (b.0 as isize) - (a.0 as isize);
+            let dy = (b.1 as isize) - (a.1 as isize);
+            let dst = (dx * dx + dy * dy) as usize;
+            if dst < best_dst {
+                best_dst = dst;
+            }
+        }
+        diff += best_dst;
+    }
+    return diff;
+}
+
 // Compute egge.best_diff vector
 fn compute_best_diff(i: usize,
                      mut edges: &mut Vec<EdgeInfo>,
@@ -1047,18 +1070,20 @@ fn compute_best_diff(i: usize,
     for (diff_ij, j) in diffs {
 
         if i == j {
-            continue;       // dont compare with self
+            continue; // dont compare with self
         }
 
         if diff_ij > best_diff[max_best_index].1 {
-            continue;   // even one way compare is worse then last one...
+            continue; // even one way compare is worse then last one...
         }
 
-        // Make sure that we have diff_to for j->i direction
-        if edges[j].diff_to.len() == 0 {
-            compare_edge_with_others(&mut edges, j, max_width, max_height);
-        }
-        let diff = diff_ij + edges[j].diff_to[i];
+        // Diff for j->i direction
+        let diff_ji = if edges[j].diff_to.len() > 0 {
+            edges[j].diff_to[i]
+        } else {
+            compare_edges(edges, j, i)
+        };
+        let diff = diff_ij + diff_ji;
 
         for k in 0..num_best {
             // (index, diff) of k.th best
@@ -1082,7 +1107,7 @@ fn compute_best_diff(i: usize,
                 b = tmp;
                 kk += 1;
             }
-            break;  // add to vector next j
+            break; // add to vector next j
         }
     }
     edges[i].best_diff = best_diff;
