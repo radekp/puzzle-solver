@@ -1244,12 +1244,28 @@ fn main() {
     // Max x and y in all edges, make diff_to vector
     let mut max_x = 0;
     let mut max_y = 0;
+    let mut max_x_edge_no = 0;
+    let mut max_y_edge_no = 0;
     for edge in edges.iter_mut() {
-        max_x = cmp::max(max_x, edge.max_x);
-        max_y = cmp::max(max_y, edge.max_y);
+        if edge.max_x > max_x {
+            max_x = edge.max_x;
+            max_x_edge_no = edge.edge_no;
+        }
+        if edge.max_y > max_y {
+            max_y = edge.max_y;
+            max_y_edge_no = edge.edge_no;
+        }
     }
     let max_width = max_x + 1;
     let max_height = max_y + 1;
+
+    println!("MAX x: {}.{}={} y: {}.{}={}",
+             max_x_edge_no >> 2,
+             max_x_edge_no & 3,
+             max_x,
+             max_y_edge_no >> 2,
+             max_y_edge_no & 3,
+             max_y);
 
     // SDL window - make it modulo 4 to play well with texture pitch
     let sqr = 2 * cmp::max(max_width, max_height) + 5 & !3usize;
