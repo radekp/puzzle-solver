@@ -837,7 +837,7 @@ fn process_png(img_file: &str,
         let mut best_corner_delta = usize::max_value();
         let mut best_corner_angle = 0f64;
 
-        let mut r = -10f64;
+        let mut r = -15f64;
         'rotating: loop {
 
             let angle = (90 * side) as f64 + r;
@@ -876,7 +876,7 @@ fn process_png(img_file: &str,
             } else {
                 r += 0.02f64;
             }
-            if r > 10f64 {
+            if r > 15f64 {
                 break;
             }
         }
@@ -1002,19 +1002,19 @@ fn rotate_piece(points: &Vec<(usize, usize)>, side: usize) -> Vec<(usize, usize)
 
     if side == 0 {
         for p in points.iter() {
-            res.push((p.0, p.1));
+            res.push((p.0 / 2, p.1 / 2));
         }
     } else if side == 1 {
         for p in points.iter() {
-            res.push((p.1, max.0 - p.0));
+            res.push((p.1 / 2, (max.0 - p.0) / 2));
         }
     } else if side == 2 {
         for p in points.iter() {
-            res.push((max.1 - p.1, p.0));
+            res.push(((max.0 - p.0) / 2, (max.1 - p.1) / 2));
         }
     } else {
         for p in points.iter() {
-            res.push((max.0 - p.0, max.1 - p.1));
+            res.push(((max.1 - p.1) / 2, p.0 / 2));
         }
     }
     res
@@ -1330,13 +1330,12 @@ fn main() {
              max_y);
 
     // SDL window - make it modulo 4 to play well with texture pitch
-    let sqr = 4 * cmp::max(max_width, max_height) + 5 & !3usize;
+    let sqr = 3 * cmp::max(max_width, max_height) + 5 & !3usize;
 
     let mut pixels: Vec<u8> = vec![0;3*sqr*sqr];
     let video_subsystem = sdl_context.video().unwrap();
 
     let window = video_subsystem.window("puzzle solver", sqr as u32, sqr as u32)
-        .position(0, 0)
         .opengl()
         .build()
         .unwrap();
