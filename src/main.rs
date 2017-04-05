@@ -205,11 +205,11 @@ fn flood_unfill(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) {
     }
 }*/
 
-fn flood_points(pixels: &mut Vec<u8>, sqr: usize, bounds: URect) -> Vec<(usize, usize)> {
+fn get_points(pixels: &Vec<u8>, sqr: usize, bounds: URect, red_mask: u8) -> Vec<(usize, usize)> {
     let mut res = vec![];
     for y in bounds.min_y..bounds.max_y {
         for x in bounds.min_x..bounds.max_x {
-            if pixels[3 * (sqr * y + x)] & RED_MASK_FLOOD_FILLED != 0 {
+            if pixels[3 * (sqr * y + x)] & red_mask != 0 {
                 res.push((x, y));
             }
         }
@@ -604,7 +604,7 @@ fn find_edge(pixels: &mut Vec<u8>,
              top_y: usize,
              bot_x: usize,
              bot_y: usize)
-             -> String {
+             -> Vec<(usize, usize)> {
 
     // Split border in top and bot points into 2 parts
     for i in 0..10 {
@@ -641,30 +641,15 @@ fn find_edge(pixels: &mut Vec<u8>,
         break;
     }
 
-    let mut edge = flood_points(pixels, sqr, bounds);
+    let mut edge = get_points(pixels, sqr, bounds, RED_MASK_FLOOD_FILLED);
 
     draw_coords(pixels, sqr, &edge, 0, 0, 0, 0, 255);
-
-    // Find min
-    let mut min_x = usize::max_value();
-    let mut min_y = usize::max_value();
-    for p in edge.iter() {
-        min_x = cmp::min(p.0, min_x);
-        min_y = cmp::min(p.1, min_y);
-    }
 
     // Sort edge by y and then by x, so that max_x,max_y is last so that
     // compare can be fast
     edge.sort_by(|a, b| (a.1 * sqr + a.0).cmp(&(b.1 * sqr + b.0)));
 
-    let mut res: String = "".to_string();
-    for p in edge.iter() {
-        if res.len() > 0 {
-            res += "\n";
-        }
-        res = res + &format!("{},{}", p.0 - min_x, p.1 - min_y);
-    }
-    res
+    edge
 }
 
 enum UserAction {
@@ -763,6 +748,39 @@ fn display_pixels(pixels: &Vec<u8>,
             }
         }
         // The rest of the game loop goes here...
+    }
+}
+
+fn save_points(points: &Vec<(usize, usize)>, img_file: &str, filename: &str) {
+
+    // Find min
+    let mut min_x = usize::max_value();
+    let mut min_y = usize::max_value();
+    for p in points.iter() {
+        min_x = cmp::min(p.0, min_x);
+        min_y = cmp::min(p.1, min_y);
+    }
+
+    let mut content: String = "".to_string();
+    for p in points.iter() {
+        if content.len() > 0 {
+            content += "\n";
+        }
+        content = content + &format!("{},{}", p.0 - min_x, p.1 - min_y);
+    }
+
+
+    let txt_path = Path::new(img_file).with_file_name(filename);
+    let display = txt_path.display();
+
+    let mut file = match File::create(&txt_path) {
+        Err(why) => panic!("couldn't create {}: {}", display, why.description()),
+        Ok(file) => file,
+    };
+
+    match file.write_all(content.as_bytes()) {
+        Err(why) => panic!("couldn't write to {}: {}", display, why.description()),
+        Ok(_) => println!("successfully wrote to {}", display),
     }
 }
 
@@ -882,21 +900,15 @@ fn process_png(img_file: &str,
         let mut pixels = rv.4;
         let bounds = rv.5;
 
-        // Save left edge coordinates to file
-        let content = find_edge(&mut pixels, sqr, bounds, top_x, top_y, bot_x, bot_y);
-        let filename = format!("{}.{}.txt", png_no, side);
-        let txt_path = Path::new(img_file).with_file_name(filename);
-        let display = txt_path.display();
-
-        let mut file = match File::create(&txt_path) {
-            Err(why) => panic!("couldn't create {}: {}", display, why.description()),
-            Ok(file) => file,
-        };
-
-        match file.write_all(content.as_bytes()) {
-            Err(why) => panic!("couldn't write to {}: {}", display, why.description()),
-            Ok(_) => println!("successfully wrote to {}", display),
+        // Save all border points to file
+        if side == 0 {
+            let mut border = get_points(&pixels, sqr, bounds, RED_MASK_BORDER);
+            save_points(&border, img_file, &format!("{}.txt", png_no));
         }
+
+        // Save left edge coordinates to file
+        let edge = find_edge(&mut pixels, sqr, bounds, top_x, top_y, bot_x, bot_y);
+        save_points(&edge, img_file, &format!("{}.{}.txt", png_no, side));
 
         // Make .done file so that we can detect processed pngs
         if side == 3 {
