@@ -53,6 +53,7 @@ struct EdgeInfo {
     max_y: usize,
     diff_to: Vec<usize>, // distance sum to edge at given index (in edges vector)
     best_diff: Vec<(usize, usize)>, // top 10 (edge_index, diff)
+    solved_index: usize, // for solved edge_index to the other, for unsolved usize::max_value
 }
 
 // Near point iterator
@@ -562,18 +563,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
-                     None,
-                     Some(Rect::new(shift as i32, shift as i32, width, height)),
-                     angle,
-                     None,
-                     false,
-                     false)
+                 None,
+                 Some(Rect::new(shift as i32, shift as i32, width, height)),
+                 angle,
+                 None,
+                 false,
+                 false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                                          PixelFormatEnum::RGB24)
+                     PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -942,6 +943,9 @@ fn read_txt(txt_file: &str) -> Vec<(usize, usize)> {
     let mut coords = vec![];
     for line in content.split('\n') {
         let v: Vec<&str> = line.split(',').collect();
+        if v.len() != 2 {
+            continue;
+        }
         coords.push((usize::from_str(v[0]).unwrap(), usize::from_str(v[1]).unwrap()));
     }
 
@@ -1267,12 +1271,6 @@ fn main() {
         };
 
         let path_str = path.into_os_string().into_string().unwrap();
-
-        // Skip edges that are already solved
-        if is_done(&path_str) {
-            continue;
-        }
-
         let points = read_txt(&path_str);
 
         // If it's pieces, just read points
@@ -1297,6 +1295,7 @@ fn main() {
             diff_to: vec![],
             best_diff: vec![],
             edge_index: usize::max_value(),
+            solved_index: usize::max_value(),
         };
         edges.push(edge_info);
     }
@@ -1347,10 +1346,7 @@ fn main() {
 
     // Prefer pieces from command line
     let mut pref_indices = vec![];
-    for (index, arg) in env::args().enumerate() {
-        if index == 0 {
-            continue; // arg0 is path to exe file
-        }
+    for arg in env::args().skip(1) {
         let argv: usize = arg.parse().unwrap();
         for i in 0..edges_len {
             let png_no = edges[i].edge_no >> 2;
@@ -1374,18 +1370,20 @@ fn main() {
         edge_i.edge_index = i;
     }
 
-    /*for i in 0..edges_len {
-        let edge_no = edges[i].edge_no;
-        println!("comparing edge {:>4}.{} {}/{} with others",
-                 edge_no >> 2,
-                 edge_no & 3,
-                 i,
-                 edges_len);
-        compare_edge_with_others2(&mut edges, i, max_width, max_height);
+    // Solved edges
+    for p in read_txt("solved.txt") {
+        let i_no = 4 * (p.0 / 10) + (p.0 % 10); // edge no: 12.3 -> 123 -> 4 * 12 + 3
+        let j_no = 4 * (p.1 / 10) + (p.1 % 10);
+        let i_index = *edge_nums.get(&i_no).unwrap();
+        let j_index = *edge_nums.get(&j_no).unwrap();
+        edges[i_index].solved_index = j_index;
+        edges[j_index].solved_index = i_index;
+        println!("solved {}.{} -> {}.{}",
+                 i_no >> 2,
+                 i_no & 3,
+                 j_no >> 2,
+                 j_no & 3);
     }
-
-    // Foreach edge index find top 10 best matching
-    compute_best_diffs(&mut edges, 10);*/
 
     println!("Compared edges:");
     println!("");
@@ -1583,7 +1581,14 @@ fn main() {
                         0);
 
             draw_coords(&mut pixels, sqr, &piece_c, 0, max_height, 0, 0, 255);
-            draw_coords(&mut pixels, sqr, &piece_d, max_a.0, max_height, 255, 255, 255);
+            draw_coords(&mut pixels,
+                        sqr,
+                        &piece_d,
+                        max_a.0,
+                        max_height,
+                        255,
+                        255,
+                        255);
 
             match display_pixels(&pixels,
                                  sqr,
