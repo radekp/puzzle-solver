@@ -1021,38 +1021,38 @@ fn rotate_piece(points: &Vec<(usize, usize)>, side: usize) -> Vec<(usize, usize)
 }
 
 fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
-                            edge_index: usize,
+                            e_index: usize,
                             max_width: usize,
                             max_height: usize) {
 
-    if edges[edge_index].diff_to.len() > 0 {
+    if edges[e_index].diff_to.len() > 0 {
         return;
     }
     let edges_len = edges.len();
-    edges[edge_index].diff_to = vec![usize::max_value();edges_len];
+    edges[e_index].diff_to = vec![usize::max_value();edges_len];
 
-    // For each x,y there is distance to edge at edge_index
+    // For each x,y there is distance to nearest point on edge e
     let mut distances = vec![usize::max_value();max_width*max_height];
 
-    let edge_max_x = edges[edge_index].max_x;
-    let edge_max_y = edges[edge_index].max_y;
+    let e_max_x = edges[e_index].max_x;
+    let e_max_y = edges[e_index].max_y;
 
-    for i in 0..edges_len {
-        if i == edge_index {
+    for f_index in 0..edges_len {
+        if f_index == e_index {
             continue;
         }
         let mut diff = 0;
-        for a in edges[i].points.iter() {
-            let offset = max_width * a.1 + a.0;
+        for f in edges[f_index].points.iter() {
+            let offset = max_width * f.1 + f.0;
             let mut best_dst = distances[offset]; // precomputed distance
 
-            // Compute best distance to edge from given x,y (point a) on first hit
+            // Compute best distance to edge from given x,y (point f) on first hit
             if best_dst == usize::max_value() {
-                for point_b in edges[edge_index].points.iter() {
+                for point_e in edges[e_index].points.iter() {
                     // One point must be flipped
-                    let b = (edge_max_x - point_b.0, edge_max_y - point_b.1);
-                    let dx = (b.0 as isize) - (a.0 as isize);
-                    let dy = (b.1 as isize) - (a.1 as isize);
+                    let e = (e_max_x - point_e.0, e_max_y - point_e.1);
+                    let dx = (e.0 as isize) - (f.0 as isize);
+                    let dy = (e.1 as isize) - (f.1 as isize);
                     let dst = (dx * dx + dy * dy) as usize;
                     if dst < best_dst {
                         best_dst = dst;
@@ -1062,7 +1062,7 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
             }
             diff += best_dst;
         }
-        edges[edge_index].diff_to[i] = diff;
+        edges[e_index].diff_to[f_index] = diff;
     }
 }
 
