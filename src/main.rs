@@ -1445,12 +1445,19 @@ fn main() {
         let mut best_final_score = usize::max_value();
         let mut combi_counter = 0;
         let mut best_combi_counter = 0;
+
+        // Parameter for edge matching combinations
+        let combi_shift = 3;
+        let combi_one_edge = 1 << combi_shift; // number of combinations for one edge
+        let combi_mask = combi_one_edge - 1;
+        let combi_all = combi_one_edge * combi_one_edge * combi_one_edge;
+
         'combi_loop: loop {
 
             // Last round displays the best result
-            let combi_val = if combi_counter <= 63 {
+            let combi_val = if combi_counter <= combi_all - 1 {
                 combi_counter
-            } else if combi_counter == 64 {
+            } else if combi_counter == combi_all {
                 println!("======= BEST MATCH {:>2} ========", best_combi_counter);
                 display_state.autorotate = false;
                 best_combi_counter
@@ -1458,8 +1465,10 @@ fn main() {
                 break 'combi_loop;
             };
 
-            let combi = (combi_val & 3, (combi_val >> 2) & 3, (combi_val >> 4) & 3);
-            if combi_counter != 64 {
+            let combi = (combi_val & combi_mask,
+                         (combi_val >> combi_shift) & combi_mask,
+                         (combi_val >> (2 * combi_shift)) & combi_mask);
+            if combi_counter != combi_all {
                 println!("==============================              combi {}=>{}.{}.{}",
                          combi_counter,
                          combi.0,
