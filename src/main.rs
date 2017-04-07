@@ -1451,7 +1451,7 @@ fn main() {
             let combi_val = if combi_counter <= 63 {
                 combi_counter
             } else if combi_counter == 64 {
-                println!("======= BEST MATCH {} ========", best_combi_counter);
+                println!("======= BEST MATCH {:>2} ========", best_combi_counter);
                 display_state.autorotate = false;
                 best_combi_counter
             } else {
@@ -1459,11 +1459,13 @@ fn main() {
             };
 
             let combi = (combi_val & 3, (combi_val >> 2) & 3, (combi_val >> 4) & 3);
-            println!("combi_counter={} combi={}.{}.{}",
-                     combi_counter,
-                     combi.0,
-                     combi.1,
-                     combi.2);
+            if combi_counter != 64 {
+                println!("==============================              combi {}=>{}.{}.{}",
+                         combi_counter,
+                         combi.0,
+                         combi.1,
+                         combi.2);
+            }
 
             combi_counter += 1;
 
@@ -1522,6 +1524,19 @@ fn main() {
 
             let a_minus_no = side_minus(a_no);
             let a_minus = *edge_nums.get(&a_minus_no).unwrap();
+
+            // Check if solved d->a match
+            let d_plus_solved_index = edges[d_plus].solved_index;
+            let a_minus_solved_index = edges[a_minus].solved_index;
+
+            if d_plus_solved_index != a_minus_solved_index {
+                println!("SKIP {}.{} -> {}.{} is already solved and does not match",
+                         d_plus_no >> 2,
+                         d_plus_no & 3,
+                         a_minus_no >> 2,
+                         a_minus_no & 3);
+                continue;
+            }
 
             let diff_a_minus = compare_edges(&mut edges, a_minus, d_plus) +
                                compare_edges(&mut edges, d_plus, a_minus);
