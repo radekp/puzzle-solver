@@ -1070,7 +1070,7 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
     }
 }
 
-fn compare_edges(edges: &mut Vec<EdgeInfo>, index_b: usize, index_a: usize) -> usize {
+fn compare_edges(edges: &Vec<EdgeInfo>, index_b: usize, index_a: usize) -> usize {
 
     // Use diff_to if computed, otherwise get max_x and max_y from b
     let ref edge_b = edges[index_b];
@@ -1418,15 +1418,19 @@ fn main() {
     for p in read_txt("solved_edges.txt") {
         let i_no = 4 * (p.0 / 10) + (p.0 % 10); // edge no: 12.3 -> 123 -> 4 * 12 + 3
         let j_no = 4 * (p.1 / 10) + (p.1 % 10);
-        println!("solved edge {}.{} -> {}.{}",
-                 i_no >> 2,
-                 i_no & 3,
-                 j_no >> 2,
-                 j_no & 3);
+        print!("solved edge {}.{} -> {}.{}",
+               i_no >> 2,
+               i_no & 3,
+               j_no >> 2,
+               j_no & 3);
         let i_index = *edge_nums.get(&i_no).unwrap();
         let j_index = *edge_nums.get(&j_no).unwrap();
         edges[i_index].solved_index = j_index;
         edges[j_index].solved_index = i_index;
+
+        let diff_ij = compare_edges(&edges, i_index, j_index);
+        let diff_ji = compare_edges(&edges, j_index, i_index);
+        println!(", diff {}+{}={}", diff_ij, diff_ji, diff_ij + diff_ji);
     }
 
     println!("Compared edges:");
