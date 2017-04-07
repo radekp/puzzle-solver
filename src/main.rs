@@ -1180,6 +1180,43 @@ fn compute_best_diff(i: usize,
     println!("");*/
 }
 
+// Return nth best (edge_index, edge_no, diff)
+fn get_best_diff(e_index: usize,
+                 mut edges: &mut Vec<EdgeInfo>,
+                 n: usize,
+                 max_width: usize,
+                 max_height: usize)
+                 -> (usize, usize, usize) {
+    // For solved return
+    let solved_index = edges[e_index].solved_index;
+    if solved_index != usize::max_value() {
+        return (solved_index, edges[solved_index].edge_no, 0);
+    }
+
+    // We need loop n.. lopp, because some best_diff values are skipped
+    let e_no = edges[e_index].edge_no;
+    for m in n..edges.len() {
+
+        // Make sure we have best_diff computed for m
+        compute_best_diff(e_index, &mut edges, m + 1, max_width, max_height);
+        let (a, diff_a) = edges[e_index].best_diff[m];
+        let a_no = edges[a].edge_no;
+
+        // Skip solved edges
+        if edges[a].solved_index != usize::max_value() {
+            continue;
+        }
+
+        // Skip edges of the same piece
+        if e_no == a_no {
+            continue;
+        }
+
+        return (a, a_no, diff_a);
+    }
+    panic!("get_best_diff hasnt found anything"); // when all is solved?
+}
+
 // Return next side of the piece
 fn side_plus(edge_no: usize) -> usize {
     return (edge_no & !3) | ((edge_no + 1) & 3);
@@ -1431,9 +1468,7 @@ fn main() {
             combi_counter += 1;
 
             //     B  <-  A
-            compute_best_diff(a, &mut edges, combi.0, max_width, max_height);
-            let (b, diff_b) = edges[a].best_diff[combi.0];
-            let b_no = edges[b].edge_no;
+            let (b, b_no, diff_b) = get_best_diff(a, &mut edges, combi.0, max_width, max_height);
 
             println!("{:>4}.{}->{:>4}.{}                 {:>12}",
                      a_no >> 2,
@@ -1448,10 +1483,8 @@ fn main() {
             //     B  <-  A
             let b_plus_no = side_plus(b_no);
             let b_plus = *edge_nums.get(&b_plus_no).unwrap();
-
-            compute_best_diff(b_plus, &mut edges, combi.1, max_width, max_height);
-            let (c, diff_c) = edges[b_plus].best_diff[combi.1];
-            let c_no = edges[c].edge_no;
+            let (c, c_no, diff_c) =
+                get_best_diff(b_plus, &mut edges, combi.1, max_width, max_height);
 
             println!("        {:>4}.{}->{:>4}.{}         {:>12}",
                      b_plus_no >> 2,
@@ -1466,10 +1499,8 @@ fn main() {
             //     B  <-  A
             let c_plus_no = side_plus(c_no);
             let c_plus = *edge_nums.get(&c_plus_no).unwrap();
-
-            compute_best_diff(c_plus, &mut edges, combi.2, max_width, max_height);
-            let (d, diff_d) = edges[c_plus].best_diff[combi.2];
-            let d_no = edges[d].edge_no;
+            let (d, d_no, diff_d) =
+                get_best_diff(c_plus, &mut edges, combi.2, max_width, max_height);
 
             println!("                {:>4}.{}->{:>4}.{} {:>12}",
                      c_plus_no >> 2,
