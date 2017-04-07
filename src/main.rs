@@ -1518,18 +1518,10 @@ fn main() {
             //
             // The last edge can be marked as solved and thus not loaded
             let d_plus_no = side_plus(d_no);
-            let d_plus_ret = edge_nums.get(&d_plus_no);
-            if d_plus_ret.is_none() {
-                continue;
-            }
-            let d_plus = *d_plus_ret.unwrap();
+            let d_plus = *edge_nums.get(&d_plus_no).unwrap();
 
             let a_minus_no = side_minus(a_no);
-            let a_minus_ret = edge_nums.get(&a_minus_no);
-            if a_minus_ret.is_none() {
-                continue;
-            }
-            let a_minus = *a_minus_ret.unwrap();
+            let a_minus = *edge_nums.get(&a_minus_no).unwrap();
 
             let diff_a_minus = compare_edges(&mut edges, a_minus, d_plus) +
                                compare_edges(&mut edges, d_plus, a_minus);
