@@ -1569,61 +1569,69 @@ fn main() {
             let a_minus_no = side_minus(a_no);
             let a_minus = *edge_nums.get(&a_minus_no).unwrap();
 
-            // Skip some invalid cases
-            let mut skip = false;
+            let mut diff_a_minus = compare_edges(&mut edges, a_minus, d_plus) +
+                                   compare_edges(&mut edges, d_plus, a_minus);
+
 
             // Check if it's not the same edge
             if d_plus == a_minus {
                 println!("SKIP d_plus and a_minus is same edge");
-                skip = true;
+                diff_a_minus += 100000000;
             }
 
             // Check if solved d->a match
             let d_plus_solved_index = edges[d_plus].solved_index;
-            if d_plus_solved_index != usize::max_value() && d_plus_solved_index != a_minus {
-                println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
-                         d_plus_no >> 2,
-                         d_plus_no & 3,
-                         edges[d_plus_solved_index].edge_no >> 2,
-                         edges[d_plus_solved_index].edge_no & 3,
-                         a_minus_no >> 2,
-                         a_minus_no & 3);
-                skip = true;
+            if d_plus_solved_index != usize::max_value() {
+                diff_a_minus = if d_plus_solved_index == a_minus {
+                    0
+                } else {
+                    println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
+                             d_plus_no >> 2,
+                             d_plus_no & 3,
+                             edges[d_plus_solved_index].edge_no >> 2,
+                             edges[d_plus_solved_index].edge_no & 3,
+                             a_minus_no >> 2,
+                             a_minus_no & 3);
+                    diff_a_minus + 100000000
+                }
             }
             let a_minus_solved_index = edges[a_minus].solved_index;
-            if a_minus_solved_index != usize::max_value() && a_minus_solved_index != d_plus {
-                println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
-                         a_minus_no >> 2,
-                         a_minus_no & 3,
-                         edges[a_minus_solved_index].edge_no >> 2,
-                         edges[a_minus_solved_index].edge_no & 3,
-                         d_plus_no >> 2,
-                         d_plus_no & 3);
-                skip = true;
+            if a_minus_solved_index != usize::max_value() {
+                diff_a_minus = if a_minus_solved_index == d_plus {
+                    if diff_a_minus == 0 {
+                        0
+                    } else {
+                        panic!("a_minus solved to d_plus but d_plus solved to other");
+                    }
+                } else {
+                    println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
+                             a_minus_no >> 2,
+                             a_minus_no & 3,
+                             edges[a_minus_solved_index].edge_no >> 2,
+                             edges[a_minus_solved_index].edge_no & 3,
+                             d_plus_no >> 2,
+                             d_plus_no & 3);
+                    diff_a_minus + 100000000
+                }
             }
 
             let mut skip_draw = display_state.autorotate;
 
-            if !skip {
-                let diff_a_minus = compare_edges(&mut edges, a_minus, d_plus) +
-                                   compare_edges(&mut edges, d_plus, a_minus);
+            let final_score = diff_b + diff_c + diff_d + diff_a_minus;
 
-                let final_score = diff_b + diff_c + diff_d + diff_a_minus;
+            println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
+                     a_minus_no >> 2,
+                     a_minus_no & 3,
+                     d_plus_no >> 2,
+                     d_plus_no & 3,
+                     diff_a_minus,
+                     final_score);
 
-                println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
-                         a_minus_no >> 2,
-                         a_minus_no & 3,
-                         d_plus_no >> 2,
-                         d_plus_no & 3,
-                         diff_a_minus,
-                         final_score);
-
-                // Remeber best 4-edge diff that will be displayed after all cominations computed
-                if final_score < best_final_score {
-                    best_final_score = final_score;
-                    best_combi_counter = combi_val;
-                    skip_draw = false; // always draw the best matching
-                }
+            // Remeber best 4-edge diff that will be displayed after all cominations computed
+            if final_score < best_final_score {
+                best_final_score = final_score;
+                best_combi_counter = combi_val;
+                skip_draw = false; // always draw the best matching
             }
 
             if skip_draw {
@@ -1671,14 +1679,7 @@ fn main() {
                         0);
 
             draw_coords(&mut pixels, sqr, &piece_c, 0, max_height, 0, 0, 255);
-            draw_coords(&mut pixels,
-                        sqr,
-                        &piece_d,
-                        max_a.0,
-                        max_height,
-                        255,
-                        255,
-                        0);
+            draw_coords(&mut pixels, sqr, &piece_d, max_a.0, max_height, 255, 255, 0);
 
             match display_pixels(&pixels,
                                  sqr,
