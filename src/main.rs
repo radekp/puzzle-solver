@@ -563,18 +563,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
-                 None,
-                 Some(Rect::new(shift as i32, shift as i32, width, height)),
-                 angle,
-                 None,
-                 false,
-                 false)
+                     None,
+                     Some(Rect::new(shift as i32, shift as i32, width, height)),
+                     angle,
+                     None,
+                     false,
+                     false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                     PixelFormatEnum::RGB24)
+                                          PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -1100,14 +1100,21 @@ fn compare_edges(edges: &mut Vec<EdgeInfo>, index_b: usize, index_a: usize) -> u
 // Compute egge.best_diff vector
 fn compute_best_diff(i: usize,
                      mut edges: &mut Vec<EdgeInfo>,
-                     max_best_index: usize,
+                     last_best_index: usize,
                      max_width: usize,
                      max_height: usize) {
 
-    if edges[i].best_diff.len() > max_best_index {
+    // Already computed?
+    if edges[i].best_diff.len() > last_best_index {
         return;
     }
-    let num_best = max_best_index + 1;
+
+    // If solved make make (solved edge, zero diff) vector
+    let num_best = last_best_index + 1;
+    if edges[i].solved_index != usize::max_value() {
+        edges[i].best_diff = vec![(edges[i].solved_index, 0); num_best];
+        return;
+    }
 
     let edges_len = edges.len();
 
@@ -1130,7 +1137,7 @@ fn compute_best_diff(i: usize,
             continue; // dont compare with self
         }
 
-        if diff_ij > best_diff[max_best_index].1 {
+        if diff_ij > best_diff[last_best_index].1 {
             continue; // even one way compare is worse then last one...
         }
 
