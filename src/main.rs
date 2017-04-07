@@ -1548,28 +1548,29 @@ fn main() {
 
             // Check if solved d->a match
             let d_plus_solved_index = edges[d_plus].solved_index;
-            if d_plus_solved_index != a_minus {
-                if d_plus_solved_index != usize::max_value() {
-                    println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
-                             d_plus_no >> 2,
-                             d_plus_no & 3,
-                             edges[d_plus_solved_index].edge_no >> 2,
-                             edges[d_plus_solved_index].edge_no & 3,
-                             a_minus_no >> 2,
-                             a_minus_no & 3);
-                }
-                let a_minus_solved_index = edges[a_minus].solved_index;
-                if a_minus_solved_index != usize::max_value() {
-                    println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
-                             a_minus_no >> 2,
-                             a_minus_no & 3,
-                             edges[a_minus_solved_index].edge_no >> 2,
-                             edges[a_minus_solved_index].edge_no & 3,
-                             d_plus_no >> 2,
-                             d_plus_no & 3);
-                }
+            if d_plus_solved_index != usize::max_value() && d_plus_solved_index != a_minus {
+                println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
+                         d_plus_no >> 2,
+                         d_plus_no & 3,
+                         edges[d_plus_solved_index].edge_no >> 2,
+                         edges[d_plus_solved_index].edge_no & 3,
+                         a_minus_no >> 2,
+                         a_minus_no & 3);
                 skip = true;
             }
+            let a_minus_solved_index = edges[a_minus].solved_index;
+            if a_minus_solved_index != usize::max_value() && a_minus_solved_index != d_plus {
+                println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
+                         a_minus_no >> 2,
+                         a_minus_no & 3,
+                         edges[a_minus_solved_index].edge_no >> 2,
+                         edges[a_minus_solved_index].edge_no & 3,
+                         d_plus_no >> 2,
+                         d_plus_no & 3);
+                skip = true;
+            }
+
+            let mut skip_draw = display_state.autorotate;
 
             if !skip {
                 let diff_a_minus = compare_edges(&mut edges, a_minus, d_plus) +
@@ -1589,7 +1590,12 @@ fn main() {
                 if final_score < best_final_score {
                     best_final_score = final_score;
                     best_combi_counter = combi_val;
+                    skip_draw = false; // always draw the best matching
                 }
+            }
+
+            if skip_draw {
+                continue;
             }
 
             // Display comapred edges
