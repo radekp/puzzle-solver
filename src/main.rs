@@ -981,6 +981,38 @@ fn draw_coords(pixels: &mut Vec<u8>,
     }
 }
 
+fn draw_edge(pixels: &mut Vec<u8>,
+             edges: &Vec<EdgeInfo>,
+             e_index: usize,
+             flip: bool,
+             sqr: usize,
+             left: usize,
+             top: usize,
+             color_r: u8,
+             color_g: u8,
+             color_b: u8) {
+
+    let ref edge_e = edges[e_index];
+    let (r, g, b) = if edge_e.solved_index == usize::max_value() {
+        (color_r, color_g, color_b)
+    } else {
+        (255, 255, 255)
+    };
+
+    if flip {
+        draw_coords(pixels,
+                    sqr,
+                    &flip_coords(&edge_e.points),
+                    left,
+                    top,
+                    r,
+                    g,
+                    b);
+    } else {
+        draw_coords(pixels, sqr, &edge_e.points, left, top, r, g, b);
+    }
+}
+
 fn flip_coords(coords: &Vec<(usize, usize)>) -> Vec<(usize, usize)> {
 
     let mut max_x = 0;
@@ -1603,45 +1635,17 @@ fn main() {
                 *p = 0;
             }
 
-            draw_coords(&mut pixels, sqr, &edges[a].points, 0, 0, 255, 0, 0);
-            draw_coords(&mut pixels,
-                        sqr,
-                        &flip_coords(&edges[b].points),
-                        0,
-                        0,
-                        0,
-                        255,
-                        0);
+            draw_edge(&mut pixels, &edges, a, false, sqr, 0, 0, 255, 0, 0);
+            draw_edge(&mut pixels, &edges, b, true, sqr, 0, 0, 0, 255, 0);
 
-            draw_coords(&mut pixels, sqr, &edges[b_plus].points, 100, 0, 255, 0, 0);
-            draw_coords(&mut pixels,
-                        sqr,
-                        &flip_coords(&edges[c].points),
-                        100,
-                        0,
-                        0,
-                        255,
-                        0);
+            draw_edge(&mut pixels, &edges, b_plus, false, sqr, 100, 0, 255, 0, 0);
+            draw_edge(&mut pixels, &edges, c, true, sqr, 100, 0, 0, 255, 0);
 
-            draw_coords(&mut pixels, sqr, &edges[c_plus].points, 200, 0, 255, 0, 0);
-            draw_coords(&mut pixels,
-                        sqr,
-                        &flip_coords(&edges[d].points),
-                        200,
-                        0,
-                        0,
-                        255,
-                        0);
+            draw_edge(&mut pixels, &edges, c_plus, false, sqr, 200, 0, 255, 0, 0);
+            draw_edge(&mut pixels, &edges, d, true, sqr, 200, 0, 0, 255, 0);
 
-            draw_coords(&mut pixels, sqr, &edges[d_plus].points, 300, 0, 255, 0, 0);
-            draw_coords(&mut pixels,
-                        sqr,
-                        &flip_coords(&edges[a_minus].points),
-                        300,
-                        0,
-                        0,
-                        255,
-                        0);
+            draw_edge(&mut pixels, &edges, d_plus, false, sqr, 300, 0, 255, 0, 0);
+            draw_edge(&mut pixels, &edges, a_minus, true, sqr, 300, 0, 0, 255, 0);
 
             let piece_a = rotate_piece(pieces.get(&(a_no >> 2)).unwrap(), 0);
             let piece_b = rotate_piece(pieces.get(&(b_no >> 2)).unwrap(), 0);
@@ -1674,7 +1678,7 @@ fn main() {
                         max_height,
                         255,
                         255,
-                        255);
+                        0);
 
             match display_pixels(&pixels,
                                  sqr,
