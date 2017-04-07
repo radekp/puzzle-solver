@@ -1534,42 +1534,59 @@ fn main() {
             let a_minus_no = side_minus(a_no);
             let a_minus = *edge_nums.get(&a_minus_no).unwrap();
 
+            // Skip some invalid cases
+            let mut skip = false;
+
             // Check if it's not the same edge
             if d_plus == a_minus {
                 println!("SKIP d_plus and a_minus is same edge");
-                continue;
+                skip = true;
             }
 
             // Check if solved d->a match
             let d_plus_solved_index = edges[d_plus].solved_index;
             let a_minus_solved_index = edges[a_minus].solved_index;
-
             if d_plus_solved_index != a_minus_solved_index {
-                println!("SKIP {}.{} -> {}.{} is already solved and does not match",
-                         d_plus_no >> 2,
-                         d_plus_no & 3,
-                         a_minus_no >> 2,
-                         a_minus_no & 3);
-                continue;
+                if d_plus_solved_index != usize::max_value() {
+                    println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
+                             d_plus_no >> 2,
+                             d_plus_no & 3,
+                             edges[d_plus_solved_index].edge_no >> 2,
+                             edges[d_plus_solved_index].edge_no & 3,
+                             a_minus_no >> 2,
+                             a_minus & 3);
+                }
+                if a_minus_solved_index != usize::max_value() {
+                    println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
+                             a_minus_no >> 2,
+                             a_minus_no & 3,
+                             edges[a_minus_solved_index].edge_no >> 2,
+                             edges[a_minus_solved_index].edge_no & 3,
+                             d_plus_no >> 2,
+                             d_plus_no & 3);
+                }
+                skip = true;
             }
 
-            let diff_a_minus = compare_edges(&mut edges, a_minus, d_plus) +
-                               compare_edges(&mut edges, d_plus, a_minus);
+            if !skip {
+                let diff_a_minus = compare_edges(&mut edges, a_minus, d_plus) +
+                                   compare_edges(&mut edges, d_plus, a_minus);
 
-            let final_score = diff_b + diff_c + diff_d + diff_a_minus;
+                let final_score = diff_b + diff_c + diff_d + diff_a_minus;
 
-            println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
-                     a_minus_no >> 2,
-                     a_minus_no & 3,
-                     d_plus_no >> 2,
-                     d_plus_no & 3,
-                     diff_a_minus,
-                     final_score);
+                println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
+                         a_minus_no >> 2,
+                         a_minus_no & 3,
+                         d_plus_no >> 2,
+                         d_plus_no & 3,
+                         diff_a_minus,
+                         final_score);
 
-            // Remeber best 4-edge diff that will be displayed after all cominations computed
-            if final_score < best_final_score {
-                best_final_score = final_score;
-                best_combi_counter = combi_val;
+                // Remeber best 4-edge diff that will be displayed after all cominations computed
+                if final_score < best_final_score {
+                    best_final_score = final_score;
+                    best_combi_counter = combi_val;
+                }
             }
 
             // Display comapred edges
