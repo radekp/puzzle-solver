@@ -1255,7 +1255,6 @@ fn is_done(path: &str) -> bool {
 }
 
 fn main() {
-
     let sdl_context = sdl2::init().unwrap();
 
     let mut display_state = DisplayPixelState { autorotate: false };
@@ -1549,8 +1548,7 @@ fn main() {
 
             // Check if solved d->a match
             let d_plus_solved_index = edges[d_plus].solved_index;
-            let a_minus_solved_index = edges[a_minus].solved_index;
-            if d_plus_solved_index != a_minus_solved_index {
+            if d_plus_solved_index != a_minus {
                 if d_plus_solved_index != usize::max_value() {
                     println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
                              d_plus_no >> 2,
@@ -1558,8 +1556,9 @@ fn main() {
                              edges[d_plus_solved_index].edge_no >> 2,
                              edges[d_plus_solved_index].edge_no & 3,
                              a_minus_no >> 2,
-                             a_minus & 3);
+                             a_minus_no & 3);
                 }
+                let a_minus_solved_index = edges[a_minus].solved_index;
                 if a_minus_solved_index != usize::max_value() {
                     println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
                              a_minus_no >> 2,
