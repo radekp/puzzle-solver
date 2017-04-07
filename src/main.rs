@@ -1418,15 +1418,15 @@ fn main() {
     for p in read_txt("solved_edges.txt") {
         let i_no = 4 * (p.0 / 10) + (p.0 % 10); // edge no: 12.3 -> 123 -> 4 * 12 + 3
         let j_no = 4 * (p.1 / 10) + (p.1 % 10);
-        let i_index = *edge_nums.get(&i_no).unwrap();
-        let j_index = *edge_nums.get(&j_no).unwrap();
-        edges[i_index].solved_index = j_index;
-        edges[j_index].solved_index = i_index;
         println!("solved edge {}.{} -> {}.{}",
                  i_no >> 2,
                  i_no & 3,
                  j_no >> 2,
                  j_no & 3);
+        let i_index = *edge_nums.get(&i_no).unwrap();
+        let j_index = *edge_nums.get(&j_no).unwrap();
+        edges[i_index].solved_index = j_index;
+        edges[j_index].solved_index = i_index;
     }
 
     println!("Compared edges:");
@@ -1533,6 +1533,12 @@ fn main() {
 
             let a_minus_no = side_minus(a_no);
             let a_minus = *edge_nums.get(&a_minus_no).unwrap();
+
+            // Check if it's not the same edge
+            if d_plus == a_minus {
+                println!("SKIP d_plus and a_minus is same edge");
+                continue;
+            }
 
             // Check if solved d->a match
             let d_plus_solved_index = edges[d_plus].solved_index;
