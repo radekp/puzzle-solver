@@ -1449,7 +1449,7 @@ fn main() {
     for p in read_txt("solved_edges.txt") {
         let i_no = 4 * (p.0 / 10) + (p.0 % 10); // edge no: 12.3 -> 123 -> 4 * 12 + 3
         let j_no = 4 * (p.1 / 10) + (p.1 % 10);
-        print!("solved edge {}.{} -> {}.{}",
+        print!("solved edge {:>4}.{}->{:>4}.{}",
                i_no >> 2,
                i_no & 3,
                j_no >> 2,
@@ -1461,7 +1461,7 @@ fn main() {
 
         let diff_ij = compare_edges(&edges, i_index, j_index);
         let diff_ji = compare_edges(&edges, j_index, i_index);
-        println!(", diff {}+{}={}", diff_ij, diff_ji, diff_ij + diff_ji);
+        println!(", diff {:>12}+{:<12}={:>12}", diff_ij, diff_ji, diff_ij + diff_ji);
     }
 
     println!("Compared edges:");
