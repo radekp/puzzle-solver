@@ -1684,6 +1684,11 @@ fn main() {
             draw_coords(&mut pixels, sqr, &piece_c, 0, max_height, 0, 0, 255);
             draw_coords(&mut pixels, sqr, &piece_d, max_a.0, max_height, 255, 255, 0);
 
+            // Go on if all 4edges solved
+            if final_score == 0 {
+                break 'combi_loop;
+            }
+
             match display_pixels(&pixels,
                                  sqr,
                                  &sdl_context,
