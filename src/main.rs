@@ -947,7 +947,8 @@ fn read_txt(txt_file: &str) -> Vec<(usize, usize)> {
         if v.len() != 2 {
             continue;
         }
-        coords.push((usize::from_str(v[0]).unwrap(), usize::from_str(v[1]).unwrap()));
+        coords.push((usize::from_str(&v[0].replace(".", "")).unwrap(),
+                     usize::from_str(&v[1].replace(".", "")).unwrap()));
     }
 
     return coords;
@@ -1695,7 +1696,8 @@ fn main() {
                 if display_state.autorotate {
                     "".to_string()
                 } else {
-                    let solved_tmp = format!("{}{},{}{}\n{}{},{}{}\n{}{},{}{}\n{}{},{}{}\n",
+                    let solved_tmp = format!("{}.{},{}.{}\n{}.{},{}.{}\n{}.{},{}.{}\n{}.{},{}.\
+                                              {}\n",
                                              a_no >> 2,
                                              a_no & 3,
                                              b_no >> 2,
