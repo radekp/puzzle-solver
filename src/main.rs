@@ -9,6 +9,7 @@ use std::path::Path;
 use std::str::FromStr;
 use std::error::Error;
 use std::io::prelude::*;
+use std::fs::OpenOptions;
 use std::collections::HashMap;
 
 use sdl2::pixels::PixelFormatEnum;
@@ -1689,14 +1690,49 @@ fn main() {
                 break 'combi_loop;
             }
 
+            // Content for solved_edges.txt
+            let solved_str = {
+                if display_state.autorotate {
+                    "".to_string()
+                } else {
+                    let solved_tmp = format!("{}{},{}{}\n{}{},{}{}\n{}{},{}{}\n{}{},{}{}\n",
+                                             a_no >> 2,
+                                             a_no & 3,
+                                             b_no >> 2,
+                                             b_no & 3,
+                                             b_plus_no >> 2,
+                                             b_plus_no & 3,
+                                             c_no >> 2,
+                                             c_no & 3,
+                                             c_plus_no >> 2,
+                                             c_plus_no & 3,
+                                             d_no >> 2,
+                                             d_no & 3,
+                                             a_minus_no >> 2,
+                                             a_minus_no & 3,
+                                             d_plus_no >> 2,
+                                             d_plus_no & 3);
+                    println!("\n{}", solved_tmp);
+                    solved_tmp
+                }
+            };
+
             match display_pixels(&pixels,
                                  sqr,
                                  &sdl_context,
                                  &mut renderer,
                                  &mut display_state) {
                 UserAction::Solve => {
-                    write_done_file(&format!("data/{}.{}.txt", a_no >> 2, a_no & 3));
-                    //write_done_file(&format!("data/{}.{}.txt", b_no >> 2, b_no & 3));
+
+                    let mut file = OpenOptions::new()
+                        .write(true)
+                        .append(true)
+                        .open("solved_edges.txt")
+                        .unwrap();
+
+                    if let Err(e) = file.write_all(solved_str.as_bytes()) {
+                        println!("{}", e);
+                    }
                 }
                 _ => {}
             }
