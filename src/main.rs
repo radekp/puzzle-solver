@@ -563,18 +563,18 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     renderer.fill_rect(Rect::new(0, 0, sqr as u32, sqr as u32)).unwrap();
 
     renderer.copy_ex(&texture,
-                     None,
-                     Some(Rect::new(shift as i32, shift as i32, width, height)),
-                     angle,
-                     None,
-                     false,
-                     false)
+                 None,
+                 Some(Rect::new(shift as i32, shift as i32, width, height)),
+                 angle,
+                 None,
+                 false,
+                 false)
         .unwrap();
 
     //renderer.present();
 
     let mut pixels = renderer.read_pixels(Some(Rect::new(0, 0, sqr as u32, sqr as u32)),
-                                          PixelFormatEnum::RGB24)
+                     PixelFormatEnum::RGB24)
         .unwrap();
 
     // Detect material and bounds
@@ -1416,24 +1416,8 @@ fn main() {
 
     let mut renderer = window.renderer().build().unwrap();
 
-    // Sort similar edges (by volume of widht*height)
-    //edges.sort_by(|a, b| compare_edge_info(a, b));
-
-    // Prefer pieces from command line
+    // Prefered indices for edge
     let mut pref_indices = vec![];
-    for arg in env::args().skip(1) {
-        let argv: usize = arg.parse().unwrap();
-        for i in 0..edges_len {
-            let png_no = edges[i].edge_no >> 2;
-            if png_no == argv {
-                pref_indices.push(i);
-            }
-        }
-    }
-    pref_indices.sort();
-    for i in 0..pref_indices.len() {
-        edges.swap(i, pref_indices[i]);
-    }
 
     // Hashmap to get index by edge_no
     let mut edge_nums = HashMap::new();
@@ -1443,6 +1427,7 @@ fn main() {
         //println!("edge={}.{}", i_no >> 2, i_no & 3);
         edge_nums.insert(i_no, i);
         edge_i.edge_index = i;
+        pref_indices.push(i);
     }
 
     // Solved edges
@@ -1461,7 +1446,25 @@ fn main() {
 
         let diff_ij = compare_edges(&edges, i_index, j_index);
         let diff_ji = compare_edges(&edges, j_index, i_index);
-        println!(", diff {:>12}+{:<12}={:>12}", diff_ij, diff_ji, diff_ij + diff_ji);
+
+        pref_indices.insert(0, i_index);
+        pref_indices.insert(0, j_index);
+
+        println!(", diff {:>12}+{:<12}={:>12}",
+                 diff_ij,
+                 diff_ji,
+                 diff_ij + diff_ji);
+    }
+
+    // Prefer pieces from command line
+    for arg in env::args().skip(1) {
+        let argv: usize = arg.parse().unwrap();
+        for i in 0..edges_len {
+            let png_no = edges[i].edge_no >> 2;
+            if png_no == argv {
+                pref_indices.insert(0, i);
+            }
+        }
     }
 
     println!("Compared edges:");
@@ -1473,7 +1476,7 @@ fn main() {
     //     ^      |
     //     |      v
     //     B  <-  A
-    for a in 0..edges_len {
+    for a in pref_indices {
         let a_no = edges[a].edge_no;
 
         // Loop to compare combination of best edges, e.g. 1stJ..1stP, 1stJ..2ndM, 2ndJ..2ndM
@@ -1504,7 +1507,7 @@ fn main() {
                          (combi_val >> combi_shift) & combi_mask,
                          (combi_val >> (2 * combi_shift)) & combi_mask);
             if combi_counter != combi_all {
-                println!("==============================              combi {}=>{}.{}.{}",
+                println!("------------------------------              combi {}=>{}.{}.{}",
                          combi_counter,
                          combi.0,
                          combi.1,
