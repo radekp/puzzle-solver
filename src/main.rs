@@ -6,6 +6,7 @@ use std::cmp;
 use std::env;
 use std::fs::File;
 use std::path::Path;
+use std::ffi::OsStr;
 use std::str::FromStr;
 use std::error::Error;
 use std::io::prelude::*;
@@ -920,6 +921,12 @@ fn process_png(img_file: &str,
     }
 }
 
+fn process_jpg(jpg_file: &str,
+               sdl_context: &sdl2::Sdl,
+               display_state: &mut DisplayPixelState) {
+
+}
+
 fn read_txt(txt_file: &str) -> Vec<(usize, usize)> {
 
     // Create a path to the desired file
@@ -1299,23 +1306,26 @@ fn main() {
         //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
 
         let path = entry.unwrap().path();
-        if path.extension().unwrap() != "png" {
-            continue;
+        match path.extension().and_then(OsStr::to_str) {
+            Some("png") => {
+                let png_no: usize = path.file_stem()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .parse()
+                    .unwrap();
+                let path_str = path.into_os_string().into_string().unwrap();
+                if is_done(&path_str) {
+                    continue;
+                }
+                process_png(&path_str, png_no, &sdl_context, &mut display_state);
+            }
+            Some("jpg") => {
+                let path_str = path.into_os_string().into_string().unwrap();
+                process_jpg(&path_str, &sdl_context, &mut display_state);
+            }
+            _ => {}
         }
-        let png_no: usize = path.file_stem()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .parse()
-            .unwrap();
-
-        let path_str = path.into_os_string().into_string().unwrap();
-
-        if is_done(&path_str) {
-            continue;
-        }
-
-        process_png(&path_str, png_no, &sdl_context, &mut display_state);
     }
     //process_png("9.png", &sdl_context);
 
