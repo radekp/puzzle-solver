@@ -948,6 +948,7 @@ fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
 
     let mut down_x = -1;
     let mut down_y = -1;
+    let mut png_no = 600;
 
     loop {
         for event in event_pump.poll_iter() {
@@ -993,11 +994,12 @@ fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
                         }
                     }
 
-
-                    let ref mut fout = File::create(&Path::new("test.png")).unwrap();
-
+                    let ref mut fout = File::create(&Path::new(&format!("{},png", png_no)))
+                        .unwrap();
                     // Write the contents of this image to the Writer in PNG format.
                     let _ = image::ImageLuma8(imgbuf).save(fout, image::PNG);
+
+                    png_no += 1;
                 }
 
                 Event::MouseMotion { x, y, .. } => {
@@ -1010,8 +1012,13 @@ fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
                     renderer.present();
                 }
 
-                Event::KeyDown { keycode: Some(Keycode::S), .. } => {
-                    println!("1");
+                Event::KeyDown { keycode: Some(Keycode::Up), .. } => {
+                    png_no = png_no - png_no % 10 + 10;
+                    println!("png_no={}", png_no);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Down), .. } => {
+                    png_no = png_no - png_no % 10 - 10;
+                    println!("png_no={}", png_no);
                 }
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
