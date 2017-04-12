@@ -13,6 +13,7 @@ use std::io::prelude::*;
 use std::fs::OpenOptions;
 use std::collections::HashMap;
 
+use sdl2::pixels;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use sdl2::event::Event;
@@ -22,6 +23,10 @@ use sdl2::image::LoadTexture;
 use sdl2::render::TextureQuery;
 use sdl2::render::Renderer;
 use sdl2::render::Texture;
+use sdl2::gfx::primitives::DrawRenderer;
+
+use image::Pixel;
+use image::GenericImage;
 
 // SDL window size - puzzle pieces bitmap must fit even with rotation
 const WND_WIDTH: usize = 1000;
@@ -921,10 +926,101 @@ fn process_png(img_file: &str,
     }
 }
 
-fn process_jpg(jpg_file: &str,
-               sdl_context: &sdl2::Sdl,
-               display_state: &mut DisplayPixelState) {
+fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut DisplayPixelState) {
 
+    let video_subsystem = sdl_context.video().unwrap();
+
+    let window = video_subsystem.window(jpg_file, WND_WIDTH as u32, WND_HEIGHT as u32)
+        .position(200, 0)
+        .opengl()
+        .build()
+        .unwrap();
+
+    let mut renderer = window.renderer().build().unwrap();
+
+    let texture = renderer.load_texture(jpg_file).unwrap();
+
+    let TextureQuery { width, height, .. } = texture.query();
+
+    let mut event_pump = sdl_context.event_pump().unwrap();
+
+    let mut dst_rect = Rect::new(0, 0, WND_WIDTH as u32, WND_HEIGHT as u32);
+
+    let mut down_x = -1;
+    let mut down_y = -1;
+
+    loop {
+        for event in event_pump.poll_iter() {
+            renderer.clear();
+            renderer.copy(&texture, None, Some(dst_rect)).unwrap();
+            renderer.present();
+            match event {
+
+                Event::MouseButtonDown { x, y, .. } => {
+                    down_x = x;
+                    down_y = y;
+                }
+                Event::MouseButtonUp { x, y, .. } => {
+
+                    let left = (down_x as u32 * width) / WND_WIDTH as u32;
+                    let top = (down_y as u32 * height) / WND_HEIGHT as u32;
+                    let width = (x as u32 * width) / WND_WIDTH as u32 - left;
+                    let height = (y as u32 * height) / WND_HEIGHT as u32 - top;
+
+                    println!("{},{} {}x{}", left, top, width, height);
+
+                    down_x = -1;
+
+                    // Use the open function to load an image from a Path.
+                    // ```open``` returns a dynamic image.
+                    let img = image::open(&Path::new(jpg_file)).unwrap();
+
+                    // The dimensions method returns the images width and height
+                    println!("dimensions {:?}", img.dimensions());
+
+                    // The color method returns the image's ColorType
+                    println!("{:?}", img.color());
+
+                    let mut imgbuf = image::ImageBuffer::new(width, height);
+
+                    // Iterate over the coordiantes and pixels of the image
+                    for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
+                        let pix = img.get_pixel(left + x, top + y).to_luma();
+                        if pix.data[0] > 78 {
+                            *pixel = image::Luma([255u8]);
+                        } else {
+                            *pixel = image::Luma([0u8]);
+                        }
+                    }
+
+
+                    let ref mut fout = File::create(&Path::new("test.png")).unwrap();
+
+                    // Write the contents of this image to the Writer in PNG format.
+                    let _ = image::ImageLuma8(imgbuf).save(fout, image::PNG);
+                }
+
+                Event::MouseMotion { x, y, .. } => {
+                    let color = pixels::Color::RGB(x as u8, y as u8, 255);
+                    if down_x < 0 {
+                        break;
+                    }
+                    let _ =
+                        renderer.rectangle(down_x as i16, down_y as i16, x as i16, y as i16, color);
+                    renderer.present();
+                }
+
+                Event::KeyDown { keycode: Some(Keycode::S), .. } => {
+                    println!("1");
+                }
+                Event::Quit { .. } |
+                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                    println!("quit");
+                }
+                _ => {}
+            }
+        }
+    }
 }
 
 fn read_txt(txt_file: &str) -> Vec<(usize, usize)> {
