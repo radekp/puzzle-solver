@@ -950,6 +950,16 @@ fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
     let mut down_y = -1;
     let mut png_no = 600;
 
+    // Use the open function to load an image from a Path.
+    // ```open``` returns a dynamic image.
+    let img = image::open(&Path::new(jpg_file)).unwrap();
+
+    // The dimensions method returns the images width and height
+    println!("dimensions {:?}", img.dimensions());
+
+    // The color method returns the image's ColorType
+    println!("{:?}", img.color());
+
     loop {
         for event in event_pump.poll_iter() {
             renderer.clear();
@@ -963,24 +973,16 @@ fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
                 }
                 Event::MouseButtonUp { x, y, .. } => {
 
+                    let png_file = format!("{}.png", png_no);
+
                     let left = (down_x as u32 * width) / WND_WIDTH as u32;
                     let top = (down_y as u32 * height) / WND_HEIGHT as u32;
                     let width = (x as u32 * width) / WND_WIDTH as u32 - left;
                     let height = (y as u32 * height) / WND_HEIGHT as u32 - top;
 
-                    println!("{},{} {}x{}", left, top, width, height);
+                    println!("saving {} {},{} {}x{}", png_file, left, top, width, height);
 
                     down_x = -1;
-
-                    // Use the open function to load an image from a Path.
-                    // ```open``` returns a dynamic image.
-                    let img = image::open(&Path::new(jpg_file)).unwrap();
-
-                    // The dimensions method returns the images width and height
-                    println!("dimensions {:?}", img.dimensions());
-
-                    // The color method returns the image's ColorType
-                    println!("{:?}", img.color());
 
                     let mut imgbuf = image::ImageBuffer::new(width, height);
 
@@ -994,8 +996,7 @@ fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
                         }
                     }
 
-                    let ref mut fout = File::create(&Path::new(&format!("{},png", png_no)))
-                        .unwrap();
+                    let ref mut fout = File::create(&Path::new(&png_file)).unwrap();
                     // Write the contents of this image to the Writer in PNG format.
                     let _ = image::ImageLuma8(imgbuf).save(fout, image::PNG);
 
@@ -1005,13 +1006,23 @@ fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
                 Event::MouseMotion { x, y, .. } => {
                     let color = pixels::Color::RGB(x as u8, y as u8, 255);
                     if down_x < 0 {
-                        break;
-                    }
-                    let _ =
+                        renderer.line(x as i16, 0, x as i16, WND_HEIGHT as i16, color);
+                        renderer.line(0, y as i16, WND_WIDTH as i16, y as i16, color);
+                    } else {
+                        let _ =
                         renderer.rectangle(down_x as i16, down_y as i16, x as i16, y as i16, color);
+                    }
                     renderer.present();
                 }
 
+                Event::KeyDown { keycode: Some(Keycode::Left), .. } => {
+                    png_no -= 1;
+                    println!("png_no={}", png_no);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Right), .. } => {
+                    png_no += 1;
+                    println!("png_no={}", png_no);
+                }
                 Event::KeyDown { keycode: Some(Keycode::Up), .. } => {
                     png_no = png_no - png_no % 10 + 10;
                     println!("png_no={}", png_no);
@@ -1022,7 +1033,7 @@ fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
                 }
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    println!("quit");
+                    return;
                 }
                 _ => {}
             }
