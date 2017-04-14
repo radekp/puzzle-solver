@@ -4,12 +4,14 @@ extern crate image;
 use std::fs;
 use std::cmp;
 use std::env;
+use std::thread;
 use std::fs::File;
 use std::path::Path;
 use std::ffi::OsStr;
 use std::str::FromStr;
 use std::error::Error;
 use std::io::prelude::*;
+use std::time::Duration;
 use std::fs::OpenOptions;
 use std::collections::HashMap;
 
@@ -754,6 +756,7 @@ fn display_pixels(pixels: &Vec<u8>,
         if state.autorotate {
             return UserAction::Rotate;
         }
+        thread::sleep(Duration::from_millis(100))
     }
 }
 
@@ -1842,42 +1845,52 @@ fn main() {
                 }
             };
 
-            let display_res = display_pixels(&pixels,
-                                             sqr,
-                                             &sdl_context,
-                                             &mut renderer,
-                                             &mut display_state);
+            let prev_rotate = display_state.autorotate;
+            display_state.autorotate = true;
 
-            println!("display_res={:?}", display_res);
+            // Display result and use time for user key to compute diffs
+            'display_and_precompute: loop {
+                match display_pixels(&pixels,
+                                     sqr,
+                                     &sdl_context,
+                                     &mut renderer,
+                                     &mut display_state) {
+                    UserAction::Solve => {
 
-            match display_res {
-                UserAction::Solve => {
+                        let mut file = OpenOptions::new()
+                            .write(true)
+                            .append(true)
+                            .open("solved_edges.txt")
+                            .unwrap();
 
-                    let mut file = OpenOptions::new()
-                        .write(true)
-                        .append(true)
-                        .open("solved_edges.txt")
-                        .unwrap();
-
-                    if let Err(e) = file.write_all(solved_str.as_bytes()) {
-                        println!("{}", e);
-                    }
-                    break;
-                }
-                UserAction::Rotate => {
-                    for i in 0..edges_len {
-                        if edges[i].diff_to.len() != 0 ||
-                           edges[i].solved_index != usize::max_value() {
-                            continue;
+                        if let Err(e) = file.write_all(solved_str.as_bytes()) {
+                            println!("{}", e);
                         }
-                        println!("comparing {}/{}", i, edges_len);
-                        compute_best_diff(i, &mut edges, combi_one_edge, max_width, max_height);
                         break;
                     }
-                }
-                _ => {
-                    println!("other");
-                    break;
+                    UserAction::Rotate => {
+                        if prev_rotate {
+                            break 'display_and_precompute;
+                        }
+                        // Compare edges while waiting for key
+                        for i in 0..edges_len {
+                            if edges[i].diff_to.len() != 0 ||
+                               edges[i].solved_index != usize::max_value() {
+                                continue;
+                            }
+                            //println!("comparing {}/{}", i, edges_len);
+                            compute_best_diff(i, &mut edges, combi_one_edge, max_width, max_height);
+                            break;
+                        }
+                        if !display_state.autorotate {
+                            // A was pressed
+                            display_state.autorotate = true;
+                            break 'display_and_precompute;
+                        }
+                    }
+                    _ => {
+                        break;
+                    }
                 }
             }
         }
