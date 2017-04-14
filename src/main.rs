@@ -663,6 +663,7 @@ enum UserAction {
     Rotate,
     Quit,
     Solve,
+    Compute,
 }
 
 fn display_pixels(pixels: &Vec<u8>,
@@ -748,6 +749,9 @@ fn display_pixels(pixels: &Vec<u8>,
                 }
                 Event::KeyDown { keycode: Some(Keycode::S), .. } => {
                     return UserAction::Solve;
+                }
+                Event::KeyDown { keycode: Some(Keycode::C), .. } => {
+                    return UserAction::Compute;
                 }
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return UserAction::Quit,
@@ -926,7 +930,7 @@ fn process_png(img_file: &str,
     }
 }
 
-fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut DisplayPixelState) {
+fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl) {
 
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -944,7 +948,7 @@ fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
-    let mut dst_rect = Rect::new(0, 0, WND_WIDTH as u32, WND_HEIGHT as u32);
+    let dst_rect = Rect::new(0, 0, WND_WIDTH as u32, WND_HEIGHT as u32);
 
     let mut down_x = -1;
     let mut down_y = -1;
@@ -1006,8 +1010,8 @@ fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
                 Event::MouseMotion { x, y, .. } => {
                     let color = pixels::Color::RGB(x as u8, y as u8, 255);
                     if down_x < 0 {
-                        renderer.line(x as i16, 0, x as i16, WND_HEIGHT as i16, color);
-                        renderer.line(0, y as i16, WND_WIDTH as i16, y as i16, color);
+                        let _ = renderer.line(x as i16, 0, x as i16, WND_HEIGHT as i16, color);
+                        let _ = renderer.line(0, y as i16, WND_WIDTH as i16, y as i16, color);
                     } else {
                         let _ =
                         renderer.rectangle(down_x as i16, down_y as i16, x as i16, y as i16, color);
@@ -1436,7 +1440,7 @@ fn main() {
             }
             Some("jpg") => {
                 let path_str = path.into_os_string().into_string().unwrap();
-                process_jpg(&path_str, &sdl_context, &mut display_state);
+                process_jpg(&path_str, &sdl_context);
             }
             _ => {}
         }
