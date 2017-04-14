@@ -664,9 +664,11 @@ fn find_edge(pixels: &mut Vec<u8>,
 #[derive(Debug)]
 enum UserAction {
     Rotate,
+    Autorotate,
     Quit,
     Solve,
     Compute,
+    NoAction,
 }
 
 fn display_pixels(pixels: &Vec<u8>,
@@ -698,10 +700,10 @@ fn display_pixels(pixels: &Vec<u8>,
     let mut dst_rect = Rect::new(0, 0, sqr as u32, sqr as u32);
 
     loop {
+        renderer.clear();
+        renderer.copy(&res_texture, None, Some(dst_rect)).unwrap();
+        renderer.present();
         for event in event_pump.poll_iter() {
-            renderer.clear();
-            renderer.copy(&res_texture, None, Some(dst_rect)).unwrap();
-            renderer.present();
             match event {
                 Event::KeyDown { keycode: Some(Keycode::R), .. } => return UserAction::Rotate,
                 Event::KeyDown { keycode: Some(Keycode::P), .. } => {
@@ -740,7 +742,7 @@ fn display_pixels(pixels: &Vec<u8>,
                 }
                 Event::KeyDown { keycode: Some(Keycode::A), .. } => {
                     state.autorotate = !state.autorotate;
-                    return UserAction::Rotate;
+                    return UserAction::Autorotate;
                 }
                 Event::KeyDown { keycode: Some(Keycode::S), .. } => {
                     return UserAction::Solve;
@@ -754,7 +756,7 @@ fn display_pixels(pixels: &Vec<u8>,
             }
         }
         if state.autorotate {
-            return UserAction::Rotate;
+            return UserAction::NoAction;
         }
         thread::sleep(Duration::from_millis(100))
     }
@@ -1845,18 +1847,26 @@ fn main() {
                 }
             };
 
-            let prev_rotate = display_state.autorotate;
-            display_state.autorotate = true;
-
             // Display result and use time for user key to compute diffs
             'display_and_precompute: loop {
-                match display_pixels(&pixels,
-                                     sqr,
-                                     &sdl_context,
-                                     &mut renderer,
-                                     &mut display_state) {
-                    UserAction::Solve => {
 
+                // autorotate=true will not wait for key
+                let autorotate_save = display_state.autorotate;
+                display_state.autorotate = true;
+                let display_res = display_pixels(&pixels,
+                                                 sqr,
+                                                 &sdl_context,
+                                                 &mut renderer,
+                                                 &mut display_state);
+
+
+                if autorotate_save {
+                    break 'display_and_precompute;
+                }
+                display_state.autorotate = !display_state.autorotate;
+
+                match display_res {
+                    UserAction::Solve => {
                         let mut file = OpenOptions::new()
                             .write(true)
                             .append(true)
@@ -1868,28 +1878,20 @@ fn main() {
                         }
                         break;
                     }
-                    UserAction::Rotate => {
-                        if prev_rotate {
-                            break 'display_and_precompute;
-                        }
+                    UserAction::NoAction => {
                         // Compare edges while waiting for key
                         for i in 0..edges_len {
                             if edges[i].diff_to.len() != 0 ||
                                edges[i].solved_index != usize::max_value() {
                                 continue;
                             }
-                            //println!("comparing {}/{}", i, edges_len);
+                            println!("comparing {}/{}", i, edges_len);
                             compute_best_diff(i, &mut edges, combi_one_edge, max_width, max_height);
                             break;
                         }
-                        if !display_state.autorotate {
-                            // A was pressed
-                            display_state.autorotate = true;
-                            break 'display_and_precompute;
-                        }
                     }
                     _ => {
-                        break;
+                        break 'display_and_precompute;
                     }
                 }
             }
