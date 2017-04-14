@@ -930,7 +930,7 @@ fn process_png(img_file: &str,
     }
 }
 
-fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl) {
+fn process_jpg(jpg_file: &str, jpg_no: usize, sdl_context: &sdl2::Sdl) {
 
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -952,7 +952,7 @@ fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl) {
 
     let mut down_x = -1;
     let mut down_y = -1;
-    let mut png_no = 850;
+    let mut png_no = jpg_no;
 
     // Use the open function to load an image from a Path.
     // ```open``` returns a dynamic image.
@@ -1037,6 +1037,7 @@ fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl) {
                 }
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                    write_done_file(jpg_file);
                     return;
                 }
                 _ => {}
@@ -1418,6 +1419,30 @@ fn main() {
 
     let mut display_state = DisplayPixelState { autorotate: false };
 
+    // Process all .jpg files
+    let entries = fs::read_dir("./jpg").unwrap();
+    for entry in entries {
+        //println!("Name: {}", path.unwrap().path().into_os_string().into_string());
+
+        let path = entry.unwrap().path();
+        match path.extension().and_then(OsStr::to_str) {
+            Some("jpg") => {
+                let jpg_no: usize = path.file_stem()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .parse()
+                    .unwrap();
+                let path_str = path.into_os_string().into_string().unwrap();
+                if is_done(&path_str) {
+                    continue;
+                }
+                process_jpg(&path_str, jpg_no, &sdl_context);
+            }
+            _ => {}
+        }
+    }
+
     // Process all .png files - this will write 4 txt files for each edge
     let entries = fs::read_dir("./data").unwrap();
     for entry in entries {
@@ -1437,10 +1462,6 @@ fn main() {
                     continue;
                 }
                 process_png(&path_str, png_no, &sdl_context, &mut display_state);
-            }
-            Some("jpg") => {
-                let path_str = path.into_os_string().into_string().unwrap();
-                process_jpg(&path_str, &sdl_context);
             }
             _ => {}
         }
