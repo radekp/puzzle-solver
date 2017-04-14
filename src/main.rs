@@ -659,6 +659,7 @@ fn find_edge(pixels: &mut Vec<u8>,
     edge
 }
 
+#[derive(Debug)]
 enum UserAction {
     Rotate,
     Quit,
@@ -689,14 +690,6 @@ fn display_pixels(pixels: &Vec<u8>,
             }
         })
         .unwrap();
-
-
-    if state.autorotate {
-        renderer.clear();
-        renderer.copy(&res_texture, None, None).unwrap();
-        renderer.present();
-        return UserAction::Rotate;
-    }
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
@@ -758,7 +751,9 @@ fn display_pixels(pixels: &Vec<u8>,
                 _ => {}
             }
         }
-        // The rest of the game loop goes here...
+        if state.autorotate {
+            return UserAction::Rotate;
+        }
     }
 }
 
@@ -1847,11 +1842,15 @@ fn main() {
                 }
             };
 
-            match display_pixels(&pixels,
-                                 sqr,
-                                 &sdl_context,
-                                 &mut renderer,
-                                 &mut display_state) {
+            let display_res = display_pixels(&pixels,
+                                             sqr,
+                                             &sdl_context,
+                                             &mut renderer,
+                                             &mut display_state);
+
+            println!("display_res={:?}", display_res);
+
+            match display_res {
                 UserAction::Solve => {
 
                     let mut file = OpenOptions::new()
@@ -1863,8 +1862,23 @@ fn main() {
                     if let Err(e) = file.write_all(solved_str.as_bytes()) {
                         println!("{}", e);
                     }
+                    break;
                 }
-                _ => {}
+                UserAction::Rotate => {
+                    for i in 0..edges_len {
+                        if edges[i].diff_to.len() != 0 ||
+                           edges[i].solved_index != usize::max_value() {
+                            continue;
+                        }
+                        println!("comparing {}/{}", i, edges_len);
+                        compute_best_diff(i, &mut edges, combi_one_edge, max_width, max_height);
+                        break;
+                    }
+                }
+                _ => {
+                    println!("other");
+                    break;
+                }
             }
         }
     }
