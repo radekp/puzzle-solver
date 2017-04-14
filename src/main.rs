@@ -948,7 +948,7 @@ fn process_jpg(jpg_file: &str, sdl_context: &sdl2::Sdl, display_state: &mut Disp
 
     let mut down_x = -1;
     let mut down_y = -1;
-    let mut png_no = 600;
+    let mut png_no = 850;
 
     // Use the open function to load an image from a Path.
     // ```open``` returns a dynamic image.
