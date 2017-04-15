@@ -1184,6 +1184,16 @@ fn rotate_piece(points: &Vec<(usize, usize)>, side: usize) -> Vec<(usize, usize)
     res
 }
 
+// Used to draw piece with solved edge with white
+fn piece_col(edges: &Vec<EdgeInfo>, piece_no: usize, r: u8, g: u8, b: u8) -> (u8, u8, u8) {
+    for edge in edges {
+        if edge.solved_index != usize::max_value() && edge.edge_no >> 2 == piece_no {
+            return (255, 255, 255);
+        }
+    }
+    (r, g, b)
+}
+
 fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
                             e_index: usize,
                             max_width: usize,
@@ -1815,25 +1825,43 @@ fn main() {
             let piece_d = rotate_piece(pieces.get(&(d_no >> 2)).unwrap(), 0);
             let max_a = max_xy(&piece_a);
 
+            let col_a = piece_col(&edges, a_no >> 2, 255, 0, 0);
+            let col_b = piece_col(&edges, b_no >> 2, 0, 255, 0);
+            let col_c = piece_col(&edges, c_no >> 2, 0, 0, 255);
+            let col_d = piece_col(&edges, d_no >> 2, 255, 255, 0);
+
             draw_coords(&mut pixels,
                         sqr,
                         &piece_a,
                         max_a.0,
                         max_height + max_a.1,
-                        255,
-                        0,
-                        0);
+                        col_a.0,
+                        col_a.1,
+                        col_a.2);
             draw_coords(&mut pixels,
                         sqr,
                         &piece_b,
                         0,
                         max_height + max_a.1,
+                        col_b.0,
+                        col_b.1,
+                        col_b.2);
+            draw_coords(&mut pixels,
+                        sqr,
+                        &piece_c,
                         0,
-                        255,
-                        0);
-
-            draw_coords(&mut pixels, sqr, &piece_c, 0, max_height, 0, 0, 255);
-            draw_coords(&mut pixels, sqr, &piece_d, max_a.0, max_height, 255, 255, 0);
+                        max_height,
+                        col_c.0,
+                        col_c.1,
+                        col_c.2);
+            draw_coords(&mut pixels,
+                        sqr,
+                        &piece_d,
+                        max_a.0,
+                        max_height,
+                        col_d.0,
+                        col_d.1,
+                        col_d.2);
 
             // Go on if all 4edges solved
             if final_score == 0 {
