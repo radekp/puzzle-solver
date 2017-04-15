@@ -1934,7 +1934,7 @@ fn main() {
                                edges[i].solved_index != usize::max_value() {
                                 continue;
                             }
-                            println!("comparing {}/{}", i, edges_len);
+                            //println!("comparing {}/{}", i, edges_len);
                             compute_best_diff(i, &mut edges, combi_one_edge, max_width, max_height);
                             break;
                         }
