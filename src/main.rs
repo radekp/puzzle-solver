@@ -1577,9 +1577,6 @@ fn main() {
 
     let mut renderer = window.renderer().build().unwrap();
 
-    // Prefered indices for edge
-    let mut pref_indices = vec![];
-
     // Hashmap to get index by edge_no
     let mut edge_nums = HashMap::new();
     for i in 0..edges_len {
@@ -1588,10 +1585,10 @@ fn main() {
         //println!("edge={}.{}", i_no >> 2, i_no & 3);
         edge_nums.insert(i_no, i);
         edge_i.edge_index = i;
-        pref_indices.push(i);
     }
 
     // Solved edges
+    let mut pref_solved = vec![];
     for p in read_txt("solved_edges.txt") {
         let i_no = 4 * (p.0 / 10) + (p.0 % 10); // edge no: 12.3 -> 123 -> 4 * 12 + 3
         let j_no = 4 * (p.1 / 10) + (p.1 % 10);
@@ -1608,8 +1605,8 @@ fn main() {
         let diff_ij = compare_edges(&edges, i_index, j_index);
         let diff_ji = compare_edges(&edges, j_index, i_index);
 
-        pref_indices.insert(0, i_index);
-        pref_indices.insert(0, j_index);
+        pref_solved.insert(0, i_index);
+        pref_solved.insert(0, j_index);
 
         println!(", diff {:>12}+{:<12}={:>12}",
                  diff_ij,
@@ -1618,15 +1615,28 @@ fn main() {
     }
 
     // Prefer pieces from command line
+    let mut pref_cmd_solved = vec![];
+    let mut pref_cmd_unsolved = vec![];
     for arg in env::args().skip(1) {
         let argv: usize = arg.parse().unwrap();
         for i in 0..edges_len {
             let png_no = edges[i].edge_no >> 2;
-            if png_no == argv {
-                pref_indices.insert(0, i);
+            if png_no != argv {
+                continue;
+            }
+            if edges[i].solved_index == usize::max_value() {
+                pref_cmd_unsolved.insert(0, i);
+            } else {
+                pref_cmd_solved.insert(0, i);
             }
         }
     }
+
+    // Prefered cmd line, then solved edges
+    let mut pref_indices = vec![];
+    pref_indices.append(&mut pref_cmd_solved);
+    pref_indices.append(&mut pref_cmd_unsolved);
+    pref_indices.append(&mut pref_solved);
 
     println!("Compared edges:");
     println!("");
@@ -1925,6 +1935,10 @@ fn main() {
                         if let Err(e) = file.write_all(solved_str.as_bytes()) {
                             println!("{}", e);
                         }
+                        edges[a].solved_index = b;
+                        edges[b_plus].solved_index = c;
+                        edges[c_plus].solved_index = d;
+                        edges[d_plus].solved_index = a_minus;
                         break;
                     }
                     UserAction::NoAction => {
