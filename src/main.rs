@@ -669,6 +669,7 @@ enum UserAction {
     Solve,
     Compute,
     NoAction,
+    Number(usize),
 }
 
 fn display_pixels(pixels: &Vec<u8>,
@@ -698,6 +699,8 @@ fn display_pixels(pixels: &Vec<u8>,
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     let mut dst_rect = Rect::new(0, 0, sqr as u32, sqr as u32);
+
+    let mut num = 0;
 
     loop {
         renderer.clear();
@@ -749,6 +752,60 @@ fn display_pixels(pixels: &Vec<u8>,
                 }
                 Event::KeyDown { keycode: Some(Keycode::C), .. } => {
                     return UserAction::Compute;
+                }
+                Event::KeyDown { keycode: Some(Keycode::Num0), .. } => {
+                    state.autorotate = false;
+                    num = num * 10;
+                    println!("num={}", num);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Num1), .. } => {
+                    state.autorotate = false;
+                    num = num * 10 + 1;
+                    println!("num={}", num);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Num2), .. } => {
+                    state.autorotate = false;
+                    num = num * 10 + 2;
+                    println!("num={}", num);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Num3), .. } => {
+                    state.autorotate = false;
+                    num = num * 10 + 3;
+                    println!("num={}", num);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Num4), .. } => {
+                    state.autorotate = false;
+                    num = num * 10 + 4;
+                    println!("num={}", num);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Num5), .. } => {
+                    state.autorotate = false;
+                    num = num * 10 + 5;
+                    println!("num={}", num);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Num6), .. } => {
+                    state.autorotate = false;
+                    num = num * 10 + 6;
+                    println!("num={}", num);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Num7), .. } => {
+                    state.autorotate = false;
+                    num = num * 10 + 7;
+                    println!("num={}", num);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Num8), .. } => {
+                    state.autorotate = false;
+                    num = num * 10 + 8;
+                    println!("num={}", num);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Num9), .. } => {
+                    state.autorotate = false;
+                    num = num * 10 + 9;
+                    println!("num={}", num);
+                }
+                Event::KeyDown { keycode: Some(Keycode::Return), .. } => {
+                    println!("return num={}", num);
+                    return UserAction::Number(num);
                 }
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return UserAction::Quit,
@@ -1642,319 +1699,346 @@ fn main() {
     println!("");
     println!("   1st     2nd     3rd   4th          score");
 
-    // Do 4-edges compare (edges from pieces A,B,C,D)
-    //     C  ->  D
-    //     ^      |
-    //     |      v
-    //     B  <-  A
-    for a in pref_indices {
-        let a_no = edges[a].edge_no;
+    let mut pref_new = vec![];
 
-        // Loop to compare combination of best edges, e.g. 1stJ..1stP, 1stJ..2ndM, 2ndJ..2ndM
-        let mut best_final_score = usize::max_value();
-        let mut combi_counter = 0;
-        let mut best_combi_counter = 0;
+    loop {
+        for pref in pref_new.iter() {
+            pref_indices.insert(0, *pref);
+        }
 
-        // Parameter for edge matching combinations
-        let combi_shift = 3;
-        let combi_one_edge = 1 << combi_shift; // number of combinations for one edge
-        let combi_mask = combi_one_edge - 1;
-        let combi_all = combi_one_edge * combi_one_edge * combi_one_edge;
+        // Do 4-edges compare (edges from pieces A,B,C,D)
+        //     C  ->  D
+        //     ^      |
+        //     |      v
+        //     B  <-  A
+        'pref_indices_loop: for a_item in pref_indices.iter() {
+            let a = *a_item;
+            let a_no = edges[a].edge_no;
 
-        'combi_loop: loop {
+            // Loop to compare combination of best edges, e.g. 1stJ..1stP, 1stJ..2ndM, 2ndJ..2ndM
+            let mut best_final_score = usize::max_value();
+            let mut combi_counter = 0;
+            let mut best_combi_counter = 0;
 
-            // Last round displays the best result
-            let combi_val = if combi_counter <= combi_all - 1 {
-                combi_counter
-            } else if combi_counter == combi_all {
-                println!("======= BEST MATCH {:>2} ========", best_combi_counter);
-                display_state.autorotate = false;
-                best_combi_counter
-            } else {
-                break 'combi_loop;
-            };
+            // Parameter for edge matching combinations
+            let combi_shift = 3;
+            let combi_one_edge = 1 << combi_shift; // number of combinations for one edge
+            let combi_mask = combi_one_edge - 1;
+            let combi_all = combi_one_edge * combi_one_edge * combi_one_edge;
 
-            let combi = (combi_val & combi_mask,
-                         (combi_val >> combi_shift) & combi_mask,
-                         (combi_val >> (2 * combi_shift)) & combi_mask);
-            if combi_counter != combi_all {
-                println!("------------------------------              combi {}=>{}.{}.{}",
-                         combi_counter,
-                         combi.0,
-                         combi.1,
-                         combi.2);
-            }
+            'combi_loop: loop {
 
-            combi_counter += 1;
-
-            //     B  <-  A
-            let (b, b_no, diff_b) = get_best_diff(a, &mut edges, combi.0, max_width, max_height);
-
-            println!("{:>4}.{}->{:>4}.{}                 {:>12}",
-                     a_no >> 2,
-                     a_no & 3,
-                     b_no >> 2,
-                     b_no & 3,
-                     diff_b);
-
-            //     C
-            //     ^
-            //     |
-            //     B  <-  A
-            let b_plus_no = side_plus(b_no);
-            let b_plus = *edge_nums.get(&b_plus_no).unwrap();
-            let (c, c_no, diff_c) =
-                get_best_diff(b_plus, &mut edges, combi.1, max_width, max_height);
-
-            println!("        {:>4}.{}->{:>4}.{}         {:>12}",
-                     b_plus_no >> 2,
-                     b_plus_no & 3,
-                     c_no >> 2,
-                     c_no & 3,
-                     diff_c);
-
-            //     C  ->  D
-            //     ^
-            //     |
-            //     B  <-  A
-            let c_plus_no = side_plus(c_no);
-            let c_plus = *edge_nums.get(&c_plus_no).unwrap();
-            let (d, d_no, diff_d) =
-                get_best_diff(c_plus, &mut edges, combi.2, max_width, max_height);
-
-            println!("                {:>4}.{}->{:>4}.{} {:>12}",
-                     c_plus_no >> 2,
-                     c_plus_no & 3,
-                     d_no >> 2,
-                     d_no & 3,
-                     diff_d);
-
-            // Now check A->D - must be small if pieces fit
-            //
-            //     C  ->  D
-            //     ^      ^
-            //     |      |
-            //     B  <-  A
-            //
-            // The last edge can be marked as solved and thus not loaded
-            let d_plus_no = side_plus(d_no);
-            let d_plus = *edge_nums.get(&d_plus_no).unwrap();
-
-            let a_minus_no = side_minus(a_no);
-            let a_minus = *edge_nums.get(&a_minus_no).unwrap();
-
-            let mut diff_a_minus = compare_edges(&mut edges, a_minus, d_plus) +
-                                   compare_edges(&mut edges, d_plus, a_minus);
-
-
-            // Check if it's not the same edge
-            if d_plus == a_minus {
-                println!("SKIP d_plus and a_minus is same edge");
-                diff_a_minus += 100000000;
-            }
-
-            // Check if solved d->a match
-            let d_plus_solved_index = edges[d_plus].solved_index;
-            if d_plus_solved_index != usize::max_value() {
-                diff_a_minus = if d_plus_solved_index == a_minus {
-                    0
+                // Last round displays the best result
+                let combi_val = if combi_counter <= combi_all - 1 {
+                    combi_counter
+                } else if combi_counter == combi_all {
+                    println!("======= BEST MATCH {:>2} ========", best_combi_counter);
+                    display_state.autorotate = false;
+                    best_combi_counter
                 } else {
-                    println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
-                             d_plus_no >> 2,
-                             d_plus_no & 3,
-                             edges[d_plus_solved_index].edge_no >> 2,
-                             edges[d_plus_solved_index].edge_no & 3,
-                             a_minus_no >> 2,
-                             a_minus_no & 3);
-                    diff_a_minus + 100000000
+                    break 'combi_loop;
+                };
+
+                let combi = (combi_val & combi_mask,
+                             (combi_val >> combi_shift) & combi_mask,
+                             (combi_val >> (2 * combi_shift)) & combi_mask);
+                if combi_counter != combi_all {
+                    println!("------------------------------              combi {}=>{}.{}.{}",
+                             combi_counter,
+                             combi.0,
+                             combi.1,
+                             combi.2);
                 }
-            }
-            let a_minus_solved_index = edges[a_minus].solved_index;
-            if a_minus_solved_index != usize::max_value() {
-                diff_a_minus = if a_minus_solved_index == d_plus {
-                    if diff_a_minus == 0 {
+
+                combi_counter += 1;
+
+                //     B  <-  A
+                let (b, b_no, diff_b) =
+                    get_best_diff(a, &mut edges, combi.0, max_width, max_height);
+
+                println!("{:>4}.{}->{:>4}.{}                 {:>12}",
+                         a_no >> 2,
+                         a_no & 3,
+                         b_no >> 2,
+                         b_no & 3,
+                         diff_b);
+
+                //     C
+                //     ^
+                //     |
+                //     B  <-  A
+                let b_plus_no = side_plus(b_no);
+                let b_plus = *edge_nums.get(&b_plus_no).unwrap();
+                let (c, c_no, diff_c) =
+                    get_best_diff(b_plus, &mut edges, combi.1, max_width, max_height);
+
+                println!("        {:>4}.{}->{:>4}.{}         {:>12}",
+                         b_plus_no >> 2,
+                         b_plus_no & 3,
+                         c_no >> 2,
+                         c_no & 3,
+                         diff_c);
+
+                //     C  ->  D
+                //     ^
+                //     |
+                //     B  <-  A
+                let c_plus_no = side_plus(c_no);
+                let c_plus = *edge_nums.get(&c_plus_no).unwrap();
+                let (d, d_no, diff_d) =
+                    get_best_diff(c_plus, &mut edges, combi.2, max_width, max_height);
+
+                println!("                {:>4}.{}->{:>4}.{} {:>12}",
+                         c_plus_no >> 2,
+                         c_plus_no & 3,
+                         d_no >> 2,
+                         d_no & 3,
+                         diff_d);
+
+                // Now check A->D - must be small if pieces fit
+                //
+                //     C  ->  D
+                //     ^      ^
+                //     |      |
+                //     B  <-  A
+                //
+                // The last edge can be marked as solved and thus not loaded
+                let d_plus_no = side_plus(d_no);
+                let d_plus = *edge_nums.get(&d_plus_no).unwrap();
+
+                let a_minus_no = side_minus(a_no);
+                let a_minus = *edge_nums.get(&a_minus_no).unwrap();
+
+                let mut diff_a_minus = compare_edges(&mut edges, a_minus, d_plus) +
+                                       compare_edges(&mut edges, d_plus, a_minus);
+
+
+                // Check if it's not the same edge
+                if d_plus == a_minus {
+                    println!("SKIP d_plus and a_minus is same edge");
+                    diff_a_minus += 100000000;
+                }
+
+                // Check if solved d->a match
+                let d_plus_solved_index = edges[d_plus].solved_index;
+                if d_plus_solved_index != usize::max_value() {
+                    diff_a_minus = if d_plus_solved_index == a_minus {
                         0
                     } else {
-                        panic!("a_minus solved to d_plus but d_plus solved to other");
+                        println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
+                                 d_plus_no >> 2,
+                                 d_plus_no & 3,
+                                 edges[d_plus_solved_index].edge_no >> 2,
+                                 edges[d_plus_solved_index].edge_no & 3,
+                                 a_minus_no >> 2,
+                                 a_minus_no & 3);
+                        diff_a_minus + 100000000
                     }
-                } else {
-                    println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
-                             a_minus_no >> 2,
-                             a_minus_no & 3,
-                             edges[a_minus_solved_index].edge_no >> 2,
-                             edges[a_minus_solved_index].edge_no & 3,
-                             d_plus_no >> 2,
-                             d_plus_no & 3);
-                    diff_a_minus + 100000000
                 }
-            }
-
-            let mut skip_draw = display_state.autorotate;
-
-            let final_score = diff_b + diff_c + diff_d + diff_a_minus;
-
-            println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
-                     a_minus_no >> 2,
-                     a_minus_no & 3,
-                     d_plus_no >> 2,
-                     d_plus_no & 3,
-                     diff_a_minus,
-                     final_score);
-
-            // Remeber best 4-edge diff that will be displayed after all cominations computed
-            if final_score < best_final_score {
-                best_final_score = final_score;
-                best_combi_counter = combi_val;
-                skip_draw = false; // always draw the best matching
-            }
-
-            if skip_draw {
-                continue;
-            }
-
-            // Display comapred edges
-            for p in pixels.iter_mut() {
-                *p = 0;
-            }
-
-            draw_edge(&mut pixels, &edges, a, false, sqr, 0, 0, 255, 0, 0);
-            draw_edge(&mut pixels, &edges, b, true, sqr, 0, 0, 0, 255, 0);
-
-            draw_edge(&mut pixels, &edges, b_plus, false, sqr, 100, 0, 255, 0, 0);
-            draw_edge(&mut pixels, &edges, c, true, sqr, 100, 0, 0, 255, 0);
-
-            draw_edge(&mut pixels, &edges, c_plus, false, sqr, 200, 0, 255, 0, 0);
-            draw_edge(&mut pixels, &edges, d, true, sqr, 200, 0, 0, 255, 0);
-
-            draw_edge(&mut pixels, &edges, d_plus, false, sqr, 300, 0, 255, 0, 0);
-            draw_edge(&mut pixels, &edges, a_minus, true, sqr, 300, 0, 0, 255, 0);
-
-            let piece_a = rotate_piece(pieces.get(&(a_no >> 2)).unwrap(), 0);
-            let piece_b = rotate_piece(pieces.get(&(b_no >> 2)).unwrap(), 0);
-            let piece_c = rotate_piece(pieces.get(&(c_no >> 2)).unwrap(), 0);
-            let piece_d = rotate_piece(pieces.get(&(d_no >> 2)).unwrap(), 0);
-            let max_a = max_xy(&piece_a);
-
-            let col_a = piece_col(&edges, a_no >> 2, 255, 0, 0);
-            let col_b = piece_col(&edges, b_no >> 2, 0, 255, 0);
-            let col_c = piece_col(&edges, c_no >> 2, 0, 0, 255);
-            let col_d = piece_col(&edges, d_no >> 2, 255, 255, 0);
-
-            draw_coords(&mut pixels,
-                        sqr,
-                        &piece_a,
-                        max_a.0,
-                        max_height + max_a.1,
-                        col_a.0,
-                        col_a.1,
-                        col_a.2);
-            draw_coords(&mut pixels,
-                        sqr,
-                        &piece_b,
-                        0,
-                        max_height + max_a.1,
-                        col_b.0,
-                        col_b.1,
-                        col_b.2);
-            draw_coords(&mut pixels,
-                        sqr,
-                        &piece_c,
-                        0,
-                        max_height,
-                        col_c.0,
-                        col_c.1,
-                        col_c.2);
-            draw_coords(&mut pixels,
-                        sqr,
-                        &piece_d,
-                        max_a.0,
-                        max_height,
-                        col_d.0,
-                        col_d.1,
-                        col_d.2);
-
-            // Go on if all 4edges solved
-            if final_score == 0 {
-                break 'combi_loop;
-            }
-
-            // Content for solved_edges.txt
-            let solved_str = {
-                if display_state.autorotate {
-                    "".to_string()
-                } else {
-                    let solved_tmp = format!("{}.{},{}.{}\n{}.{},{}.{}\n{}.{},{}.{}\n{}.{},{}.\
-                                              {}\n",
-                                             a_no >> 2,
-                                             a_no & 3,
-                                             b_no >> 2,
-                                             b_no & 3,
-                                             b_plus_no >> 2,
-                                             b_plus_no & 3,
-                                             c_no >> 2,
-                                             c_no & 3,
-                                             c_plus_no >> 2,
-                                             c_plus_no & 3,
-                                             d_no >> 2,
-                                             d_no & 3,
-                                             a_minus_no >> 2,
-                                             a_minus_no & 3,
-                                             d_plus_no >> 2,
-                                             d_plus_no & 3);
-                    println!("\n{}", solved_tmp);
-                    solved_tmp
-                }
-            };
-
-            // Display result and use time for user key to compute diffs
-            'display_and_precompute: loop {
-
-                // autorotate=true will not wait for key
-                let autorotate_save = display_state.autorotate;
-                display_state.autorotate = true;
-                let display_res = display_pixels(&pixels,
-                                                 sqr,
-                                                 &sdl_context,
-                                                 &mut renderer,
-                                                 &mut display_state);
-
-
-                if autorotate_save {
-                    break 'display_and_precompute;
-                }
-                display_state.autorotate = !display_state.autorotate;
-
-                match display_res {
-                    UserAction::Solve => {
-                        let mut file = OpenOptions::new()
-                            .write(true)
-                            .append(true)
-                            .open("solved_edges.txt")
-                            .unwrap();
-
-                        if let Err(e) = file.write_all(solved_str.as_bytes()) {
-                            println!("{}", e);
+                let a_minus_solved_index = edges[a_minus].solved_index;
+                if a_minus_solved_index != usize::max_value() {
+                    diff_a_minus = if a_minus_solved_index == d_plus {
+                        if diff_a_minus == 0 {
+                            0
+                        } else {
+                            panic!("a_minus solved to d_plus but d_plus solved to other");
                         }
-                        edges[a].solved_index = b;
-                        edges[b_plus].solved_index = c;
-                        edges[c_plus].solved_index = d;
-                        edges[d_plus].solved_index = a_minus;
-                        break;
+                    } else {
+                        println!("SKIP {}.{} is already solved to {}.{} and does not match {}.{}",
+                                 a_minus_no >> 2,
+                                 a_minus_no & 3,
+                                 edges[a_minus_solved_index].edge_no >> 2,
+                                 edges[a_minus_solved_index].edge_no & 3,
+                                 d_plus_no >> 2,
+                                 d_plus_no & 3);
+                        diff_a_minus + 100000000
                     }
-                    UserAction::NoAction => {
-                        // Compare edges while waiting for key
-                        for i in 0..edges_len {
-                            if edges[i].diff_to.len() != 0 ||
-                               edges[i].solved_index != usize::max_value() {
-                                continue;
+                }
+
+                let mut skip_draw = display_state.autorotate;
+
+                let final_score = diff_b + diff_c + diff_d + diff_a_minus;
+
+                println!("{:>4}.{}<-                {:>4}.{} {:>12} FINAL SCORE={}",
+                         a_minus_no >> 2,
+                         a_minus_no & 3,
+                         d_plus_no >> 2,
+                         d_plus_no & 3,
+                         diff_a_minus,
+                         final_score);
+
+                // Remeber best 4-edge diff that will be displayed after all cominations computed
+                if final_score < best_final_score {
+                    best_final_score = final_score;
+                    best_combi_counter = combi_val;
+                    skip_draw = false; // always draw the best matching
+                }
+
+                if skip_draw {
+                    continue;
+                }
+
+                // Display comapred edges
+                for p in pixels.iter_mut() {
+                    *p = 0;
+                }
+
+                draw_edge(&mut pixels, &edges, a, false, sqr, 0, 0, 255, 0, 0);
+                draw_edge(&mut pixels, &edges, b, true, sqr, 0, 0, 0, 255, 0);
+
+                draw_edge(&mut pixels, &edges, b_plus, false, sqr, 100, 0, 255, 0, 0);
+                draw_edge(&mut pixels, &edges, c, true, sqr, 100, 0, 0, 255, 0);
+
+                draw_edge(&mut pixels, &edges, c_plus, false, sqr, 200, 0, 255, 0, 0);
+                draw_edge(&mut pixels, &edges, d, true, sqr, 200, 0, 0, 255, 0);
+
+                draw_edge(&mut pixels, &edges, d_plus, false, sqr, 300, 0, 255, 0, 0);
+                draw_edge(&mut pixels, &edges, a_minus, true, sqr, 300, 0, 0, 255, 0);
+
+                let piece_a = rotate_piece(pieces.get(&(a_no >> 2)).unwrap(), 0);
+                let piece_b = rotate_piece(pieces.get(&(b_no >> 2)).unwrap(), 0);
+                let piece_c = rotate_piece(pieces.get(&(c_no >> 2)).unwrap(), 0);
+                let piece_d = rotate_piece(pieces.get(&(d_no >> 2)).unwrap(), 0);
+                let max_a = max_xy(&piece_a);
+
+                let col_a = piece_col(&edges, a_no >> 2, 255, 0, 0);
+                let col_b = piece_col(&edges, b_no >> 2, 0, 255, 0);
+                let col_c = piece_col(&edges, c_no >> 2, 0, 0, 255);
+                let col_d = piece_col(&edges, d_no >> 2, 255, 255, 0);
+
+                draw_coords(&mut pixels,
+                            sqr,
+                            &piece_a,
+                            max_a.0,
+                            max_height + max_a.1,
+                            col_a.0,
+                            col_a.1,
+                            col_a.2);
+                draw_coords(&mut pixels,
+                            sqr,
+                            &piece_b,
+                            0,
+                            max_height + max_a.1,
+                            col_b.0,
+                            col_b.1,
+                            col_b.2);
+                draw_coords(&mut pixels,
+                            sqr,
+                            &piece_c,
+                            0,
+                            max_height,
+                            col_c.0,
+                            col_c.1,
+                            col_c.2);
+                draw_coords(&mut pixels,
+                            sqr,
+                            &piece_d,
+                            max_a.0,
+                            max_height,
+                            col_d.0,
+                            col_d.1,
+                            col_d.2);
+
+                // Go on if all 4edges solved
+                if final_score == 0 {
+                    break 'combi_loop;
+                }
+
+                // Content for solved_edges.txt
+                let solved_str = {
+                    if display_state.autorotate {
+                        "".to_string()
+                    } else {
+                        let solved_tmp = format!("{}.{},{}.{}\n{}.{},{}.{}\n{}.{},{}.{}\n{}.{},\
+                                                  {}.{}\n",
+                                                 a_no >> 2,
+                                                 a_no & 3,
+                                                 b_no >> 2,
+                                                 b_no & 3,
+                                                 b_plus_no >> 2,
+                                                 b_plus_no & 3,
+                                                 c_no >> 2,
+                                                 c_no & 3,
+                                                 c_plus_no >> 2,
+                                                 c_plus_no & 3,
+                                                 d_no >> 2,
+                                                 d_no & 3,
+                                                 a_minus_no >> 2,
+                                                 a_minus_no & 3,
+                                                 d_plus_no >> 2,
+                                                 d_plus_no & 3);
+                        println!("\n{}", solved_tmp);
+                        solved_tmp
+                    }
+                };
+
+                // Display result and use time for user key to compute diffs
+                'display_and_precompute: loop {
+
+                    // autorotate=true will not wait for key
+                    let autorotate_save = display_state.autorotate;
+                    display_state.autorotate = true;
+                    let display_res = display_pixels(&pixels,
+                                                     sqr,
+                                                     &sdl_context,
+                                                     &mut renderer,
+                                                     &mut display_state);
+
+
+                    if autorotate_save {
+                        break 'display_and_precompute;
+                    }
+                    display_state.autorotate = !display_state.autorotate;
+
+                    match display_res {
+                        UserAction::Solve => {
+                            let mut file = OpenOptions::new()
+                                .write(true)
+                                .append(true)
+                                .open("solved_edges.txt")
+                                .unwrap();
+
+                            if let Err(e) = file.write_all(solved_str.as_bytes()) {
+                                println!("{}", e);
                             }
-                            //println!("comparing {}/{}", i, edges_len);
-                            compute_best_diff(i, &mut edges, combi_one_edge, max_width, max_height);
+                            edges[a].solved_index = b;
+                            edges[b_plus].solved_index = c;
+                            edges[c_plus].solved_index = d;
+                            edges[d_plus].solved_index = a_minus;
                             break;
                         }
-                    }
-                    _ => {
-                        break 'display_and_precompute;
+                        UserAction::Number(num) => {
+                            pref_new.clear();
+                            for i in 0..4 {
+                                let edge_no = 4 * num + i;
+                                let idx = edge_nums.get(&edge_no);
+                                if idx.is_some() {
+                                    pref_new.push(*idx.unwrap());
+                                } else {
+                                    println!("{} not found", num);
+                                }
+                            }
+                            break 'pref_indices_loop;
+                        }
+                        UserAction::NoAction => {
+                            // Compare edges while waiting for key
+                            for i in 0..edges_len {
+                                if edges[i].diff_to.len() != 0 ||
+                                   edges[i].solved_index != usize::max_value() {
+                                    continue;
+                                }
+                                //println!("comparing {}/{}", i, edges_len);
+                                compute_best_diff(i,
+                                                  &mut edges,
+                                                  combi_one_edge,
+                                                  max_width,
+                                                  max_height);
+                                break;
+                            }
+                        }
+                        _ => {
+                            break 'display_and_precompute;
+                        }
                     }
                 }
             }
