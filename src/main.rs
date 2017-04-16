@@ -2000,11 +2000,13 @@ fn main() {
 
                             if let Err(e) = file.write_all(solved_str.as_bytes()) {
                                 println!("{}", e);
+                            } else {
+                                println!("written to solved_edges.txt");
                             }
-                            edges[a].solved_index = b;
+                            /*edges[a].solved_index = b;
                             edges[b_plus].solved_index = c;
                             edges[c_plus].solved_index = d;
-                            edges[d_plus].solved_index = a_minus;
+                            edges[d_plus].solved_index = a_minus;*/
                             break;
                         }
                         UserAction::Number(num) => {
