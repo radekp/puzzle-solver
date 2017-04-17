@@ -2003,10 +2003,17 @@ fn main() {
                             } else {
                                 println!("written to solved_edges.txt");
                             }
-                            /*edges[a].solved_index = b;
+                            edges[a].solved_index = b;
+                            edges[b].solved_index = a;
+
                             edges[b_plus].solved_index = c;
+                            edges[c].solved_index = b_plus;
+
                             edges[c_plus].solved_index = d;
-                            edges[d_plus].solved_index = a_minus;*/
+                            edges[d].solved_index = c_plus;
+
+                            edges[d_plus].solved_index = a_minus;
+                            edges[a_minus].solved_index = d_plus;
                             break;
                         }
                         UserAction::Number(num) => {
