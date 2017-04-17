@@ -670,6 +670,7 @@ enum UserAction {
     Compute,
     NoAction,
     Number(usize),
+    Delete,
 }
 
 fn display_pixels(pixels: &Vec<u8>,
@@ -749,6 +750,9 @@ fn display_pixels(pixels: &Vec<u8>,
                 }
                 Event::KeyDown { keycode: Some(Keycode::S), .. } => {
                     return UserAction::Solve;
+                }
+                Event::KeyDown { keycode: Some(Keycode::D), .. } => {
+                    return UserAction::Delete;
                 }
                 Event::KeyDown { keycode: Some(Keycode::C), .. } => {
                     return UserAction::Compute;
@@ -2014,6 +2018,13 @@ fn main() {
 
                             edges[d_plus].solved_index = a_minus;
                             edges[a_minus].solved_index = d_plus;
+                            break;
+                        }
+                        UserAction::Delete => {
+                            fs::remove_file(format!("data/{}.png.done", a_no >> 2)).unwrap();
+                            fs::remove_file(format!("data/{}.png.done", b_no >> 2)).unwrap();
+                            fs::remove_file(format!("data/{}.png.done", c_no >> 2)).unwrap();
+                            fs::remove_file(format!("data/{}.png.done", d_no >> 2)).unwrap();
                             break;
                         }
                         UserAction::Number(num) => {
