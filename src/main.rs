@@ -2021,10 +2021,14 @@ fn main() {
                             break;
                         }
                         UserAction::Delete => {
-                            fs::remove_file(format!("data/{}.png.done", a_no >> 2)).unwrap();
-                            fs::remove_file(format!("data/{}.png.done", b_no >> 2)).unwrap();
-                            fs::remove_file(format!("data/{}.png.done", c_no >> 2)).unwrap();
-                            fs::remove_file(format!("data/{}.png.done", d_no >> 2)).unwrap();
+                            println!("{:?}",
+                                     fs::remove_file(format!("data/{}.png.done", a_no >> 2)));
+                            println!("{:?}",
+                                     fs::remove_file(format!("data/{}.png.done", b_no >> 2)));
+                            println!("{:?}",
+                                     fs::remove_file(format!("data/{}.png.done", c_no >> 2)));
+                            println!("{:?}",
+                                     fs::remove_file(format!("data/{}.png.done", d_no >> 2)));
                             break;
                         }
                         UserAction::Number(num) => {
