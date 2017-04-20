@@ -1705,6 +1705,8 @@ fn main() {
 
     let mut pref_new = vec![];
 
+    let mut combi_shift = 0;
+
     loop {
         for pref in pref_new.iter() {
             pref_indices.insert(0, *pref);
@@ -1725,7 +1727,6 @@ fn main() {
             let mut best_combi_counter = 0;
 
             // Parameter for edge matching combinations
-            let combi_shift = 3;
             let combi_one_edge = 1 << combi_shift; // number of combinations for one edge
             let combi_mask = combi_one_edge - 1;
             let combi_all = combi_one_edge * combi_one_edge * combi_one_edge;
@@ -2042,6 +2043,14 @@ fn main() {
                                     println!("{} not found", num);
                                 }
                             }
+                            break 'pref_indices_loop;
+                        }
+                        UserAction::Compute => {
+                            combi_shift = (combi_shift + 1) % 4;
+                            println!("combi_shift={}", combi_shift);
+                            pref_new.clear();
+                            pref_new.push(a);
+                            display_state.autorotate = true;
                             break 'pref_indices_loop;
                         }
                         UserAction::NoAction => {
