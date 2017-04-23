@@ -599,7 +599,7 @@ fn rotate_and_find_corners(renderer: &mut Renderer,
     remove_dead_end_border(&mut pixels, sqr, bounds);
 
     // Find jags that could spoil finding corners
-    detect_jags(&mut pixels, sqr, bounds, sqr / 32, sqr / 6, sqr / 6);
+    detect_jags(&mut pixels, sqr, bounds, sqr / 48, sqr / 6, sqr / 6);
 
     let rv = find_corners(&mut pixels, sqr, bounds, draw_corners);
 
