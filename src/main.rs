@@ -1893,97 +1893,28 @@ fn main() {
                     *p = 0;
                 }
 
-                let col_a = piece_col(&edges, a_no >> 2, 255, 0, 0);
-                let col_b = piece_col(&edges, b_no >> 2, 0, 255, 0);
-                let col_c = piece_col(&edges, c_no >> 2, 0, 0, 255);
-                let col_d = piece_col(&edges, d_no >> 2, 255, 255, 0);
+                draw_edge(&mut pixels, &edges, a, false, sqr, 0, 0, 255, 0, 0);
+                draw_edge(&mut pixels, &edges, b, true, sqr, 0, 0, 0, 255, 0);
 
-                draw_edge(&mut pixels,
-                          &edges,
-                          a,
-                          false,
-                          sqr,
-                          0,
-                          0,
-                          col_a.0,
-                          col_a.1,
-                          col_a.2);
-                draw_edge(&mut pixels,
-                          &edges,
-                          b,
-                          true,
-                          sqr,
-                          0,
-                          0,
-                          col_b.0,
-                          col_b.1,
-                          col_b.2);
-                draw_edge(&mut pixels,
-                          &edges,
-                          b_plus,
-                          false,
-                          sqr,
-                          100,
-                          0,
-                          col_b.0,
-                          col_b.1,
-                          col_b.2);
-                draw_edge(&mut pixels,
-                          &edges,
-                          c,
-                          true,
-                          sqr,
-                          100,
-                          0,
-                          col_c.0,
-                          col_c.1,
-                          col_c.2);
-                draw_edge(&mut pixels,
-                          &edges,
-                          c_plus,
-                          false,
-                          sqr,
-                          200,
-                          0,
-                          col_c.0,
-                          col_c.1,
-                          col_c.2);
-                draw_edge(&mut pixels,
-                          &edges,
-                          d,
-                          true,
-                          sqr,
-                          200,
-                          0,
-                          col_d.0,
-                          col_d.1,
-                          col_d.2);
-                draw_edge(&mut pixels,
-                          &edges,
-                          d_plus,
-                          false,
-                          sqr,
-                          300,
-                          0,
-                          col_d.0,
-                          col_d.1,
-                          col_d.2);
-                draw_edge(&mut pixels,
-                          &edges,
-                          a_minus,
-                          true,
-                          sqr,
-                          300,
-                          0,
-                          col_a.0,
-                          col_a.1,
-                          col_a.2);
+                draw_edge(&mut pixels, &edges, b_plus, false, sqr, 100, 0, 255, 0, 0);
+                draw_edge(&mut pixels, &edges, c, true, sqr, 100, 0, 0, 255, 0);
+
+                draw_edge(&mut pixels, &edges, c_plus, false, sqr, 200, 0, 255, 0, 0);
+                draw_edge(&mut pixels, &edges, d, true, sqr, 200, 0, 0, 255, 0);
+
+                draw_edge(&mut pixels, &edges, d_plus, false, sqr, 300, 0, 255, 0, 0);
+                draw_edge(&mut pixels, &edges, a_minus, true, sqr, 300, 0, 0, 255, 0);
 
                 let piece_a = rotate_piece(pieces.get(&(a_no >> 2)).unwrap(), 0);
                 let piece_b = rotate_piece(pieces.get(&(b_no >> 2)).unwrap(), 0);
                 let piece_c = rotate_piece(pieces.get(&(c_no >> 2)).unwrap(), 0);
                 let piece_d = rotate_piece(pieces.get(&(d_no >> 2)).unwrap(), 0);
                 let max_a = max_xy(&piece_a);
+
+                let col_a = piece_col(&edges, a_no >> 2, 255, 0, 0);
+                let col_b = piece_col(&edges, b_no >> 2, 0, 255, 0);
+                let col_c = piece_col(&edges, c_no >> 2, 0, 0, 255);
+                let col_d = piece_col(&edges, d_no >> 2, 255, 255, 0);
 
                 draw_coords(&mut pixels,
                             sqr,
