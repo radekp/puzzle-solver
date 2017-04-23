@@ -944,7 +944,7 @@ fn process_png(img_file: &str,
 
             if corner_delta > 10 {
                 r += 1f64;
-            } else if corner_delta > 5 {
+            } else if corner_delta > 2 {
                 r += 0.5f64;
             } else {
                 r += 0.02f64;
@@ -2026,10 +2026,10 @@ fn main() {
                                      fs::remove_file(format!("data/{}.png.done", a_no >> 2)));
                             println!("{:?}",
                                      fs::remove_file(format!("data/{}.png.done", b_no >> 2)));
-                            println!("{:?}",
+                            /*println!("{:?}",
                                      fs::remove_file(format!("data/{}.png.done", c_no >> 2)));
                             println!("{:?}",
-                                     fs::remove_file(format!("data/{}.png.done", d_no >> 2)));
+                                     fs::remove_file(format!("data/{}.png.done", d_no >> 2)));*/
                             break;
                         }
                         UserAction::Number(num) => {
