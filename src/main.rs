@@ -1764,7 +1764,7 @@ fn main() {
 
                 //     B  <-  A
                 let (b, b_no, diff_b) =
-                    get_best_diff(a, &mut edges, combi.0, max_width, max_height);
+                    get_best_diff(a, &mut edges, combi_mask, max_width, max_height);
 
                 println!("{:>4}.{}->{:>4}.{}                 {:>12}",
                          a_no >> 2,
@@ -1780,7 +1780,7 @@ fn main() {
                 let b_plus_no = side_plus(b_no);
                 let b_plus = *edge_nums.get(&b_plus_no).unwrap();
                 let (c, c_no, diff_c) =
-                    get_best_diff(b_plus, &mut edges, combi.1, max_width, max_height);
+                    get_best_diff(b_plus, &mut edges, combi_mask, max_width, max_height);
 
                 println!("        {:>4}.{}->{:>4}.{}         {:>12}",
                          b_plus_no >> 2,
@@ -1796,7 +1796,7 @@ fn main() {
                 let c_plus_no = side_plus(c_no);
                 let c_plus = *edge_nums.get(&c_plus_no).unwrap();
                 let (d, d_no, diff_d) =
-                    get_best_diff(c_plus, &mut edges, combi.2, max_width, max_height);
+                    get_best_diff(c_plus, &mut edges, combi_mask, max_width, max_height);
 
                 println!("                {:>4}.{}->{:>4}.{} {:>12}",
                          c_plus_no >> 2,
