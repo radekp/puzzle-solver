@@ -910,7 +910,7 @@ fn process_png(img_file: &str,
         let mut best_corner_delta = usize::max_value();
         let mut best_corner_angle = 0f64;
 
-        let mut r = -15f64;
+        let mut r = -25f64;
         'rotating: loop {
 
             let angle = (90 * side) as f64 + r;
@@ -939,6 +939,11 @@ fn process_png(img_file: &str,
 
             match display_pixels(&pixels, sqr, sdl_context, &mut renderer, display_state) {
                 UserAction::Quit => break 'rotating,
+                UserAction::Compute => {
+                    r -= 1f64;
+                    best_corner_delta = usize::max_value();
+                    continue 'rotating;
+                }
                 _ => {}
             }
 
@@ -949,7 +954,7 @@ fn process_png(img_file: &str,
             } else {
                 r += 0.02f64;
             }
-            if r > 15f64 {
+            if r > 25f64 {
                 break;
             }
         }
