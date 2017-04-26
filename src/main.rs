@@ -1275,10 +1275,10 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
     edges[e_index].diff_to = vec![usize::max_value();edges_len];
 
     // For each x,y there is distance to nearest point on edge e
-    let mut distances = vec![usize::max_value();max_width*max_height];
+    let mut distances = vec![isize::max_value();max_width*max_height];
 
-    let e_max_x = edges[e_index].max_x;
-    let e_max_y = edges[e_index].max_y;
+    let e_max_x = edges[e_index].max_x as isize;
+    let e_max_y = edges[e_index].max_y as isize;
 
     for f_index in 0..edges_len {
         if f_index == e_index {
@@ -1288,52 +1288,50 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
         for f in edges[f_index].points.iter() {
             let offset = max_width * f.1 + f.0;
             let mut best_dst = distances[offset]; // precomputed distance
-
             // Compute best distance to edge from given x,y (point f) on first hit
-            if best_dst == usize::max_value() {
-                for point_e in edges[e_index].points.iter() {
-                    // One point must be flipped
-                    let e = (e_max_x - point_e.0, e_max_y - point_e.1);
-                    let dx = (e.0 as isize) - (f.0 as isize);
-                    let dy = (e.1 as isize) - (f.1 as isize);
-                    let dst = (dx * dx + dy * dy) as usize;
-                    if dst < best_dst {
-                        best_dst = dst;
-                    }
+            if best_dst == isize::max_value() {
+                // Flipped point f
+                let base_x = e_max_x - (f.0 as isize);
+                let base_y = e_max_y - (f.1 as isize);
+                for e in edges[e_index].points.iter() {
+                    let dx = base_x - (e.0 as isize);
+                    let dy = base_y - (e.1 as isize);
+                    best_dst = cmp::min(best_dst, dx * dx + dy * dy);
                 }
                 distances[offset] = best_dst;
             }
             diff += best_dst;
         }
-        edges[e_index].diff_to[f_index] = diff;
+        edges[e_index].diff_to[f_index] = diff as usize;
     }
 }
 
 fn compare_edges(edges: &Vec<EdgeInfo>, index_b: usize, index_a: usize) -> usize {
 
-    // Use diff_to if computed, otherwise get max_x and max_y from b
-    let ref edge_b = edges[index_b];
-    if edge_b.diff_to.len() > 0 {
-        return edge_b.diff_to[index_a];
+    // Use diff_to if computed
+    let ref edge_a = edges[index_a];
+    if edge_a.diff_to.len() > 0 {
+        return edge_a.diff_to[index_b];
     }
 
+    // Needed to flip
+    let a_max_x = edge_a.max_x as isize;
+    let a_max_y = edge_a.max_y as isize;
+
     let mut diff = 0;
-    for a in edges[index_a].points.iter() {
-        let mut best_dst = usize::max_value();
+    for a in edge_a.points.iter() {
+        // Flipped a
+        let a_flipped_x = a_max_x - (a.0 as isize);
+        let a_flipped_y = a_max_y - (a.1 as isize);
+        let mut best_dst = isize::max_value();
         for point_b in edges[index_b].points.iter() {
-            // One point must be flipped
-            let b = (edge_b.max_x - point_b.0, edge_b.max_y - point_b.1);
-            let dx = (b.0 as isize) - (a.0 as isize);
-            let dy = (b.1 as isize) - (a.1 as isize);
-            let dst = (dx * dx + dy * dy) as usize;
-            if dst < best_dst {
-                best_dst = dst;
-            }
+            let dx = a_flipped_x - (point_b.0 as isize);
+            let dy = a_flipped_y - (point_b.1 as isize);
+            best_dst = cmp::min(best_dst, dx * dx + dy * dy);
         }
         diff += best_dst;
     }
-
-    return diff;
+    return diff as usize;
 }
 
 // Compute egge.best_diff vector
