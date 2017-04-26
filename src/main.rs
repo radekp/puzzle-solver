@@ -1239,7 +1239,7 @@ fn rotate_piece(points: &Vec<(usize, usize)>, side: usize) -> Vec<(usize, usize)
         }
     } else if side == 1 {
         for p in points.iter() {
-            res.push((p.1 / 2, (max.0 - p.0) / 2));
+            res.push(((max.1 - p.1) / 2, p.0 / 2));
         }
     } else if side == 2 {
         for p in points.iter() {
@@ -1247,7 +1247,7 @@ fn rotate_piece(points: &Vec<(usize, usize)>, side: usize) -> Vec<(usize, usize)
         }
     } else {
         for p in points.iter() {
-            res.push(((max.1 - p.1) / 2, p.0 / 2));
+            res.push((p.1 / 2, (max.0 - p.0) / 2));
         }
     }
     res
@@ -1924,10 +1924,10 @@ fn main() {
                 draw_edge(&mut pixels, &edges, d_plus, false, sqr, 300, 0, 255, 0, 0);
                 draw_edge(&mut pixels, &edges, a_minus, true, sqr, 300, 0, 0, 255, 0);
 
-                let piece_a = rotate_piece(pieces.get(&(a_no >> 2)).unwrap(), 0);
-                let piece_b = rotate_piece(pieces.get(&(b_no >> 2)).unwrap(), 0);
-                let piece_c = rotate_piece(pieces.get(&(c_no >> 2)).unwrap(), 0);
-                let piece_d = rotate_piece(pieces.get(&(d_no >> 2)).unwrap(), 0);
+                let piece_a = rotate_piece(pieces.get(&(a_no >> 2)).unwrap(), a_no & 3);
+                let piece_b = rotate_piece(pieces.get(&(b_no >> 2)).unwrap(), (b_no + 2) & 3);
+                let piece_c = rotate_piece(pieces.get(&(c_no >> 2)).unwrap(), (c_no + 3) & 3);
+                let piece_d = rotate_piece(pieces.get(&(d_no >> 2)).unwrap(), d_no & 3);
                 let max_a = max_xy(&piece_a);
 
                 let col_a = piece_col(&edges, a_no >> 2, 255, 0, 0);
