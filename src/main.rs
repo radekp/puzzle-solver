@@ -1291,11 +1291,11 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
             // Compute best distance to edge from given x,y (point f) on first hit
             if best_dst == isize::max_value() {
                 // Flipped point f
-                let base_x = e_max_x - (f.0 as isize);
-                let base_y = e_max_y - (f.1 as isize);
+                let flipped_x = e_max_x - (f.0 as isize);
+                let flipped_y = e_max_y - (f.1 as isize);
                 for e in edges[e_index].points.iter() {
-                    let dx = base_x - (e.0 as isize);
-                    let dy = base_y - (e.1 as isize);
+                    let dx = flipped_x - (e.0 as isize);
+                    let dy = flipped_y - (e.1 as isize);
                     best_dst = cmp::min(best_dst, dx * dx + dy * dy);
                 }
                 distances[offset] = best_dst;
@@ -1306,7 +1306,7 @@ fn compare_edge_with_others(edges: &mut Vec<EdgeInfo>,
     }
 }
 
-fn compare_edges(edges: &Vec<EdgeInfo>, index_b: usize, index_a: usize) -> usize {
+fn compare_edges_one_way(edges: &Vec<EdgeInfo>, index_a: usize, index_b: usize) -> usize {
 
     // Use diff_to if computed
     let ref edge_a = edges[index_a];
@@ -1321,12 +1321,12 @@ fn compare_edges(edges: &Vec<EdgeInfo>, index_b: usize, index_a: usize) -> usize
     let mut diff = 0;
     for a in edge_a.points.iter() {
         // Flipped a
-        let a_flipped_x = a_max_x - (a.0 as isize);
-        let a_flipped_y = a_max_y - (a.1 as isize);
+        let flipped_x = a_max_x - (a.0 as isize);
+        let flipped_y = a_max_y - (a.1 as isize);
         let mut best_dst = isize::max_value();
-        for point_b in edges[index_b].points.iter() {
-            let dx = a_flipped_x - (point_b.0 as isize);
-            let dy = a_flipped_y - (point_b.1 as isize);
+        for b in edges[index_b].points.iter() {
+            let dx = flipped_x - (b.0 as isize);
+            let dy = flipped_y - (b.1 as isize);
             best_dst = cmp::min(best_dst, dx * dx + dy * dy);
         }
         diff += best_dst;
@@ -1334,7 +1334,12 @@ fn compare_edges(edges: &Vec<EdgeInfo>, index_b: usize, index_a: usize) -> usize
     return diff as usize;
 }
 
-// Compute egge.best_diff vector
+fn compare_edges(edges: &Vec<EdgeInfo>, index_a: usize, index_b: usize) -> usize {
+    return compare_edges_one_way(edges, index_a, index_b) +
+           compare_edges_one_way(edges, index_b, index_a);
+}
+
+// Compute edge.best_diff vector
 fn compute_best_diff(i: usize,
                      mut edges: &mut Vec<EdgeInfo>,
                      num_best: usize,
@@ -1346,7 +1351,7 @@ fn compute_best_diff(i: usize,
         return;
     }
 
-    // If solved make make (solved edge, zero diff) vector
+    // If solved make (solved edge, zero diff) vector
     if edges[i].solved_index != usize::max_value() {
         edges[i].best_diff = vec![(edges[i].solved_index, 0); num_best];
         return;
@@ -1379,7 +1384,7 @@ fn compute_best_diff(i: usize,
         }
 
         // Add diff for j->i direction
-        let diff = diff_ij + compare_edges(edges, j, i);
+        let diff = compare_edges(edges, j, i);
 
         for k in 0..num_best {
             // (index, diff) of k.th best
