@@ -4,7 +4,15 @@ use hyper::server::{Server, Request, Response};
 use std::io::{self, Write};
 use std::io::Read;
 
-static INDEX: &'static [u8] = b"<html><body><form action=\"/action_page_post.php\" method=\"post\" enctype=\"multipart/form-data\"><input type=\"file\" name=\"filename\" accept=\"image/gif, image/jpeg, image/png\"><input type=\"submit\" value=\"Submit\"></form></body></html>\r\n";
+static INDEX: &'static [u8] = br#"
+<html>
+<body>
+<form action="/action_page_post.php" method="post" enctype="multipart/form-data">
+<input type="file" name="filename" accept="image/gif, image/jpeg, image/png">
+<input type="submit" value="Submit">
+</form>
+</body>
+</html>"#;
 
 fn handle_req(mut req: Request, res: Response) {
 
