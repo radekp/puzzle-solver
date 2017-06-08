@@ -5,114 +5,81 @@ use std::io::{self, Write};
 use std::io::Read;
 
 static INDEX: &'static [u8] = br##"
+
+
 <head>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
   <script type="text/javascript" src="//code.jquery.com/jquery-1.10.1.js"></script>
-    <link rel="stylesheet" type="text/css" href="/css/result-light.css">
-    <style type="text/css">
-        body {
-                background-color: ivory;
-            }
-            canvas {
-                border:1px solid red;
-            }
-    </style>
+  <link rel="stylesheet" type="text/css" href="/css/result-light.css">
+  <style type="text/css">
+    body {
+    background-color: ivory;
+    }
+    canvas {
+    border:1px solid red;
+    }
+  </style>
   <title></title>
+  <script type="text/javascript">//<![CDATA[
+    $(window).load(function(){
+    var canvas;
+    var ctx;
 
-<script type="text/javascript">//<![CDATA[
-$(window).load(function(){
-var canvas;
-var ctx;
+    var canvasOffset;
+    var offsetX;
+    var offsetY;
 
-var canvasOffset;
-var offsetX;
-var offsetY;
+    canvas = document.getElementById("canvas");
+    ctx = canvas.getContext("2d");
 
-var isDrawing = false;
+    canvasOffset = $("#canvas").offset();
+    offsetX = canvasOffset.left;
+    offsetY = canvasOffset.top;
 
-canvas = document.getElementById("canvas");
-ctx = canvas.getContext("2d");
+    $("#canvas").on('mousedown', function (e) {
+        handleMouseDown(e);
+    });
 
-canvasOffset = $("#canvas").offset();
-offsetX = canvasOffset.left;
-offsetY = canvasOffset.top;
+    function handleMouseDown(e) {
+    	canvas.style.cursor = "crosshair";
+    	var x = parseInt(e.clientX - offsetX);
+    	var y = parseInt(e.clientY - offsetY);
+        console.log("mousedown " + x + "," + y);
+    }
 
-$("#canvas").on('mousedown', function (e) {
-    handleMouseDown(e);
-}).on('mouseup', function(e) {
-    handleMouseUp();
-}).on('mousemove', function(e) {
-    handleMouseMove(e);
-});
+    });//]]>
 
-
-var startX;
-var startY;
-
-function handleMouseUp() {
-	isDrawing = false;
-	canvas.style.cursor = "default";
-}
-
-function handleMouseMove(e) {
-	if (isDrawing) {
-		var mouseX = parseInt(e.clientX - offsetX);
-		var mouseY = parseInt(e.clientY - offsetY);
-
-		//ctx.clearRect(0, 0, canvas.width, canvas.height);
-		ctx.beginPath();
-		ctx.rect(startX, startY, mouseX - startX, mouseY - startY);
-		ctx.stroke();
-
-	}
-}
-
-function handleMouseDown(e) {
-	canvas.style.cursor = "crosshair";
-	isDrawing = true
-	startX = parseInt(e.clientX - offsetX);
-	startY = parseInt(e.clientY - offsetY);
-}
-
-});//]]>
-
-</script>
-
-
+  </script>
 </head>
-
 <body>
   <p>Click once to set starting rectangle position</p>
-<p>Click again to set the ending position &amp; draw rectangle</p>
-
-<canvas style="cursor: default;" id="canvas" width="800" height="480"></canvas></body>
-
+  <p>Click again to set the ending position &amp; draw rectangle</p>
+  <canvas style="cursor: default;" id="canvas" width="800" height="480"></canvas>
+</body>
 <form action="/action_page_post.php" method="post" enctype="multipart/form-data">
-<input type="file" name="filename" accept="image/gif, image/jpeg, image/png" id="uploadimage">
-<input type="submit" value="Submit">
-<script type="text/javascript">//<![CDATA[
+  <input type="file" name="filename" accept="image/gif, image/jpeg, image/png" id="uploadimage">
+  <input type="submit" value="Submit">
+  <script type="text/javascript">//<![CDATA[
+    function draw(ev) {
+        console.log(ev);
+        var ctx = document.getElementById('canvas').getContext('2d'),
+            img = new Image(),
+            f = document.getElementById("uploadimage").files[0],
+            url = window.URL || window.webkitURL,
+            src = url.createObjectURL(f);
 
-function draw(ev) {
-    console.log(ev);
-    var ctx = document.getElementById('canvas').getContext('2d'),
-        img = new Image(),
-        f = document.getElementById("uploadimage").files[0],
-        url = window.URL || window.webkitURL,
-        src = url.createObjectURL(f);
-
-    img.src = src;
-    img.onload = function() {
-        ctx.drawImage(img, 0, 0, 800, 480);
-        url.revokeObjectURL(src);
+        img.src = src;
+        img.onload = function() {
+            ctx.drawImage(img, 0, 0, 800, 480);
+            url.revokeObjectURL(src);
+        }
     }
-}
 
-document.getElementById("uploadimage").addEventListener("change", draw, false)
-//]]>
+    document.getElementById("uploadimage").addEventListener("change", draw, false)
+    //]]>
 
-</script>
+  </script>
 </form>
-
 
 
 "##;
