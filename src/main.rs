@@ -133,6 +133,6 @@ fn handle_req(mut req: Request, res: Response) {
 }
 
 fn main() {
-    println!("starting server on 127.0.0.1:9090");
-    Server::http("127.0.0.1:9090").unwrap().handle(handle_req).unwrap();
+    println!("starting server on 0.0.0.0:9090");
+    Server::http("0.0.0.0:9090").unwrap().handle(handle_req).unwrap();
 }
