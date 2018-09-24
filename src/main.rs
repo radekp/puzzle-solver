@@ -31,8 +31,8 @@ use image::Pixel;
 use image::GenericImage;
 
 // SDL window size - puzzle pieces bitmap must fit even with rotation
-const WND_WIDTH: usize = 1000;
-const WND_HEIGHT: usize = 1000;
+const WND_WIDTH: usize = 2000;
+const WND_HEIGHT: usize = 2000;
 
 // Color masks used to detect borders etc...
 const RED_MASK_NO_MATERIAL: u8 = 1;
@@ -910,7 +910,7 @@ fn process_png(img_file: &str,
         let mut best_corner_delta = usize::max_value();
         let mut best_corner_angle = 0f64;
 
-        let mut r = -25f64;
+        let mut r = -9f64;
         'rotating: loop {
 
             let angle = (90 * side) as f64 + r;
@@ -954,7 +954,7 @@ fn process_png(img_file: &str,
             } else {
                 r += 0.02f64;
             }
-            if r > 25f64 {
+            if r > 9f64 {
                 break;
             }
         }
@@ -1059,7 +1059,7 @@ fn process_jpg(jpg_file: &str, jpg_no: usize, sdl_context: &sdl2::Sdl) {
                     // Iterate over the coordiantes and pixels of the image
                     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
                         let pix = img.get_pixel(left + x, top + y).to_luma();
-                        if pix.data[0] > 78 {
+                        if pix.data[0] > 50 {
                             *pixel = image::Luma([255u8]);
                         } else {
                             *pixel = image::Luma([0u8]);
