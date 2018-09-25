@@ -910,7 +910,7 @@ fn process_png(img_file: &str,
         let mut best_corner_delta = usize::max_value();
         let mut best_corner_angle = 0f64;
 
-        let mut r = -9f64;
+        let mut r = -5f64;
         'rotating: loop {
 
             let angle = (90 * side) as f64 + r;
